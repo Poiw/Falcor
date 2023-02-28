@@ -32,6 +32,28 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, DoubleLayerGbuffer>();
 }
 
+DoubleLayerGbuffer::DoubleLayerGbuffer(std::shared_ptr<Device> pDevice) : RenderPass((std::move(pDevice)))
+{
+    // Initialize objects for raster pass
+    // RasterizerState::Desc rasterDesc;
+    // rasterDesc.setFillMode(RasterizerState::FillMode::Solid);
+    // rasterDesc.setCullMode(RasterizerState::CullMode::None);  // Not working
+    // // Turn on/off depth test
+    // DepthStencilState::Desc dsDesc;
+    // // dsDesc.setDepthEnabled(false);
+    // // Initialize raster graphics state
+    // mRasterPass.pGraphicsState = GraphicsState::create();
+    // mRasterPass.pGraphicsState->setRasterizerState(
+    //     RasterizerState::create(rasterDesc));
+    // mRasterPass.pGraphicsState->setDepthStencilState(
+    //     DepthStencilState::create(dsDesc));
+    // // Create framebuffer
+    // mRasterPass.pFbo = Falcor::Fbo::create(pDevice);
+
+    // // Create sample generator
+    // mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
+}
+
 DoubleLayerGbuffer::SharedPtr DoubleLayerGbuffer::create(std::shared_ptr<Device> pDevice, const Dictionary& dict)
 {
     SharedPtr pPass = SharedPtr(new DoubleLayerGbuffer(std::move(pDevice)));

@@ -54,5 +54,11 @@ public:
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
 private:
-    DoubleLayerGbuffer(std::shared_ptr<Device> pDevice) : RenderPass(std::move(pDevice)) {}
+    DoubleLayerGbuffer(std::shared_ptr<Device> pDevice);
+
+    struct {
+        GraphicsState::SharedPtr pGraphicsState;
+        GraphicsVars::SharedPtr pVars;
+        Fbo::SharedPtr pFbo;
+    } mRasterPass;
 };
