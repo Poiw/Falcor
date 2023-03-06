@@ -122,6 +122,10 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::ShaderResource)
         .texture2D();
+    reflector.addInput("gFirstLinearZ", "First Linear Z")
+        .format(ResourceFormat::RG32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
     reflector.addInput("gFirstDepth", "Depth")
         .format(ResourceFormat::D32Float)
         .bindFlags(Resource::BindFlags::ShaderResource)
@@ -165,10 +169,15 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
     auto pFirstDepthMapRSVMip0 = pFirstDepthMap->getSRV(mostDetailedMip);
 
 
+    auto pFirstLinearZMap = renderData.getTexture("gFirstLinearZ");
+    auto pFirstLinearZMapRSVMip0 = pFirstLinearZMap->getSRV(mostDetailedMip);
+
+
     mRasterPass.pVars["PerFrameCB"]["gEps"] = mEps;
 
     mRasterPass.pVars["gDepthBuffer"].setUav(pMyDepthMapUAVMip0);
     mRasterPass.pVars["gFirstDepthBuffer"].setSrv(pFirstDepthMapRSVMip0);
+    mRasterPass.pVars["gFirstLinearZBuffer"].setSrv(pFirstLinearZMapRSVMip0);
     mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gDebug"), 0);
     mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gDebug2"), 1);
     // mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gTangentWS"), 2);
@@ -187,5 +196,5 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
 void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
 {
-    widget.slider("Eps", mEps, 0.0f, 1.0f);
+    widget.slider("Eps", mEps, 0.0f, 5.0f);
 }
