@@ -1,6 +1,7 @@
 import Scene.Raster;
+import GBufferHelpers;
 
-RasterizerOrderedTexture2D<float4> gDepthBuffer;
+// RasterizerOrderedTexture2D<float4> gDepthBuffer;
 Texture2D<float> gFirstDepthBuffer;
 Texture2D<float2> gFirstLinearZBuffer;
 
@@ -24,40 +25,44 @@ VSOut vsMain(VSIn vIn) {
 
 }
 
+
+#define is_valid(name) (is_valid_##name != 0)
+
 struct PSOut {
     float4 gDebug : SV_TARGET0;
-    float4 gDebug2 : SV_TARGET1;
+    float4 gNormW : SV_TARGET1;
+    float4 gDiffOpacity : SV_TARGET2;
     // float4 tangentWS : SV_TARGET2;
     // float4 posWS : SV_TARGET3;
 };
 
-PSOut psMain(VSOut vsOut) : SV_TARGET {
-    int2 pixelIndex = int2(vsOut.posH.xy);
-    PSOut psOut = {};
+PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) : SV_TARGET {
 
-    // psOut.normWS = float4(vsOut.normalW, 0);
-    // psOut.tangentWS = vsOut.tangentW;
-    // psOut.posWS = float4(vsOut.posW, 0);
+    int2 ipos = int2(vsOut.posH.xy);
 
-    // NDC space depth, range from [0, 1]
+
+    // Not a valid second layer gbuffer
     float linearZ = (vsOut.posH.z * vsOut.posH.w - gEps);
-    // View space depth (depth in world units), when using pespective proj.
-    // float depthVS = vsOut.posH.w;
-
-    // Generate depth map
-    // gDepthBuffer[pixelIndex] = min(float4(depth, depth, depth, 1), gDepthBuffer[pixelIndex]);
-    // gDepthBuffer[pixelIndex] = vsOut.posH;
-
-    // if(depth <= gFirstDepthBuffer[pixelIndex] - 0.00001)
-    //     discard;
-
-    if(linearZ <= gFirstLinearZBuffer[pixelIndex][0] - 0.00001)
+    if(linearZ <= gFirstLinearZBuffer[ipos][0] - 0.00001)
         discard;
 
-    psOut.gDebug = float4(vsOut.normalW, 0);
-    psOut.gDebug2 = float4(vsOut.posH.z * vsOut.posH.w, 0, 0, 0);
-    // psOut.gDebug = vsOut.posH;
-    // psOut.gDebug = float4(vsOut.posH.z, 0, 0, 0);
-    // psOut.gDebug2 = float4(posH.z / posH.w, 0, 0, 0);
+    PSOut psOut = {};
+
+    float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
+    VertexData v = prepareVertexData(vsOut, faceNormal);
+    let lod = ImplicitLodTextureSampler();
+
+    const float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
+    ShadingData sd = gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir, lod);
+
+    // Create BSDF instance.
+    let bsdf = gScene.materials.getBSDF(sd, lod);
+
+    const GBufferData gbuf = prepareGBufferData(sd, bsdf);
+
+    psOut.gDebug = float4(vsOut.posH.z * vsOut.posH.w, 0, 0, 0);
+    psOut.gNormW = float4(vsOut.normalW, 0);
+    psOut.gDiffOpacity = gbuf.diffuseOpacity;
+
     return psOut;
 }

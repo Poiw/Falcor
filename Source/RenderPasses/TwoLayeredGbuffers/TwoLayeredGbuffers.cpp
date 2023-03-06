@@ -66,7 +66,7 @@ TwoLayeredGbuffers::TwoLayeredGbuffers() : RenderPass(kInfo) {
     // Create framebuffer
     mRasterPass.pFbo = Fbo::create();
 
-    mEps = 0.1f;
+    mEps = 0.0f;
 
     // Create sample generator
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
@@ -130,22 +130,30 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .format(ResourceFormat::D32Float)
         .bindFlags(Resource::BindFlags::ShaderResource)
         .texture2D();
+    reflector.addInput("gFirstDepth", "Depth")
+        .format(ResourceFormat::D32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
 
     // Outputs
-    reflector.addOutput("gMyDepth", "My Depth Buffer")
-        .format(ResourceFormat::RGBA32Float)
-        .bindFlags(Resource::BindFlags::UnorderedAccess |
-                   Resource::BindFlags::ShaderResource)
-        .texture2D();
+    // reflector.addOutput("gMyDepth", "My Depth Buffer")
+    //     .format(ResourceFormat::RGBA32Float)
+    //     .bindFlags(Resource::BindFlags::UnorderedAccess |
+    //                Resource::BindFlags::ShaderResource)
+    //     .texture2D();
     reflector.addOutput("gDepth", "Depth buffer")
         .format(ResourceFormat::D32Float)
         .bindFlags(Resource::BindFlags::DepthStencil)
         .texture2D();
-    reflector.addOutput("gDebug", "Debug")
+    reflector.addOutput("gDebug", "Debug Info")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
-    reflector.addOutput("gDebug2", "Debug2")
+    reflector.addOutput("gNormW", "World Normal")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
+    reflector.addOutput("gDiffOpacity", "Albedo and Opacity")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
@@ -158,28 +166,28 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
     if (mpScene == nullptr) return;
 
+    mRasterPass.pVars["PerFrameCB"]["gEps"] = mEps;
 
     const uint mostDetailedMip = 0;
-    auto pMyDepthMap = renderData.getTexture("gMyDepth");
-    auto pMyDepthMapUAVMip0 = pMyDepthMap->getUAV(mostDetailedMip);
-    pRenderContext->clearUAV(pMyDepthMapUAVMip0.get(), uint4(0));
+    // auto pMyDepthMap = renderData.getTexture("gMyDepth");
+    // auto pMyDepthMapUAVMip0 = pMyDepthMap->getUAV(mostDetailedMip);
+    // pRenderContext->clearUAV(pMyDepthMapUAVMip0.get(), uint4(0));
     // mDepthBuffer = pMyDepthMapUAVMip0->getResource()->asTexture();  // Save for dumping
 
     auto pFirstDepthMap = renderData.getTexture("gFirstDepth");
     auto pFirstDepthMapRSVMip0 = pFirstDepthMap->getSRV(mostDetailedMip);
 
-
     auto pFirstLinearZMap = renderData.getTexture("gFirstLinearZ");
     auto pFirstLinearZMapRSVMip0 = pFirstLinearZMap->getSRV(mostDetailedMip);
 
 
-    mRasterPass.pVars["PerFrameCB"]["gEps"] = mEps;
 
-    mRasterPass.pVars["gDepthBuffer"].setUav(pMyDepthMapUAVMip0);
+    // mRasterPass.pVars["gDepthBuffer"].setUav(pMyDepthMapUAVMip0);
     mRasterPass.pVars["gFirstDepthBuffer"].setSrv(pFirstDepthMapRSVMip0);
     mRasterPass.pVars["gFirstLinearZBuffer"].setSrv(pFirstLinearZMapRSVMip0);
     mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gDebug"), 0);
-    mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gDebug2"), 1);
+    mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gNormW"), 1);
+    mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gDiffOpacity"), 2);
     // mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gTangentWS"), 2);
     // mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gPosWS"), 3);
     mRasterPass.pFbo->attachDepthStencilTarget(renderData.getTexture("gDepth"));
