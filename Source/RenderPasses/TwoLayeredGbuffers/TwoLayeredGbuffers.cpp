@@ -166,38 +166,42 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
     if (mpScene == nullptr) return;
 
-    mRasterPass.pVars["PerFrameCB"]["gEps"] = mEps;
+    if (mMode == 0) {
 
-    const uint mostDetailedMip = 0;
-    // auto pMyDepthMap = renderData.getTexture("gMyDepth");
-    // auto pMyDepthMapUAVMip0 = pMyDepthMap->getUAV(mostDetailedMip);
-    // pRenderContext->clearUAV(pMyDepthMapUAVMip0.get(), uint4(0));
-    // mDepthBuffer = pMyDepthMapUAVMip0->getResource()->asTexture();  // Save for dumping
+        mRasterPass.pVars["PerFrameCB"]["gEps"] = mEps;
 
-    auto pFirstDepthMap = renderData.getTexture("gFirstDepth");
-    auto pFirstDepthMapRSVMip0 = pFirstDepthMap->getSRV(mostDetailedMip);
+        const uint mostDetailedMip = 0;
+        // auto pMyDepthMap = renderData.getTexture("gMyDepth");
+        // auto pMyDepthMapUAVMip0 = pMyDepthMap->getUAV(mostDetailedMip);
+        // pRenderContext->clearUAV(pMyDepthMapUAVMip0.get(), uint4(0));
+        // mDepthBuffer = pMyDepthMapUAVMip0->getResource()->asTexture();  // Save for dumping
 
-    auto pFirstLinearZMap = renderData.getTexture("gFirstLinearZ");
-    auto pFirstLinearZMapRSVMip0 = pFirstLinearZMap->getSRV(mostDetailedMip);
+        auto pFirstDepthMap = renderData.getTexture("gFirstDepth");
+        auto pFirstDepthMapRSVMip0 = pFirstDepthMap->getSRV(mostDetailedMip);
+
+        auto pFirstLinearZMap = renderData.getTexture("gFirstLinearZ");
+        auto pFirstLinearZMapRSVMip0 = pFirstLinearZMap->getSRV(mostDetailedMip);
 
 
 
-    // mRasterPass.pVars["gDepthBuffer"].setUav(pMyDepthMapUAVMip0);
-    mRasterPass.pVars["gFirstDepthBuffer"].setSrv(pFirstDepthMapRSVMip0);
-    mRasterPass.pVars["gFirstLinearZBuffer"].setSrv(pFirstLinearZMapRSVMip0);
-    mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gDebug"), 0);
-    mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gNormW"), 1);
-    mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gDiffOpacity"), 2);
-    // mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gTangentWS"), 2);
-    // mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gPosWS"), 3);
-    mRasterPass.pFbo->attachDepthStencilTarget(renderData.getTexture("gDepth"));
-    pRenderContext->clearFbo(mRasterPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
-                             0, FboAttachmentType::All);
-    mRasterPass.pGraphicsState->setFbo(mRasterPass.pFbo);
-    // Rasterize it!
-    mpScene->rasterize(pRenderContext, mRasterPass.pGraphicsState.get(),
-                       mRasterPass.pVars.get(),
-                       RasterizerState::CullMode::None);
+        // mRasterPass.pVars["gDepthBuffer"].setUav(pMyDepthMapUAVMip0);
+        mRasterPass.pVars["gFirstDepthBuffer"].setSrv(pFirstDepthMapRSVMip0);
+        mRasterPass.pVars["gFirstLinearZBuffer"].setSrv(pFirstLinearZMapRSVMip0);
+        mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gDebug"), 0);
+        mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gNormW"), 1);
+        mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gDiffOpacity"), 2);
+        // mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gTangentWS"), 2);
+        // mRasterPass.pFbo->attachColorTarget(renderData.getTexture("gPosWS"), 3);
+        mRasterPass.pFbo->attachDepthStencilTarget(renderData.getTexture("gDepth"));
+        pRenderContext->clearFbo(mRasterPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
+                                0, FboAttachmentType::All);
+        mRasterPass.pGraphicsState->setFbo(mRasterPass.pFbo);
+        // Rasterize it!
+        mpScene->rasterize(pRenderContext, mRasterPass.pGraphicsState.get(),
+                        mRasterPass.pVars.get(),
+                        RasterizerState::CullMode::None);
+
+    }
 
 
 }
@@ -205,4 +209,11 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
 {
     widget.slider("Eps", mEps, 0.0f, 5.0f);
+
+    Gui::DropdownList modeList;
+    modeList.push_back(Gui::DropdownValue{0, "default"});
+    modeList.push_back(Gui::DropdownValue{1, "test"});
+
+    widget.dropdown("Mode", modeList, mMode);
+
 }

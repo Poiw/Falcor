@@ -72,4 +72,6 @@ private:
     Texture::SharedPtr mSecondLayerGbuffer;
 
     float mEps; // Threshold for two layered g-buffers
+
+    uint32_t mMode; // Current mode
 };
