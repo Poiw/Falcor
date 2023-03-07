@@ -1,24 +1,16 @@
 import Scene.Raster;
 import GBufferHelpers;
 
-RasterizerOrderedTexture2D<float4> gTargetPosWSBuffer;
-Texture2D<float4> gPosWSBuffer;
+Texture2D<float4> gPrevPosWSBuffer;
+// RasterizerOrderedTexture2D<float4> gPosWSBufferTemp;
 
-
-cbuffer PerFrameCB {
-    float gEps;
+cbuffer PerFrameCB
+{
+    uint2 gFrameDim;
 };
 
 // Default Vertex Shader
 VSOut vsMain(VSIn vIn) {
-    // VSOut vOut;
-    // const GeometryInstanceID instanceID = { vIn.instanceID };
-
-    // float4x4 worldMat = gScene.getWorldMatrix(instanceID);
-    // float3 posW = mul(worldMat, float4(vIn.pos, 1.f)).xyz;
-    // vOut.posW = posW;
-    // vOut.posH = mul(gViewProjMat, float4(posW, 1.f));
-    // return vOut;
 
     return defaultVS(vIn);
 
@@ -29,7 +21,8 @@ VSOut vsMain(VSIn vIn) {
 
 struct PSOut {
     float4 gDebug : SV_TARGET0;
-    // float4 gNormW : SV_TARGET1;
+    float4 gMotionVector : SV_TARGET1;
+    float4 gPosWS : SV_TARGET2;
     // float4 gDiffOpacity : SV_TARGET2;
     // float4 tangentWS : SV_TARGET2;
     // float4 posWS : SV_TARGET3;
@@ -38,8 +31,17 @@ struct PSOut {
 PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) : SV_TARGET {
 
     int2 ipos = int2(vsOut.posH.xy);
+    float2 prevCrd = vsOut.prevPosH.xy / vsOut.prevPosH.w;
 
-    gTargetPosWSBuffer[ipos] = float4(gPosWSBuffer[ipos].xyz, 0);
+#ifdef FALCOR_FLIP_Y
+    prevCrd *= float2(0.5, 0.5);
+#else
+    prevCrd *= float2(0.5, -0.5);
+#endif
+    prevCrd += 0.5;
+
+    int2 prevIpos = int2(prevCrd * (float2)gFrameDim);
+
 
     // Not a valid second layer gbuffer
     // float linearZ = (vsOut.posH.z * vsOut.posH.w - gEps);
@@ -60,9 +62,10 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     // const GBufferData gbuf = prepareGBufferData(sd, bsdf);
 
-    psOut.gDebug = float4(vsOut.posW, 0);
-    // psOut.gNormW = float4(vsOut.normalW, 0);
-    // psOut.gDiffOpacity = gbuf.diffuseOpacity;
+    psOut.gDebug = gPrevPosWSBuffer[prevIpos];
+    // psOut.gDebug = float4(vsOut.prevPosH.xy, 0, 0);
+    psOut.gMotionVector = float4(prevIpos, 0, 0);
+    psOut.gPosWS = gPrevPosWSBuffer[prevIpos];
 
     return psOut;
 }

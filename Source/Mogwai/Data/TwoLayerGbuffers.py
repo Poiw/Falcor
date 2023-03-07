@@ -22,6 +22,7 @@ def render_occupancy_map():
     g.markOutput('TwoLayeredGbuffers.gDebug')
     g.markOutput('TwoLayeredGbuffers.gNormW')
     g.markOutput('TwoLayeredGbuffers.gDiffOpacity')
+    g.markOutput('TwoLayeredGbuffers.gMotionVector')
     return g
 
 

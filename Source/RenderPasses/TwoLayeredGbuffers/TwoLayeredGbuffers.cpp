@@ -44,7 +44,11 @@ extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 
 namespace {
 const std::string twoLayerGbuffersShaderFilePath =
+    "RenderPasses/TwoLayeredGbuffers/TwoLayerGbufferVis.slang";
+const std::string twoLayerGbuffersGenShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/TwoLayerGbufferGen.slang";
+const std::string warpGbuffersShaderFilePath =
+    "RenderPasses/TwoLayeredGbuffers/WarpGbuffer.slang";
 }  // namespace
 
 
@@ -57,16 +61,44 @@ TwoLayeredGbuffers::TwoLayeredGbuffers() : RenderPass(kInfo) {
     // Turn on/off depth test
     DepthStencilState::Desc dsDesc;
     // dsDesc.setDepthEnabled(false);
-    // Initialize raster graphics state
-    mRasterPass.pGraphicsState = GraphicsState::create();
-    mRasterPass.pGraphicsState->setRasterizerState(
-        RasterizerState::create(rasterDesc));
-    mRasterPass.pGraphicsState->setDepthStencilState(
-        DepthStencilState::create(dsDesc));
-    // Create framebuffer
-    mRasterPass.pFbo = Fbo::create();
+
+    {
+        // Initialize raster graphics state
+        mRasterPass.pGraphicsState = GraphicsState::create();
+        mRasterPass.pGraphicsState->setRasterizerState(
+            RasterizerState::create(rasterDesc));
+        mRasterPass.pGraphicsState->setDepthStencilState(
+            DepthStencilState::create(dsDesc));
+        // Create framebuffer
+        mRasterPass.pFbo = Fbo::create();
+    }
+
+    {
+        // Initialize raster graphics state
+        mWarpGbufferPass.pGraphicsState = GraphicsState::create();
+        mWarpGbufferPass.pGraphicsState->setRasterizerState(
+            RasterizerState::create(rasterDesc));
+        mWarpGbufferPass.pGraphicsState->setDepthStencilState(
+            DepthStencilState::create(dsDesc));
+        // Create framebuffer
+        mWarpGbufferPass.pFbo = Fbo::create();
+    }
+
+    {
+        // Initialize raster graphics state
+        mTwoLayerGbufferGenPass.pGraphicsState = GraphicsState::create();
+        mTwoLayerGbufferGenPass.pGraphicsState->setRasterizerState(
+            RasterizerState::create(rasterDesc));
+        mTwoLayerGbufferGenPass.pGraphicsState->setDepthStencilState(
+            DepthStencilState::create(dsDesc));
+        // Create framebuffer
+        mTwoLayerGbufferGenPass.pFbo = Fbo::create();
+    }
 
     mEps = 0.0f;
+    mFrameCount = 0;
+    mFreshNum = 8;
+    mMode = 0;
 
     // Create sample generator
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
@@ -75,9 +107,18 @@ TwoLayeredGbuffers::TwoLayeredGbuffers() : RenderPass(kInfo) {
 void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
      mRasterPass.pVars = nullptr;
+     mWarpGbufferPass.pVars = nullptr;
+     mTwoLayerGbufferGenPass.pVars = nullptr;
 
     if (pScene) {
         mpScene = pScene;
+        mpPosWSBuffer = nullptr;
+        mpPosWSBufferTemp = nullptr;
+
+        mMode = 0;
+        mFrameCount = 0;
+        mFreshNum = 8;
+
         // Create raster pass
         {
             Program::Desc desc;
@@ -90,6 +131,33 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
                 GraphicsProgram::create(desc, mpScene->getSceneDefines());
             mRasterPass.pGraphicsState->setProgram(program);
             mRasterPass.pVars = GraphicsVars::create(program.get());
+        }
+        // Create warp Gbuffer pass
+        {
+            Program::Desc desc;
+            desc.addShaderModules(mpScene->getShaderModules());
+            desc.addShaderLibrary(warpGbuffersShaderFilePath)
+                .vsEntry("vsMain")
+                .psEntry("psMain");
+            desc.addTypeConformances(mpScene->getTypeConformances());
+            auto program =
+                GraphicsProgram::create(desc, mpScene->getSceneDefines());
+            mWarpGbufferPass.pGraphicsState->setProgram(program);
+            mWarpGbufferPass.pVars = GraphicsVars::create(program.get());
+        }
+
+        // Create Gen Two Gbuffer pass
+        {
+            Program::Desc desc;
+            desc.addShaderModules(mpScene->getShaderModules());
+            desc.addShaderLibrary(twoLayerGbuffersGenShaderFilePath)
+                .vsEntry("vsMain")
+                .psEntry("psMain");
+            desc.addTypeConformances(mpScene->getTypeConformances());
+            auto program =
+                GraphicsProgram::create(desc, mpScene->getSceneDefines());
+            mTwoLayerGbufferGenPass.pGraphicsState->setProgram(program);
+            mTwoLayerGbufferGenPass.pVars = GraphicsVars::create(program.get());
         }
     }
 }
@@ -130,10 +198,6 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .format(ResourceFormat::D32Float)
         .bindFlags(Resource::BindFlags::ShaderResource)
         .texture2D();
-    reflector.addInput("gFirstDepth", "Depth")
-        .format(ResourceFormat::D32Float)
-        .bindFlags(Resource::BindFlags::ShaderResource)
-        .texture2D();
 
     // Outputs
     // reflector.addOutput("gMyDepth", "My Depth Buffer")
@@ -153,6 +217,10 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
+    reflector.addOutput("gMotionVector", "Motion Vector")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
     reflector.addOutput("gDiffOpacity", "Albedo and Opacity")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
@@ -166,11 +234,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
     if (mpScene == nullptr) return;
 
+    const uint mostDetailedMip = 0;
+
     if (mMode == 0) {
 
         mRasterPass.pVars["PerFrameCB"]["gEps"] = mEps;
 
-        const uint mostDetailedMip = 0;
         // auto pMyDepthMap = renderData.getTexture("gMyDepth");
         // auto pMyDepthMapUAVMip0 = pMyDepthMap->getUAV(mostDetailedMip);
         // pRenderContext->clearUAV(pMyDepthMapUAVMip0.get(), uint4(0));
@@ -203,6 +272,98 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
     }
 
+    else if (mMode == 1) {
+
+        if (mFrameCount % mFreshNum == 0) {
+
+            mRasterPass.pVars["PerFrameCB"]["gEps"] = mEps;
+
+            // auto pPosWSMap = renderData.getTexture("gPosWS");
+            // auto pPosWSMapUAVMip0 = pPosWSMap->getSRV(mostDetailedMip);
+            // mPosWSBuffer = pPosWSMapUAVMip0->getResource()->asTexture();  // Save for dumping
+
+
+
+            auto curDim = renderData.getDefaultTextureDims();
+
+            if (!mpPosWSBuffer || mpPosWSBuffer->getWidth() != curDim.x || mpPosWSBuffer->getHeight() != curDim.y) {
+
+                mpPosWSBuffer = Texture::create2D(curDim.x, curDim.y, ResourceFormat::RGBA32Float,
+                                            1U, 1, nullptr,
+                                            Resource::BindFlags::AllColorViews);
+
+            }
+
+
+
+            // Textures
+            auto pPosWSMap = renderData.getTexture("gPosWS");
+            auto pPosWSMapUAVMip0 = pPosWSMap->getSRV(mostDetailedMip);
+
+            auto pWritePosWSMap = mpPosWSBuffer->getUAV(mostDetailedMip);
+            pRenderContext->clearUAV(pWritePosWSMap.get(), uint4(0));
+
+            mTwoLayerGbufferGenPass.pVars["gPosWSBuffer"].setSrv(pPosWSMapUAVMip0);
+            mTwoLayerGbufferGenPass.pVars["gTargetPosWSBuffer"].setUav(pWritePosWSMap);
+
+            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("gDebug"), 0);
+            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("gMotionVector"), 1);
+            mTwoLayerGbufferGenPass.pFbo->attachDepthStencilTarget(renderData.getTexture("gDepth"));
+            pRenderContext->clearFbo(mTwoLayerGbufferGenPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
+                                    0, FboAttachmentType::All);
+            mTwoLayerGbufferGenPass.pGraphicsState->setFbo(mTwoLayerGbufferGenPass.pFbo);
+            // Rasterize it!
+            mpScene->rasterize(pRenderContext, mTwoLayerGbufferGenPass.pGraphicsState.get(),
+                            mTwoLayerGbufferGenPass.pVars.get(),
+                            RasterizerState::CullMode::None);
+
+        }
+
+        else {
+
+            auto curDim = renderData.getDefaultTextureDims();
+
+            if (!mpPosWSBufferTemp || mpPosWSBufferTemp->getWidth() != curDim.x || mpPosWSBufferTemp->getHeight() != curDim.y) {
+
+                mpPosWSBufferTemp = Texture::create2D(curDim.x, curDim.y, ResourceFormat::RGBA32Float,
+                                            1U, 1, nullptr,
+                                            Resource::BindFlags::AllColorViews);
+
+            }
+
+
+            // Vairables
+            mWarpGbufferPass.pVars["PerFrameCB"]["gFrameDim"] = curDim;
+
+
+            // Textures
+            auto pPosWSBufferRSVMip0 = mpPosWSBuffer->getSRV(mostDetailedMip);
+            mWarpGbufferPass.pVars["gPrevPosWSBuffer"].setSrv(pPosWSBufferRSVMip0);
+
+            // auto pWritePosWSMap = mpPosWSBufferTemp->getUAV(mostDetailedMip);
+            // pRenderContext->clearUAV(pWritePosWSMap.get(), uint4(0));
+            // mWarpGbufferPass.pVars["gPosWSBufferTemp"].setUav(pWritePosWSMap);
+
+            mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("gDebug"), 0);
+            mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("gMotionVector"), 1);
+            mWarpGbufferPass.pFbo->attachColorTarget(mpPosWSBufferTemp, 2);
+            mWarpGbufferPass.pFbo->attachDepthStencilTarget(renderData.getTexture("gDepth"));
+            pRenderContext->clearFbo(mWarpGbufferPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
+                                    0, FboAttachmentType::All);
+            mWarpGbufferPass.pGraphicsState->setFbo(mWarpGbufferPass.pFbo);
+            // Rasterize it!
+            mpScene->rasterize(pRenderContext, mWarpGbufferPass.pGraphicsState.get(),
+                            mWarpGbufferPass.pVars.get(),
+                            RasterizerState::CullMode::None);
+
+            pRenderContext->blit(mpPosWSBufferTemp->getSRV(0), mpPosWSBuffer->getRTV(0));
+        }
+
+
+
+        mFrameCount += 1;
+
+    }
 
 }
 
@@ -212,8 +373,10 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
 
     Gui::DropdownList modeList;
     modeList.push_back(Gui::DropdownValue{0, "default"});
-    modeList.push_back(Gui::DropdownValue{1, "test"});
+    modeList.push_back(Gui::DropdownValue{1, "warped gbuffers"});
 
     widget.dropdown("Mode", modeList, mMode);
+
+    widget.var<uint32_t>("Fresh Frequency", mFreshNum, 1);
 
 }

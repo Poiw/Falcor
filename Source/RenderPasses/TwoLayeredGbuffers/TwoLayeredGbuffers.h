@@ -64,14 +64,21 @@ private:
         GraphicsState::SharedPtr pGraphicsState;
         GraphicsVars::SharedPtr pVars;
         Fbo::SharedPtr pFbo;
-    } mRasterPass;
+    } mRasterPass, mWarpGbufferPass, mTwoLayerGbufferGenPass;
+
+    struct {
+        Texture::SharedPtr mpNormW;
+        Texture::SharedPtr mpDiffOpacity;
+    } mFirstLayerGbuffer, mSecondLayerGbuffer;
 
     // Parameters
-    Texture::SharedPtr mDepthBuffer;
-    Texture::SharedPtr mFirstLayerGbuffer;
-    Texture::SharedPtr mSecondLayerGbuffer;
+    Texture::SharedPtr mpPosWSBuffer;
+    Texture::SharedPtr mpPosWSBufferTemp;
 
     float mEps; // Threshold for two layered g-buffers
 
     uint32_t mMode; // Current mode
+
+    uint32_t mFrameCount; // Frame Count
+    uint32_t mFreshNum;
 };
