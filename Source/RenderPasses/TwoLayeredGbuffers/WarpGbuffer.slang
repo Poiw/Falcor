@@ -59,7 +59,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     PSOut psOut = {};
 
-    if (projLinearZ - gCurEps < gLinearZ[ipos][0] + 0.00001) {
+    if (projLinearZ - gCurEps < gLinearZ[prevIpos][0] + 0.00001) {
         psOut.gNormWS = gFirstLayerNormWS[prevIpos];
         psOut.gDiffOpacity = gFirstLayerDiffOpacity[prevIpos];
         psOut.gMask = float4(1, 0, 0, 0);
