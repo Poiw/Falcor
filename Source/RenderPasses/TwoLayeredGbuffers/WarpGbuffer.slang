@@ -1,18 +1,18 @@
 import Scene.Raster;
 import GBufferHelpers;
 
-Texture2D<float4> gLinearZ;
+Texture2D<float> gLinearZ;
 Texture2D<float4> gFirstLayerNormWS;
 Texture2D<float4> gFirstLayerDiffOpacity;
 Texture2D<float4> gSecondaLayerNormWS;
 Texture2D<float4> gSecondLayerDiffOpacity;
-// RasterizerOrderedTexture2D<float4> gPosWSBufferTemp;
+// RasterizerOrderedTexture2D<float> gPosWSBufferTemp;
 
 cbuffer PerFrameCB
 {
     uint2 gFrameDim;
     float4x4 gCenterViewProjMatNoJitter;
-    float gCurEps;
+    // float gCurEps;
 };
 
 // Default Vertex Shader
@@ -59,7 +59,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     PSOut psOut = {};
 
-    if (projLinearZ - gCurEps < gLinearZ[prevIpos][0] + 0.00001) {
+    if (projLinearZ < gLinearZ[prevIpos]) {
         psOut.gNormWS = gFirstLayerNormWS[prevIpos];
         psOut.gDiffOpacity = gFirstLayerDiffOpacity[prevIpos];
         psOut.gMask = float4(1, 0, 0, 0);

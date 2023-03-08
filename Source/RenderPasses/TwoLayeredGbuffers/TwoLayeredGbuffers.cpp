@@ -300,7 +300,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
             {
                 mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["gEps"] = mEps;
-                mCurEps = mEps;
+                // mCurEps = mEps;
             }
 
             // Save the projection matrix
@@ -329,7 +329,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             // Create textures if necessary
             {
                 // createNewTexture(mpPosWSBuffer, curDim);
-                createNewTexture(mpLinearZBuffer, curDim, ResourceFormat::RG32Float);
+                createNewTexture(mpLinearZBuffer, curDim, ResourceFormat::R32Float);
 
                 createNewTexture(mFirstLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpDiffOpacity, curDim);
@@ -345,8 +345,9 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 // auto pPosWSMap = renderData.getTexture("gPosWS");
                 // auto pPosWSMapUAVMip0 = pPosWSMap->getSRV(mostDetailedMip);
 
-                // auto pWritePosWSMap = mpPosWSBuffer->getUAV(mostDetailedMip);
-                // pRenderContext->clearUAV(pWritePosWSMap.get(), uint4(0));
+                auto pLinearZBufferUAV = mpLinearZBuffer->getUAV(mostDetailedMip);
+                pRenderContext->clearUAV(pLinearZBufferUAV.get(), float4(0.));
+                mTwoLayerGbufferGenPass.pVars["gLinearZThresholdBuffer"].setUav(pLinearZBufferUAV);
 
                 // mTwoLayerGbufferGenPass.pVars["gPosWSBuffer"].setSrv(pPosWSMapUAVMip0);
                 // mTwoLayerGbufferGenPass.pVars["gTargetPosWSBuffer"].setUav(pWritePosWSMap);
@@ -370,7 +371,6 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                             RasterizerState::CullMode::None);
 
             // Copy to render target
-            pRenderContext->blit(renderData.getTexture("gLinearZ")->getSRV(), mpLinearZBuffer->getRTV());
             pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
             pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
 
@@ -392,7 +392,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             {
                 mWarpGbufferPass.pVars["PerFrameCB"]["gFrameDim"] = curDim;
                 mWarpGbufferPass.pVars["PerFrameCB"]["gCenterViewProjMatNoJitter"] = mCenterMatrix;
-                mWarpGbufferPass.pVars["PerFrameCB"]["gCurEps"] = mCurEps;
+                // mWarpGbufferPass.pVars["PerFrameCB"]["gCurEps"] = mCurEps;
             }
 
 
