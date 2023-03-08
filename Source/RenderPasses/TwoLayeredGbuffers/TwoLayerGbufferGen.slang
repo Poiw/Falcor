@@ -28,8 +28,9 @@ VSOut vsMain(VSIn vIn) {
 
 struct PSOut {
     float4 gDebug : SV_TARGET0;
-    float4 gNormWS : SV_TARGET1;
-    float4 gDiffOpacity : SV_TARGET2;
+    float4 gMask : SV_TARGET1;
+    float4 gNormWS : SV_TARGET2;
+    float4 gDiffOpacity : SV_TARGET3;
     // float4 tangentWS : SV_TARGET2;
     // float4 posWS : SV_TARGET3;
 };
@@ -40,7 +41,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     // Not a valid second layer gbuffer
     float linearZ = (vsOut.posH.z * vsOut.posH.w - gEps);
-    if (linearZ < gFirstLinearZBuffer[ipos][0] - 0.00001 && gEps >= 0) // pecision err
+    if (linearZ < gFirstLinearZBuffer[ipos][0] + 0.00001) // pecision err
         discard;
 
     PSOut psOut = {};
@@ -62,6 +63,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     psOut.gDebug = float4(vsOut.posH.z * vsOut.posH.w, 0, 0, 0);
     psOut.gNormWS = gbuf.normW;
     psOut.gDiffOpacity = gbuf.diffuseOpacity;
+    psOut.gMask = float4(1., 0., 0., 0.);
 
 
     return psOut;

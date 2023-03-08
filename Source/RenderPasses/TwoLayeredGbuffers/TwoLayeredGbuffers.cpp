@@ -210,6 +210,11 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
 
+    reflector.addOutput("tl_Mask", "Mask Info")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
+
     // First Layer
     reflector.addOutput("tl_FirstNormWS", "World Normal")
         .format(ResourceFormat::RGBA32Float)
@@ -295,6 +300,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
             {
                 mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["gEps"] = mEps;
+                mCurEps = mEps;
             }
 
             // Save the projection matrix
@@ -351,8 +357,9 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             }
 
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_Debug"), 0);
-            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondNormWS"), 1);
-            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondDiffOpacity"), 2);
+            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_Mask"), 1);
+            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondNormWS"), 2);
+            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondDiffOpacity"), 3);
             mTwoLayerGbufferGenPass.pFbo->attachDepthStencilTarget(renderData.getTexture("tl_Depth"));
             pRenderContext->clearFbo(mTwoLayerGbufferGenPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
                                     0, FboAttachmentType::All);
@@ -378,45 +385,49 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
         else {
 
-            // auto curDim = renderData.getDefaultTextureDims();
-
-            // if (!mpPosWSBufferTemp || mpPosWSBufferTemp->getWidth() != curDim.x || mpPosWSBufferTemp->getHeight() != curDim.y) {
-
-            //     mpPosWSBufferTemp = Texture::create2D(curDim.x, curDim.y, ResourceFormat::RGBA32Float,
-            //                                 1U, 1, nullptr,
-            //                                 Resource::BindFlags::AllColorViews);
-
-            // }
+            auto curDim = renderData.getDefaultTextureDims();
 
 
-            // // Vairables
-            // mWarpGbufferPass.pVars["PerFrameCB"]["gFrameDim"] = curDim;
+            // Vairables
+            {
+                mWarpGbufferPass.pVars["PerFrameCB"]["gFrameDim"] = curDim;
+                mWarpGbufferPass.pVars["PerFrameCB"]["gCenterViewProjMatNoJitter"] = mCenterMatrix;
+                mWarpGbufferPass.pVars["PerFrameCB"]["gCurEps"] = mCurEps;
+            }
 
 
-            // // Textures
-            // auto pPosWSBufferRSVMip0 = mpPosWSBuffer->getSRV(mostDetailedMip);
-            // mWarpGbufferPass.pVars["gPrevPosWSBuffer"].setSrv(pPosWSBufferRSVMip0);
+            {
+                // Textures
+                auto pLinearZMip = mpLinearZBuffer->getSRV(mostDetailedMip);
+                mWarpGbufferPass.pVars["gLinearZ"].setSrv(pLinearZMip);
 
-            // // auto pWritePosWSMap = mpPosWSBufferTemp->getUAV(mostDetailedMip);
-            // // pRenderContext->clearUAV(pWritePosWSMap.get(), uint4(0));
-            // // mWarpGbufferPass.pVars["gPosWSBufferTemp"].setUav(pWritePosWSMap);
+                auto pFirstNormWSMip = mFirstLayerGbuffer.mpNormWS->getSRV(mostDetailedMip);
+                mWarpGbufferPass.pVars["gFirstLayerNormWS"].setSrv(pFirstNormWSMip);
 
-            // mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("gDebug"), 0);
-            // mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("gMotionVector"), 1);
-            // mWarpGbufferPass.pFbo->attachColorTarget(mpPosWSBufferTemp, 2);
-            // mWarpGbufferPass.pFbo->attachDepthStencilTarget(renderData.getTexture("gDepth"));
-            // pRenderContext->clearFbo(mWarpGbufferPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
-            //                         0, FboAttachmentType::All);
-            // mWarpGbufferPass.pGraphicsState->setFbo(mWarpGbufferPass.pFbo);
-            // // Rasterize it!
-            // mpScene->rasterize(pRenderContext, mWarpGbufferPass.pGraphicsState.get(),
-            //                 mWarpGbufferPass.pVars.get(),
-            //                 RasterizerState::CullMode::None);
+                auto pFirstDiffOpacityMip = mFirstLayerGbuffer.mpDiffOpacity->getSRV(mostDetailedMip);
+                mWarpGbufferPass.pVars["gFirstLayerDiffOpacity"].setSrv(pFirstDiffOpacityMip);
 
-            // pRenderContext->blit(mpPosWSBufferTemp->getSRV(0), mpPosWSBuffer->getRTV(0));
+                auto pSecondaNormWSMip = mSecondLayerGbuffer.mpNormWS->getSRV(mostDetailedMip);
+                mWarpGbufferPass.pVars["gSecondaLayerNormWS"].setSrv(pSecondaNormWSMip);
+
+                auto pSecondaDiffOpacityMip = mSecondLayerGbuffer.mpDiffOpacity->getSRV(mostDetailedMip);
+                mWarpGbufferPass.pVars["gSecondLayerDiffOpacity"].setSrv(pSecondaDiffOpacityMip);
+            }
+
+            mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_Debug"), 0);
+            mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_Mask"), 1);
+            mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_FirstNormWS"), 2);
+            mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_FirstDiffOpacity"), 3);
+            mWarpGbufferPass.pFbo->attachDepthStencilTarget(renderData.getTexture("gDepth"));
+            pRenderContext->clearFbo(mWarpGbufferPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
+                                    0, FboAttachmentType::All);
+            mWarpGbufferPass.pGraphicsState->setFbo(mWarpGbufferPass.pFbo);
+            // Rasterize it!
+            mpScene->rasterize(pRenderContext, mWarpGbufferPass.pGraphicsState.get(),
+                            mWarpGbufferPass.pVars.get(),
+                            RasterizerState::CullMode::None);
+
         }
-
-
 
         mFrameCount += 1;
 

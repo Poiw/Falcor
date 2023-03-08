@@ -1,19 +1,31 @@
 import Scene.Raster;
 import GBufferHelpers;
 
-Texture2D<float4> gPrevPosWSBuffer;
+Texture2D<float4> gLinearZ;
+Texture2D<float4> gFirstLayerNormWS;
+Texture2D<float4> gFirstLayerDiffOpacity;
+Texture2D<float4> gSecondaLayerNormWS;
+Texture2D<float4> gSecondLayerDiffOpacity;
 // RasterizerOrderedTexture2D<float4> gPosWSBufferTemp;
 
 cbuffer PerFrameCB
 {
     uint2 gFrameDim;
-    float4x4 gCenterMatrix;
+    float4x4 gCenterViewProjMatNoJitter;
+    float gCurEps;
 };
 
 // Default Vertex Shader
 VSOut vsMain(VSIn vIn) {
 
-    return defaultVS(vIn);
+    VSOut vOut = defaultVS(vIn);
+
+    float3 posW = vOut.posW; // Assume no dynamic object, no world matrix changes
+
+    vOut.prevPosH = mul(gCenterViewProjMatNoJitter, float4(posW, 1.f));
+
+    return vOut;
+
 
 }
 
@@ -22,8 +34,9 @@ VSOut vsMain(VSIn vIn) {
 
 struct PSOut {
     float4 gDebug : SV_TARGET0;
-    float4 gMotionVector : SV_TARGET1;
-    float4 gPosWS : SV_TARGET2;
+    float4 gMask : SV_TARGET1;
+    float4 gNormWS : SV_TARGET2;
+    float4 gDiffOpacity : SV_TARGET3;
     // float4 gDiffOpacity : SV_TARGET2;
     // float4 tangentWS : SV_TARGET2;
     // float4 posWS : SV_TARGET3;
@@ -42,31 +55,20 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     prevCrd += 0.5;
 
     int2 prevIpos = int2(prevCrd * (float2)gFrameDim);
-
-
-    // Not a valid second layer gbuffer
-    // float linearZ = (vsOut.posH.z * vsOut.posH.w - gEps);
-    // if(linearZ <= gFirstLinearZBuffer[ipos][0] - 0.00001)
-    //     discard;
+    float projLinearZ = vsOut.prevPosH.w;
 
     PSOut psOut = {};
 
-    // float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
-    // VertexData v = prepareVertexData(vsOut, faceNormal);
-    // let lod = ImplicitLodTextureSampler();
-
-    // const float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
-    // ShadingData sd = gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir, lod);
-
-    // // Create BSDF instance.
-    // let bsdf = gScene.materials.getBSDF(sd, lod);
-
-    // const GBufferData gbuf = prepareGBufferData(sd, bsdf);
-
-    psOut.gDebug = gPrevPosWSBuffer[prevIpos];
-    // psOut.gDebug = float4(vsOut.prevPosH.xy, 0, 0);
-    psOut.gMotionVector = float4(prevIpos, 0, 0);
-    psOut.gPosWS = gPrevPosWSBuffer[prevIpos];
+    if (projLinearZ - gCurEps < gLinearZ[ipos][0] + 0.00001) {
+        psOut.gNormWS = gFirstLayerNormWS[prevIpos];
+        psOut.gDiffOpacity = gFirstLayerDiffOpacity[prevIpos];
+        psOut.gMask = float4(1, 0, 0, 0);
+    }
+    else {
+        psOut.gNormWS = gSecondaLayerNormWS[prevIpos];
+        psOut.gDiffOpacity = gSecondLayerDiffOpacity[prevIpos];
+        psOut.gMask = float4(0, 0, 1, 0);
+    }
 
     return psOut;
 }

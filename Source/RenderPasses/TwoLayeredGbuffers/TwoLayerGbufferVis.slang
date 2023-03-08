@@ -64,7 +64,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     const GBufferData gbuf = prepareGBufferData(sd, bsdf);
 
     psOut.gDebug = float4(vsOut.posH.z * vsOut.posH.w, 0, 0, 0);
-    psOut.gNormW = gbuf.posW;
+    psOut.gNormW = gbuf.normW;
     psOut.gDiffOpacity = gbuf.diffuseOpacity;
 
     return psOut;
