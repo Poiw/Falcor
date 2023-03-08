@@ -15,14 +15,15 @@ def render_occupancy_map():
 
     g.addEdge("GBufferRaster.posW", "TwoLayeredGbuffers.gPosWS")
     g.addEdge("GBufferRaster.normW", "TwoLayeredGbuffers.gNormalWS")
-    g.addEdge("GBufferRaster.tangentW", "TwoLayeredGbuffers.gTangentWS")
-    g.addEdge("GBufferRaster.depth", "TwoLayeredGbuffers.gFirstDepth")
-    g.addEdge("GBufferRaster.linearZ", "TwoLayeredGbuffers.gFirstLinearZ")
+    g.addEdge("GBufferRaster.diffuseOpacity", "TwoLayeredGbuffers.gDiffOpacity")
+    g.addEdge("GBufferRaster.linearZ", "TwoLayeredGbuffers.gLinearZ")
+    g.addEdge("GBufferRaster.depth", "TwoLayeredGbuffers.gDepth")
     # g.markOutput('TwoLayeredGbuffers.gMyDepth')
-    g.markOutput('TwoLayeredGbuffers.gDebug')
-    g.markOutput('TwoLayeredGbuffers.gNormW')
-    g.markOutput('TwoLayeredGbuffers.gDiffOpacity')
-    g.markOutput('TwoLayeredGbuffers.gMotionVector')
+    g.markOutput('TwoLayeredGbuffers.tl_Debug')
+    g.markOutput('TwoLayeredGbuffers.tl_FirstNormWS')
+    g.markOutput('TwoLayeredGbuffers.tl_FirstDiffOpacity')
+    g.markOutput('TwoLayeredGbuffers.tl_SecondNormWS')
+    g.markOutput('TwoLayeredGbuffers.tl_SecondDiffOpacity')
     return g
 
 

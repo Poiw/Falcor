@@ -56,6 +56,7 @@ public:
 private:
     TwoLayeredGbuffers();
 
+    void createNewTexture(Texture::SharedPtr &pTex, const Falcor::uint2 &curDim, enum Falcor::ResourceFormat dataFormat);
 
     Scene::SharedPtr mpScene;
     SampleGenerator::SharedPtr mpSampleGenerator;
@@ -67,13 +68,14 @@ private:
     } mRasterPass, mWarpGbufferPass, mTwoLayerGbufferGenPass;
 
     struct {
-        Texture::SharedPtr mpNormW;
+        Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
     } mFirstLayerGbuffer, mSecondLayerGbuffer;
 
     // Parameters
     Texture::SharedPtr mpPosWSBuffer;
     Texture::SharedPtr mpPosWSBufferTemp;
+    Texture::SharedPtr mpLinearZBuffer;
 
     float mEps; // Threshold for two layered g-buffers
 
@@ -81,4 +83,7 @@ private:
 
     uint32_t mFrameCount; // Frame Count
     uint32_t mFreshNum;
+
+    // Camera
+    Falcor::float4x4 mCenterMatrix;
 };

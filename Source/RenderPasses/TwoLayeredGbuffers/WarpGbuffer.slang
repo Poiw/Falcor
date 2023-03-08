@@ -7,6 +7,7 @@ Texture2D<float4> gPrevPosWSBuffer;
 cbuffer PerFrameCB
 {
     uint2 gFrameDim;
+    float4x4 gCenterMatrix;
 };
 
 // Default Vertex Shader

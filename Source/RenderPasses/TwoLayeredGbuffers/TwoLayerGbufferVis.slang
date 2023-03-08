@@ -2,7 +2,7 @@ import Scene.Raster;
 import GBufferHelpers;
 
 // RasterizerOrderedTexture2D<float4> gDepthBuffer;
-Texture2D<float> gFirstDepthBuffer;
+// Texture2D<float> gFirstDepthBuffer;
 Texture2D<float2> gFirstLinearZBuffer;
 
 
@@ -46,11 +46,14 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     if(linearZ <= gFirstLinearZBuffer[ipos][0] - 0.00001)
         discard;
 
+
     PSOut psOut = {};
 
     float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
     VertexData v = prepareVertexData(vsOut, faceNormal);
     let lod = ImplicitLodTextureSampler();
+
+    if (gScene.materials.alphaTest(v, vsOut.materialID, lod)) discard;
 
     const float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
     ShadingData sd = gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir, lod);
@@ -61,7 +64,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     const GBufferData gbuf = prepareGBufferData(sd, bsdf);
 
     psOut.gDebug = float4(vsOut.posH.z * vsOut.posH.w, 0, 0, 0);
-    psOut.gNormW = float4(vsOut.normalW, 0);
+    psOut.gNormW = gbuf.posW;
     psOut.gDiffOpacity = gbuf.diffuseOpacity;
 
     return psOut;
