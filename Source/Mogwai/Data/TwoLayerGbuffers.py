@@ -20,6 +20,7 @@ def render_occupancy_map():
     g.addEdge("GBufferRaster.depth", "TwoLayeredGbuffers.gDepth")
     # g.markOutput('TwoLayeredGbuffers.gMyDepth')
     g.markOutput('TwoLayeredGbuffers.tl_Debug')
+    g.markOutput('TwoLayeredGbuffers.tl_Mask')
     g.markOutput('TwoLayeredGbuffers.tl_FirstNormWS')
     g.markOutput('TwoLayeredGbuffers.tl_FirstDiffOpacity')
     g.markOutput('TwoLayeredGbuffers.tl_SecondNormWS')
