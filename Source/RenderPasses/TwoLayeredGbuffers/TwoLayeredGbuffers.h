@@ -87,4 +87,8 @@ private:
 
     // Camera
     Falcor::float4x4 mCenterMatrix;
+
+    // Options
+    bool mMaxDepthContraint;
+    bool mNormalConstraint;
 };

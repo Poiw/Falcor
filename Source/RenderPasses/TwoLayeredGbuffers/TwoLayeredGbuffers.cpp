@@ -118,6 +118,8 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
         mMode = 0;
         mFrameCount = 0;
         mFreshNum = 8;
+        mMaxDepthContraint = 0;
+        mNormalConstraint = 0;
 
         // Create raster pass
         {
@@ -300,6 +302,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
             {
                 mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["gEps"] = mEps;
+                mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["maxConstraint"] = mMaxDepthContraint;
+                mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["normalConstraint"] = mNormalConstraint;
                 // mCurEps = mEps;
             }
 
@@ -355,6 +359,10 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 auto pFirstLinearZMap = renderData.getTexture("gLinearZ");
                 auto pFirstLinearZMapRSVMip0 = pFirstLinearZMap->getSRV(mostDetailedMip);
                 mTwoLayerGbufferGenPass.pVars["gFirstLinearZBuffer"].setSrv(pFirstLinearZMapRSVMip0);
+
+                auto pFirstNormWSMap = renderData.getTexture("gNormalWS");
+                auto pFirstNormWSMapRSV = pFirstNormWSMap->getSRV(mostDetailedMip);
+                mTwoLayerGbufferGenPass.pVars["gFirstNormWSBuffer"].setSrv(pFirstNormWSMapRSV);
             }
 
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_Debug"), 0);
@@ -447,4 +455,6 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
 
     widget.var<uint32_t>("Fresh Frequency", mFreshNum, 1);
 
+    widget.checkbox("Max Depth Constraint", mMaxDepthContraint);
+    widget.checkbox("Normal Constraint", mNormalConstraint);
 }

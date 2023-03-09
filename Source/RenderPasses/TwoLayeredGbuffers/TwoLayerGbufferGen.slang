@@ -2,11 +2,14 @@ import Scene.Raster;
 import GBufferHelpers;
 
 Texture2D<float2> gFirstLinearZBuffer;
+Texture2D<float4> gFirstNormWSBuffer;
 RasterizerOrderedTexture2D<float4> gLinearZThresholdBuffer; // 0: threshold, 1: max
 
 
 cbuffer PerFrameCB {
     float gEps;
+    bool maxConstraint;
+    bool normalConstraint;
 };
 
 // Default Vertex Shader
@@ -44,9 +47,14 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     // Not a valid second layer gbuffer
     float linearZ = vsOut.posH.z * vsOut.posH.w;
 
-    gLinearZThresholdBuffer[ipos][1] = max(gLinearZThresholdBuffer[ipos][1], linearZ);
-
-    float threshold = min(gFirstLinearZBuffer[ipos][0] - 0.00001 + gEps, gLinearZThresholdBuffer[ipos][1]);
+    float threshold;
+    if (maxConstraint) {
+        gLinearZThresholdBuffer[ipos][1] = max(gLinearZThresholdBuffer[ipos][1], linearZ);
+        threshold = min(gFirstLinearZBuffer[ipos][0] - 0.00001 + gEps, gLinearZThresholdBuffer[ipos][1]);
+    }
+    else {
+        threshold = gFirstLinearZBuffer[ipos][0] - 0.00001 + gEps;
+    }
 
     gLinearZThresholdBuffer[ipos][0] = (threshold + gFirstLinearZBuffer[ipos][0]) * 0.5;
 
@@ -74,6 +82,10 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     psOut.gDiffOpacity = gbuf.diffuseOpacity;
     psOut.gMask = float4(1., 0., 0., 0.);
 
+    if (normalConstraint) {
+        if (dot(gbuf.normW, gFirstNormWSBuffer[ipos]) < -0.6)
+            discard;
+    }
 
     return psOut;
 }
