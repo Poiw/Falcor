@@ -1,7 +1,7 @@
 import Scene.Raster;
 import GBufferHelpers;
 
-Texture2D<float> gLinearZ;
+Texture2D<float4> gLinearZ;
 Texture2D<float4> gFirstLayerNormWS;
 Texture2D<float4> gFirstLayerDiffOpacity;
 Texture2D<float4> gSecondaLayerNormWS;
@@ -59,7 +59,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     PSOut psOut = {};
 
-    if (projLinearZ < gLinearZ[prevIpos]) {
+    if (projLinearZ < gLinearZ[prevIpos][0]) {
         psOut.gNormWS = gFirstLayerNormWS[prevIpos];
         psOut.gDiffOpacity = gFirstLayerDiffOpacity[prevIpos];
         psOut.gMask = float4(1, 0, 0, 0);

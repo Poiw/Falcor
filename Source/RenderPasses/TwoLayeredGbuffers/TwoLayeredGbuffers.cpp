@@ -329,7 +329,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             // Create textures if necessary
             {
                 // createNewTexture(mpPosWSBuffer, curDim);
-                createNewTexture(mpLinearZBuffer, curDim, ResourceFormat::R32Float);
+                createNewTexture(mpLinearZBuffer, curDim, ResourceFormat::RGBA32Float);
 
                 createNewTexture(mFirstLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpDiffOpacity, curDim);

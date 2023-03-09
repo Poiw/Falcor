@@ -2,7 +2,7 @@ import Scene.Raster;
 import GBufferHelpers;
 
 Texture2D<float2> gFirstLinearZBuffer;
-RasterizerOrderedTexture2D<float> gLinearZThresholdBuffer;
+RasterizerOrderedTexture2D<float4> gLinearZThresholdBuffer; // 0: threshold, 1: max
 
 
 cbuffer PerFrameCB {
@@ -40,11 +40,17 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
 
     int2 ipos = int2(vsOut.posH.xy);
 
-    gLinearZThresholdBuffer[ipos] = gFirstLinearZBuffer[ipos][0] - 0.00001 + 0.5 * gEps;
 
     // Not a valid second layer gbuffer
     float linearZ = vsOut.posH.z * vsOut.posH.w;
-    if (linearZ < gFirstLinearZBuffer[ipos][0] - 0.00001 + gEps) // pecision err
+
+    gLinearZThresholdBuffer[ipos][1] = max(gLinearZThresholdBuffer[ipos][1], linearZ);
+
+    float threshold = min(gFirstLinearZBuffer[ipos][0] - 0.00001 + gEps, gLinearZThresholdBuffer[ipos][1]);
+
+    gLinearZThresholdBuffer[ipos][0] = (threshold + gFirstLinearZBuffer[ipos][0]) * 0.5;
+
+    if (linearZ < threshold) // pecision err
         discard;
 
     PSOut psOut = {};
