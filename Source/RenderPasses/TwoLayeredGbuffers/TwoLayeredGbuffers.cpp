@@ -116,6 +116,7 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
         mpPosWSBufferTemp = nullptr;
 
         mMode = 0;
+        mNormalThreshold = 1.0;
         mFrameCount = 0;
         mFreshNum = 8;
         mMaxDepthContraint = 0;
@@ -302,6 +303,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
             {
                 mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["gEps"] = mEps;
+                mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["gNormalThreshold"] = mNormalThreshold;
                 mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["maxConstraint"] = mMaxDepthContraint;
                 mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["normalConstraint"] = mNormalConstraint;
                 // mCurEps = mEps;
@@ -446,6 +448,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
 {
     widget.slider("Eps", mEps, -1.0f, 5.0f);
+    widget.slider("Back Face Culling Threshold", mNormalThreshold, -1.0f, 1.0f);
 
     Gui::DropdownList modeList;
     modeList.push_back(Gui::DropdownValue{0, "default"});

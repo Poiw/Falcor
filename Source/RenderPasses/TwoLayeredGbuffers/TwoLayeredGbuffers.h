@@ -78,7 +78,7 @@ private:
     Texture::SharedPtr mpLinearZBuffer;
 
     float mEps; // Threshold for two layered g-buffers
-    float mCurEps;
+    float mNormalThreshold; // Threshold for back face culling
 
     uint32_t mMode; // Current mode
 

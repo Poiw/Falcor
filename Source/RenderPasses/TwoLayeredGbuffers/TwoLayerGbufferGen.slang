@@ -8,6 +8,7 @@ RasterizerOrderedTexture2D<float4> gLinearZThresholdBuffer; // 0: threshold, 1: 
 
 cbuffer PerFrameCB {
     float gEps;
+    float gNormalThreshold;
     bool maxConstraint;
     bool normalConstraint;
 };
@@ -83,7 +84,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     psOut.gMask = float4(1., 0., 0., 0.);
 
     if (normalConstraint) {
-        if (dot(gbuf.normW, gFirstNormWSBuffer[ipos]) < -0.6)
+        if (dot(gbuf.normW.xyz, normalize(gbuf.posW.xyz - gScene.camera.getPosition())) > gNormalThreshold)
             discard;
     }
 
