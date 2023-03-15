@@ -49,6 +49,8 @@ const std::string twoLayerGbuffersGenShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/TwoLayerGbufferGen.slang";
 const std::string warpGbuffersShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/WarpGbuffer.slang";
+const std::string forwardWarpGbufferShaderFilePath =
+    "RenderPasses/TwoLayeredGbuffers/ForwardWarpGbuffer.slang";
 }  // namespace
 
 
@@ -100,8 +102,8 @@ TwoLayeredGbuffers::TwoLayeredGbuffers() : RenderPass(kInfo) {
     mFreshNum = 8;
     mMode = 0;
 
-    // Create sample generator
-    mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
+    // // Create sample generator
+    // mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
 }
 
 void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -161,6 +163,20 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
                 GraphicsProgram::create(desc, mpScene->getSceneDefines());
             mTwoLayerGbufferGenPass.pGraphicsState->setProgram(program);
             mTwoLayerGbufferGenPass.pVars = GraphicsVars::create(program.get());
+        }
+
+        // Create a Forward Warping Pass
+        {
+            Program::Desc desc;
+            desc.addShaderModules(mpScene->getShaderModules());
+            desc.addShaderLibrary(forwardWarpGbufferShaderFilePath).csEntry("csMain");
+            desc.addTypeConformances(mpScene->getTypeConformances());
+            Program::DefineList defines;
+            defines.add(mpScene->getSceneDefines());
+            mpForwardWarpPass = ComputePass::create(desc, defines, false);
+            // Bind the scene.
+            mpForwardWarpPass->setVars(nullptr);  // Trigger vars creation
+            // mpForwardWarpPass["gScene"] = mpScene->getParameterBlock();
         }
     }
 }
@@ -227,6 +243,10 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
+    reflector.addOutput("tl_FirstPosWS", "World Space Position")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
 
     // Second Layer
     reflector.addOutput("tl_SecondNormWS", "World Normal")
@@ -234,6 +254,10 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
     reflector.addOutput("tl_SecondDiffOpacity", "Albedo and Opacity")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
+    reflector.addOutput("tl_SecondPosWS", "World Space Position")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
@@ -297,7 +321,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
     }
 
-    else if (mMode == 1) {
+    else if (mMode == 1 || mMode == 2) {
 
         if (mFrameCount % mFreshNum == 0) {
 
@@ -337,9 +361,11 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 // createNewTexture(mpPosWSBuffer, curDim);
                 createNewTexture(mpLinearZBuffer, curDim, ResourceFormat::RGBA32Float);
 
+                createNewTexture(mFirstLayerGbuffer.mpPosWS, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpDiffOpacity, curDim);
 
+                createNewTexture(mSecondLayerGbuffer.mpPosWS, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpDiffOpacity, curDim);
             }
@@ -367,11 +393,16 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 mTwoLayerGbufferGenPass.pVars["gFirstNormWSBuffer"].setSrv(pFirstNormWSMapRSV);
             }
 
+
+
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_Debug"), 0);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_Mask"), 1);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondNormWS"), 2);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondDiffOpacity"), 3);
+            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondPosWS"), 4);
+
             mTwoLayerGbufferGenPass.pFbo->attachDepthStencilTarget(renderData.getTexture("tl_Depth"));
+
             pRenderContext->clearFbo(mTwoLayerGbufferGenPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
                                     0, FboAttachmentType::All);
             mTwoLayerGbufferGenPass.pGraphicsState->setFbo(mTwoLayerGbufferGenPass.pFbo);
@@ -383,59 +414,141 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             // Copy to render target
             pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
             pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
+            pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), renderData.getTexture("tl_FirstPosWS")->getRTV());
 
             // Copy to texture
             pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), mFirstLayerGbuffer.mpNormWS->getRTV());
             pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), mFirstLayerGbuffer.mpDiffOpacity->getRTV());
+            pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), mFirstLayerGbuffer.mpPosWS->getRTV());
             pRenderContext->blit(renderData.getTexture("tl_SecondNormWS")->getSRV(), mSecondLayerGbuffer.mpNormWS->getRTV());
             pRenderContext->blit(renderData.getTexture("tl_SecondDiffOpacity")->getSRV(), mSecondLayerGbuffer.mpDiffOpacity->getRTV());
+            pRenderContext->blit(renderData.getTexture("tl_SecondPosWS")->getSRV(), mSecondLayerGbuffer.mpPosWS->getRTV());
 
 
         }
 
         else {
 
-            auto curDim = renderData.getDefaultTextureDims();
+            if(mMode == 1) {
+
+                auto curDim = renderData.getDefaultTextureDims();
 
 
-            // Vairables
-            {
-                mWarpGbufferPass.pVars["PerFrameCB"]["gFrameDim"] = curDim;
-                mWarpGbufferPass.pVars["PerFrameCB"]["gCenterViewProjMatNoJitter"] = mCenterMatrix;
-                // mWarpGbufferPass.pVars["PerFrameCB"]["gCurEps"] = mCurEps;
+                // Vairables
+                {
+                    mWarpGbufferPass.pVars["PerFrameCB"]["gFrameDim"] = curDim;
+                    mWarpGbufferPass.pVars["PerFrameCB"]["gCenterViewProjMatNoJitter"] = mCenterMatrix;
+                    // mWarpGbufferPass.pVars["PerFrameCB"]["gCurEps"] = mCurEps;
+                }
+
+
+                {
+                    // Textures
+                    auto pLinearZMip = mpLinearZBuffer->getSRV(mostDetailedMip);
+                    mWarpGbufferPass.pVars["gLinearZ"].setSrv(pLinearZMip);
+
+                    auto pFirstNormWSMip = mFirstLayerGbuffer.mpNormWS->getSRV(mostDetailedMip);
+                    mWarpGbufferPass.pVars["gFirstLayerNormWS"].setSrv(pFirstNormWSMip);
+
+                    auto pFirstDiffOpacityMip = mFirstLayerGbuffer.mpDiffOpacity->getSRV(mostDetailedMip);
+                    mWarpGbufferPass.pVars["gFirstLayerDiffOpacity"].setSrv(pFirstDiffOpacityMip);
+
+                    auto pSecondNormWSMip = mSecondLayerGbuffer.mpNormWS->getSRV(mostDetailedMip);
+                    mWarpGbufferPass.pVars["gSecondLayerNormWS"].setSrv(pSecondNormWSMip);
+
+                    auto pSecondDiffOpacityMip = mSecondLayerGbuffer.mpDiffOpacity->getSRV(mostDetailedMip);
+                    mWarpGbufferPass.pVars["gSecondLayerDiffOpacity"].setSrv(pSecondDiffOpacityMip);
+                }
+
+                mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_Debug"), 0);
+                mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_Mask"), 1);
+                mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_FirstNormWS"), 2);
+                mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_FirstDiffOpacity"), 3);
+                mWarpGbufferPass.pFbo->attachDepthStencilTarget(renderData.getTexture("gDepth"));
+                pRenderContext->clearFbo(mWarpGbufferPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
+                                        0, FboAttachmentType::All);
+                mWarpGbufferPass.pGraphicsState->setFbo(mWarpGbufferPass.pFbo);
+                // Rasterize it!
+                mpScene->rasterize(pRenderContext, mWarpGbufferPass.pGraphicsState.get(),
+                                mWarpGbufferPass.pVars.get(),
+                                RasterizerState::CullMode::None);
+
             }
 
+            else if (mMode == 2) {
 
-            {
-                // Textures
-                auto pLinearZMip = mpLinearZBuffer->getSRV(mostDetailedMip);
-                mWarpGbufferPass.pVars["gLinearZ"].setSrv(pLinearZMip);
 
-                auto pFirstNormWSMip = mFirstLayerGbuffer.mpNormWS->getSRV(mostDetailedMip);
-                mWarpGbufferPass.pVars["gFirstLayerNormWS"].setSrv(pFirstNormWSMip);
+                auto curDim = renderData.getDefaultTextureDims();
+                auto curViewProjMat = mpScene->getCamera()->getViewProjMatrix();
 
-                auto pFirstDiffOpacityMip = mFirstLayerGbuffer.mpDiffOpacity->getSRV(mostDetailedMip);
-                mWarpGbufferPass.pVars["gFirstLayerDiffOpacity"].setSrv(pFirstDiffOpacityMip);
+                // Create Depth Buffer
+                {
+                    createNewTexture(mpDepthTestBuffer, curDim, ResourceFormat::R32Float);
+                }
 
-                auto pSecondaNormWSMip = mSecondLayerGbuffer.mpNormWS->getSRV(mostDetailedMip);
-                mWarpGbufferPass.pVars["gSecondaLayerNormWS"].setSrv(pSecondaNormWSMip);
+                // Varibales
+                {
+                    mpForwardWarpPass["PerFrameCB"]["gFrameDim"] = curDim;
+                    mpForwardWarpPass["PerFrameCB"]["gCenterViewProjMatNoJitter"] = mCenterMatrix;
+                    mpForwardWarpPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
+                }
 
-                auto pSecondaDiffOpacityMip = mSecondLayerGbuffer.mpDiffOpacity->getSRV(mostDetailedMip);
-                mWarpGbufferPass.pVars["gSecondLayerDiffOpacity"].setSrv(pSecondaDiffOpacityMip);
+                // Input Textures
+                {
+                    // Textures
+
+                    auto pFirstNormWSMip = mFirstLayerGbuffer.mpNormWS->getSRV(mostDetailedMip);
+                    mpForwardWarpPass["gFirstLayerNormWS"].setSrv(pFirstNormWSMip);
+
+                    auto pFirstDiffOpacityMip = mFirstLayerGbuffer.mpDiffOpacity->getSRV(mostDetailedMip);
+                    mpForwardWarpPass["gFirstLayerDiffOpacity"].setSrv(pFirstDiffOpacityMip);
+
+                    auto pFirstPosWSMip = mFirstLayerGbuffer.mpPosWS->getSRV(mostDetailedMip);
+                    mpForwardWarpPass["gFirstLayerPosWS"].setSrv(pFirstPosWSMip);
+
+                    auto pSecondNormWSMip = mSecondLayerGbuffer.mpNormWS->getSRV(mostDetailedMip);
+                    mpForwardWarpPass["gSecondLayerNormWS"].setSrv(pSecondNormWSMip);
+
+                    auto pSecondDiffOpacityMip = mSecondLayerGbuffer.mpDiffOpacity->getSRV(mostDetailedMip);
+                    mpForwardWarpPass["gSecondLayerDiffOpacity"].setSrv(pSecondDiffOpacityMip);
+
+                    auto pSecondPosWSMip = mSecondLayerGbuffer.mpPosWS->getSRV(mostDetailedMip);
+                    mpForwardWarpPass["gSecondLayerPosWS"].setSrv(pSecondPosWSMip);
+                }
+
+                // Output Textures
+                {
+                    auto pDepthTestUAV = mpDepthTestBuffer->getUAV(mostDetailedMip);
+                    pRenderContext->clearUAV(pDepthTestUAV.get(), float4(10.f));
+                    mpForwardWarpPass["gDepthTest"].setUav(pDepthTestUAV);
+
+                    auto pNormWSUAV = renderData.getTexture("tl_FirstNormWS")->getUAV();
+                    pRenderContext->clearUAV(pNormWSUAV.get(), float4(0.f));
+                    mpForwardWarpPass["gNormWS"].setUav(pNormWSUAV);
+
+                    auto pDiffOpacityUAV = renderData.getTexture("tl_FirstDiffOpacity")->getUAV();
+                    pRenderContext->clearUAV(pDiffOpacityUAV.get(), float4(0.f));
+                    mpForwardWarpPass["gDiffOpacity"].setUav(pDiffOpacityUAV);
+
+                    auto pMaskUAV = renderData.getTexture("tl_Mask")->getUAV();
+                    pRenderContext->clearUAV(pMaskUAV.get(), float4(0.f));
+                    mpForwardWarpPass["gMask"].setUav(pMaskUAV);
+
+                }
+
+
+                mpForwardWarpPass->execute(pRenderContext, uint3(curDim, 1));
+
+                // Set barriers
+                {
+                    pRenderContext->uavBarrier(mpDepthTestBuffer.get());
+                    pRenderContext->uavBarrier(renderData.getTexture("tl_FirstNormWS").get());
+                    pRenderContext->uavBarrier(renderData.getTexture("tl_FirstDiffOpacity").get());
+                }
+
+
+
             }
-
-            mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_Debug"), 0);
-            mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_Mask"), 1);
-            mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_FirstNormWS"), 2);
-            mWarpGbufferPass.pFbo->attachColorTarget(renderData.getTexture("tl_FirstDiffOpacity"), 3);
-            mWarpGbufferPass.pFbo->attachDepthStencilTarget(renderData.getTexture("gDepth"));
-            pRenderContext->clearFbo(mWarpGbufferPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
-                                    0, FboAttachmentType::All);
-            mWarpGbufferPass.pGraphicsState->setFbo(mWarpGbufferPass.pFbo);
-            // Rasterize it!
-            mpScene->rasterize(pRenderContext, mWarpGbufferPass.pGraphicsState.get(),
-                            mWarpGbufferPass.pVars.get(),
-                            RasterizerState::CullMode::None);
 
         }
 
@@ -453,6 +566,7 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
     Gui::DropdownList modeList;
     modeList.push_back(Gui::DropdownValue{0, "default"});
     modeList.push_back(Gui::DropdownValue{1, "warped gbuffers"});
+    modeList.push_back(Gui::DropdownValue{2, "forward warped gbuffers"});
 
     widget.dropdown("Mode", modeList, mMode);
 

@@ -4,7 +4,7 @@ import GBufferHelpers;
 Texture2D<float4> gLinearZ;
 Texture2D<float4> gFirstLayerNormWS;
 Texture2D<float4> gFirstLayerDiffOpacity;
-Texture2D<float4> gSecondaLayerNormWS;
+Texture2D<float4> gSecondLayerNormWS;
 Texture2D<float4> gSecondLayerDiffOpacity;
 // RasterizerOrderedTexture2D<float> gPosWSBufferTemp;
 
@@ -65,7 +65,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
         psOut.gMask = float4(1, 0, 0, 0);
     }
     else {
-        psOut.gNormWS = gSecondaLayerNormWS[prevIpos];
+        psOut.gNormWS = gSecondLayerNormWS[prevIpos];
         psOut.gDiffOpacity = gSecondLayerDiffOpacity[prevIpos];
         psOut.gMask = float4(0, 0, 1, 0);
     }

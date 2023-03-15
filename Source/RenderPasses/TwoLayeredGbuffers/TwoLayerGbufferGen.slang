@@ -36,6 +36,7 @@ struct PSOut {
     float4 gMask : SV_TARGET1;
     float4 gNormWS : SV_TARGET2;
     float4 gDiffOpacity : SV_TARGET3;
+    float4 gPosWS : SV_TARGET4;
     // float4 tangentWS : SV_TARGET2;
     // float4 posWS : SV_TARGET3;
 };
@@ -82,6 +83,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     psOut.gNormWS = gbuf.normW;
     psOut.gDiffOpacity = gbuf.diffuseOpacity;
     psOut.gMask = float4(1., 0., 0., 0.);
+    psOut.gPosWS = gbuf.posW;
 
     if (normalConstraint) {
         if (dot(gbuf.normW.xyz, normalize(gbuf.posW.xyz - gScene.camera.getPosition())) > gNormalThreshold)

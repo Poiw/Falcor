@@ -59,15 +59,20 @@ private:
     void createNewTexture(Texture::SharedPtr &pTex, const Falcor::uint2 &curDim, enum Falcor::ResourceFormat dataFormat);
 
     Scene::SharedPtr mpScene;
-    SampleGenerator::SharedPtr mpSampleGenerator;
+    // SampleGenerator::SharedPtr mpSampleGenerator;
 
+    // Rasterization pass
     struct {
         GraphicsState::SharedPtr pGraphicsState;
         GraphicsVars::SharedPtr pVars;
         Fbo::SharedPtr pFbo;
     } mRasterPass, mWarpGbufferPass, mTwoLayerGbufferGenPass;
 
+    // Compute Pass
+    ComputePass::SharedPtr mpForwardWarpPass;
+
     struct {
+        Texture::SharedPtr mpPosWS;
         Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
     } mFirstLayerGbuffer, mSecondLayerGbuffer;
@@ -76,6 +81,7 @@ private:
     Texture::SharedPtr mpPosWSBuffer;
     Texture::SharedPtr mpPosWSBufferTemp;
     Texture::SharedPtr mpLinearZBuffer;
+    Texture::SharedPtr mpDepthTestBuffer;
 
     float mEps; // Threshold for two layered g-buffers
     float mNormalThreshold; // Threshold for back face culling
