@@ -57,6 +57,7 @@ private:
     TwoLayeredGbuffers();
 
     void createNewTexture(Texture::SharedPtr &pTex, const Falcor::uint2 &curDim, enum Falcor::ResourceFormat dataFormat);
+    void ClearVariables();
 
     Scene::SharedPtr mpScene;
     // SampleGenerator::SharedPtr mpSampleGenerator;
@@ -75,14 +76,16 @@ private:
         Texture::SharedPtr mpPosWS;
         Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
-    } mFirstLayerGbuffer, mSecondLayerGbuffer;
+        Texture::SharedPtr mpMask;
+    } mFirstLayerGbuffer, mSecondLayerGbuffer, mTemp;
 
-    // Parameters
     Texture::SharedPtr mpPosWSBuffer;
     Texture::SharedPtr mpPosWSBufferTemp;
     Texture::SharedPtr mpLinearZBuffer;
     Texture::SharedPtr mpDepthTestBuffer;
 
+
+    // Parameters
     float mEps; // Threshold for two layered g-buffers
     float mNormalThreshold; // Threshold for back face culling
 

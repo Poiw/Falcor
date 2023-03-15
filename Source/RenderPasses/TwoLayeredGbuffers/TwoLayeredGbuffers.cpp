@@ -106,6 +106,35 @@ TwoLayeredGbuffers::TwoLayeredGbuffers() : RenderPass(kInfo) {
     // mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
 }
 
+void TwoLayeredGbuffers::ClearVariables()
+{
+    mpPosWSBuffer = nullptr;
+    mpPosWSBufferTemp = nullptr;
+    mpDepthTestBuffer = nullptr;
+
+    mFirstLayerGbuffer.mpPosWS = nullptr;
+    mFirstLayerGbuffer.mpNormWS = nullptr;
+    mFirstLayerGbuffer.mpDiffOpacity = nullptr;
+    mFirstLayerGbuffer.mpMask = nullptr;
+
+    mSecondLayerGbuffer.mpPosWS = nullptr;
+    mSecondLayerGbuffer.mpNormWS = nullptr;
+    mSecondLayerGbuffer.mpDiffOpacity = nullptr;
+    mSecondLayerGbuffer.mpMask = nullptr;
+
+    mTemp.mpPosWS = nullptr;
+    mTemp.mpNormWS = nullptr;
+    mTemp.mpDiffOpacity = nullptr;
+    mTemp.mpMask = nullptr;
+
+    mMode = 0;
+    mNormalThreshold = 1.0;
+    mFrameCount = 0;
+    mFreshNum = 8;
+    mMaxDepthContraint = 0;
+    mNormalConstraint = 0;
+}
+
 void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
      mRasterPass.pVars = nullptr;
@@ -114,15 +143,8 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
 
     if (pScene) {
         mpScene = pScene;
-        mpPosWSBuffer = nullptr;
-        mpPosWSBufferTemp = nullptr;
 
-        mMode = 0;
-        mNormalThreshold = 1.0;
-        mFrameCount = 0;
-        mFreshNum = 8;
-        mMaxDepthContraint = 0;
-        mNormalConstraint = 0;
+        ClearVariables();
 
         // Create raster pass
         {
@@ -484,6 +506,10 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 // Create Depth Buffer
                 {
                     createNewTexture(mpDepthTestBuffer, curDim, ResourceFormat::R32Float);
+                    createNewTexture(mTemp.mpPosWS, curDim, ResourceFormat::RGBA32Float);
+                    createNewTexture(mTemp.mpNormWS, curDim, ResourceFormat::RGBA32Float);
+                    createNewTexture(mTemp.mpDiffOpacity, curDim, ResourceFormat::RGBA32Float);
+                    createNewTexture(mTemp.mpMask, curDim, ResourceFormat::RGBA32Float);
                 }
 
                 // Varibales
@@ -522,15 +548,15 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     pRenderContext->clearUAV(pDepthTestUAV.get(), float4(10.f));
                     mpForwardWarpPass["gDepthTest"].setUav(pDepthTestUAV);
 
-                    auto pNormWSUAV = renderData.getTexture("tl_FirstNormWS")->getUAV();
+                    auto pNormWSUAV = mTemp.mpNormWS->getUAV();
                     pRenderContext->clearUAV(pNormWSUAV.get(), float4(0.f));
                     mpForwardWarpPass["gNormWS"].setUav(pNormWSUAV);
 
-                    auto pDiffOpacityUAV = renderData.getTexture("tl_FirstDiffOpacity")->getUAV();
+                    auto pDiffOpacityUAV = mTemp.mpDiffOpacity->getUAV();
                     pRenderContext->clearUAV(pDiffOpacityUAV.get(), float4(0.f));
                     mpForwardWarpPass["gDiffOpacity"].setUav(pDiffOpacityUAV);
 
-                    auto pMaskUAV = renderData.getTexture("tl_Mask")->getUAV();
+                    auto pMaskUAV = mTemp.mpMask->getUAV();
                     pRenderContext->clearUAV(pMaskUAV.get(), float4(0.f));
                     mpForwardWarpPass["gMask"].setUav(pMaskUAV);
 
@@ -542,9 +568,16 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 // Set barriers
                 {
                     pRenderContext->uavBarrier(mpDepthTestBuffer.get());
-                    pRenderContext->uavBarrier(renderData.getTexture("tl_FirstNormWS").get());
-                    pRenderContext->uavBarrier(renderData.getTexture("tl_FirstDiffOpacity").get());
+                    pRenderContext->uavBarrier(mTemp.mpNormWS.get());
+                    pRenderContext->uavBarrier(mTemp.mpDiffOpacity.get());
+                    pRenderContext->uavBarrier(mTemp.mpMask.get());
                 }
+
+
+                // Copy Data
+                pRenderContext->blit(mTemp.mpNormWS->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
+                pRenderContext->blit(mTemp.mpDiffOpacity->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
+                pRenderContext->blit(mTemp.mpMask->getSRV(), renderData.getTexture("tl_Mask")->getRTV());
 
 
 
