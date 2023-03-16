@@ -40,6 +40,14 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     Gbuf layer1, layer2;
 
+    layer1.diffOpacity = float4(0.0, 0.0, 0.0, 0.0);
+    layer1.normWS = float4(0.0, 0.0, 0.0, 0.0);
+    layer1.z = uint(-1);
+
+    layer2.diffOpacity = float4(0.0, 0.0, 0.0, 0.0);
+    layer2.normWS = float4(0.0, 0.0, 0.0, 0.0);
+    layer2.z = uint(-1);
+
     if (gFirstLayerDepthTest[pixelCoord] == uint(-1)) {
 
         float minDist = 1000000.0;
