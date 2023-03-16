@@ -78,7 +78,7 @@ private:
         Texture::SharedPtr mpPosWS;
         Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
-        Texture::SharedPtr mpLinearZ;
+        Texture::SharedPtr mpDepth;
     } mFirstLayerGbuffer, mSecondLayerGbuffer;
 
     struct {

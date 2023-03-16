@@ -427,12 +427,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 createNewTexture(mFirstLayerGbuffer.mpPosWS, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpDiffOpacity, curDim);
-                createNewTexture(mFirstLayerGbuffer.mpLinearZ, curDim, ResourceFormat::RG32Float);
+                createNewTexture(mFirstLayerGbuffer.mpDepth, curDim, ResourceFormat::R32Float);
 
                 createNewTexture(mSecondLayerGbuffer.mpPosWS, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpDiffOpacity, curDim);
-                createNewTexture(mSecondLayerGbuffer.mpLinearZ, curDim, ResourceFormat::RG32Float);
+                createNewTexture(mSecondLayerGbuffer.mpDepth, curDim, ResourceFormat::R32Float);
             }
 
 
@@ -465,7 +465,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondNormWS"), 2);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondDiffOpacity"), 3);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondPosWS"), 4);
-            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(mSecondLayerGbuffer.mpLinearZ, 5);
+            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(mSecondLayerGbuffer.mpDepth, 5);
 
             mTwoLayerGbufferGenPass.pFbo->attachDepthStencilTarget(renderData.getTexture("tl_Depth"));
 
@@ -486,7 +486,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), mFirstLayerGbuffer.mpNormWS->getRTV());
             pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), mFirstLayerGbuffer.mpDiffOpacity->getRTV());
             pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), mFirstLayerGbuffer.mpPosWS->getRTV());
-            pRenderContext->blit(renderData.getTexture("gLinearZ")->getSRV(), mFirstLayerGbuffer.mpLinearZ->getRTV());
+            pRenderContext->blit(renderData.getTexture("gDepth")->getSRV(), mFirstLayerGbuffer.mpDepth->getRTV());
 
             pRenderContext->blit(renderData.getTexture("tl_SecondNormWS")->getSRV(), mSecondLayerGbuffer.mpNormWS->getRTV());
             pRenderContext->blit(renderData.getTexture("tl_SecondDiffOpacity")->getSRV(), mSecondLayerGbuffer.mpDiffOpacity->getRTV());
@@ -589,12 +589,11 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         auto pSecondPosWSMip = mSecondLayerGbuffer.mpPosWS->getSRV();
                         mpProjectionDepthTestPass["gSecondLayerPosWS"].setSrv(pSecondPosWSMip);
 
-                        auto pFirstLinearZMip = mFirstLayerGbuffer.mpLinearZ->getSRV();
-                        mpProjectionDepthTestPass["gFirstLinearZ"].setSrv(pFirstLinearZMip);
+                        auto pFirstDepthMip = mFirstLayerGbuffer.mpDepth->getSRV();
+                        mpProjectionDepthTestPass["gFirstDepth"].setSrv(pFirstDepthMip);
 
-                        auto pSecondLinearZMip = mSecondLayerGbuffer.mpLinearZ->getSRV();
-                        mpProjectionDepthTestPass["gSecondLinearZ"].setSrv(pSecondLinearZMip);
-
+                        auto pSecondDepthMip = mSecondLayerGbuffer.mpDepth->getSRV();
+                        mpProjectionDepthTestPass["gSecondDepth"].setSrv(pSecondDepthMip);
 
                     }
 
@@ -665,11 +664,11 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         auto pSecondDepthTestMip = mProjSecondLayer.mpDepthTest->getSRV();
                         mpForwardWarpPass["gProjSecondLayerDepthTest"].setSrv(pSecondDepthTestMip);
 
-                        auto pFirstLinearZMip = mFirstLayerGbuffer.mpLinearZ->getSRV();
-                        mpForwardWarpPass["gFirstLinearZ"].setSrv(pFirstLinearZMip);
+                        auto pFirstDepthMip = mFirstLayerGbuffer.mpDepth->getSRV();
+                        mpForwardWarpPass["gFirstDepth"].setSrv(pFirstDepthMip);
 
-                        auto pSecondLinearZMip = mSecondLayerGbuffer.mpLinearZ->getSRV();
-                        mpForwardWarpPass["gSecondLinearZ"].setSrv(pSecondLinearZMip);
+                        auto pSecondDepthMip = mSecondLayerGbuffer.mpDepth->getSRV();
+                        mpForwardWarpPass["gSecondDepth"].setSrv(pSecondDepthMip);
                     }
 
                     // Output Textures

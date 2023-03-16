@@ -12,8 +12,8 @@ cbuffer PerFrameCB {
 Texture2D<float4> gFirstLayerPosWS;
 Texture2D<float4> gSecondLayerPosWS;
 
-Texture2D<float2> gFirstLinearZ;
-Texture2D<float2> gSecondLinearZ;
+Texture2D<float> gFirstDepth;
+Texture2D<float> gSecondDepth;
 
 RWTexture2D<uint> gProjFirstLayerDepthTest;
 RWTexture2D<uint> gProjSecondLayerDepthTest;
@@ -35,7 +35,15 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
 
             float2 uv = float2(pixelCoord) / gFrameDim + float2(ix, iy) / gFrameDim;
-            float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gFirstLinearZ[pixelCoord][0], 1));
+
+            uv -= 0.5;
+            #ifdef FALCOR_FLIP_Y
+                uv *= float2(2, 2);
+            #else
+                uv *= float2(2, -2);
+            #endif
+
+            float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gFirstDepth[pixelCoord], 1));
 
             float4 tarPosH = mul(gCurViewProjMat, posWS);
             float2 tarCrd = tarPosH.xy / tarPosH.w;
@@ -59,7 +67,15 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         for (float iy = st; iy < 1.0; iy += step) {
 
             float2 uv = float2(pixelCoord) / gFrameDim + float2(ix, iy) / gFrameDim;
-            float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gSecondLinearZ[pixelCoord][0], 1));
+
+            uv -= 0.5;
+            #ifdef FALCOR_FLIP_Y
+                uv *= float2(2, 2);
+            #else
+                uv *= float2(2, -2);
+            #endif
+
+            float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gSecondDepth[pixelCoord], 1));
 
             float4 tarPosH = mul(gCurViewProjMat, posWS);
             float2 tarCrd = tarPosH.xy / tarPosH.w;
