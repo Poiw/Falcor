@@ -49,6 +49,12 @@ const std::string twoLayerGbuffersGenShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/TwoLayerGbufferGen.slang";
 const std::string warpGbuffersShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/WarpGbuffer.slang";
+const std::string additionalGbufferPassShaderFilePath =
+    "RenderPasses/TwoLayeredGbuffers/AdditionalGbuffer.slang";
+const std::string additionalGbufferCopyShaderFilePath =
+    "RenderPasses/TwoLayeredGbuffers/AdditionalGbufferCopy.slang";
+const std::string additionalGbufferCopyDepthShaderFilePath =
+    "RenderPasses/TwoLayeredGbuffers/AdditionalGbufferCopyDepth.slang";
 const std::string projectionDepthTestShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/ProjectionDepthTest.slang";
 const std::string forwardWarpGbufferShaderFilePath =
@@ -101,6 +107,17 @@ TwoLayeredGbuffers::TwoLayeredGbuffers() : RenderPass(kInfo) {
         mTwoLayerGbufferGenPass.pFbo = Fbo::create();
     }
 
+    {
+        // Initialize raster graphics state
+        mAddtionalGbufferPass.pGraphicsState = GraphicsState::create();
+        mAddtionalGbufferPass.pGraphicsState->setRasterizerState(
+            RasterizerState::create(rasterDesc));
+        mAddtionalGbufferPass.pGraphicsState->setDepthStencilState(
+            DepthStencilState::create(dsDesc));
+        // Create framebuffer
+        mAddtionalGbufferPass.pFbo = Fbo::create();
+    }
+
     mEps = 0.0f;
     mFrameCount = 0;
     mFreshNum = 8;
@@ -138,6 +155,12 @@ void TwoLayeredGbuffers::ClearVariables()
     mMergedLayer.mpNormWS = nullptr;
     mMergedLayer.mpDiffOpacity = nullptr;
 
+    mAdditionalGbuffer.mpPosWS = nullptr;
+    mAdditionalGbuffer.mpNormWS = nullptr;
+    mAdditionalGbuffer.mpDiffOpacity = nullptr;
+    mAdditionalGbuffer.mpDepth = nullptr;
+    mAdditionalGbuffer.mpProjDepth = nullptr;
+
     mMode = 0;
     mNormalThreshold = 1.0;
     mFrameCount = 0;
@@ -146,6 +169,7 @@ void TwoLayeredGbuffers::ClearVariables()
     mNormalConstraint = 0;
 
     mEnableSubPixel = false;
+    mAdditionalCamNum = 0;
 }
 
 void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -153,6 +177,7 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
      mRasterPass.pVars = nullptr;
      mWarpGbufferPass.pVars = nullptr;
      mTwoLayerGbufferGenPass.pVars = nullptr;
+     mAddtionalGbufferPass.pVars = nullptr;
 
     if (pScene) {
         mpScene = pScene;
@@ -200,7 +225,51 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
             mTwoLayerGbufferGenPass.pVars = GraphicsVars::create(program.get());
         }
 
-        // Create a Forward Warping Pass
+        // Create Additional Gbuffer Pass
+        {
+            Program::Desc desc;
+            desc.addShaderModules(mpScene->getShaderModules());
+            desc.addShaderLibrary(additionalGbufferPassShaderFilePath)
+                .vsEntry("vsMain")
+                .psEntry("psMain");
+            desc.addTypeConformances(mpScene->getTypeConformances());
+            auto program =
+                GraphicsProgram::create(desc, mpScene->getSceneDefines());
+            mAddtionalGbufferPass.pGraphicsState->setProgram(program);
+            mAddtionalGbufferPass.pVars = GraphicsVars::create(program.get());
+        }
+
+
+        // Create Additional Gbuffer Copy Pass
+        {
+            Program::Desc desc;
+            desc.addShaderModules(mpScene->getShaderModules());
+            desc.addShaderLibrary(additionalGbufferCopyShaderFilePath).csEntry("csMain");
+            desc.addTypeConformances(mpScene->getTypeConformances());
+            Program::DefineList defines;
+            defines.add(mpScene->getSceneDefines());
+            mpAdditionalGbufferCopyPass = ComputePass::create(desc, defines, false);
+            // Bind the scene.
+            mpAdditionalGbufferCopyPass->setVars(nullptr);  // Trigger vars creation
+            // mpForwardWarpPass["gScene"] = mpScene->getParameterBlock();
+        }
+
+        // Create Additional Gbuffer Copy Pass
+        {
+            Program::Desc desc;
+            desc.addShaderModules(mpScene->getShaderModules());
+            desc.addShaderLibrary(additionalGbufferCopyDepthShaderFilePath).csEntry("csMain");
+            desc.addTypeConformances(mpScene->getTypeConformances());
+            Program::DefineList defines;
+            defines.add(mpScene->getSceneDefines());
+            mpAdditionalGbufferCopyDepthPass = ComputePass::create(desc, defines, false);
+            // Bind the scene.
+            mpAdditionalGbufferCopyDepthPass->setVars(nullptr);  // Trigger vars creation
+            // mpForwardWarpPass["gScene"] = mpScene->getParameterBlock();
+        }
+
+
+        // Create a Forward Warping Depth Test Pass
         {
             Program::Desc desc;
             desc.addShaderModules(mpScene->getShaderModules());
@@ -329,14 +398,17 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
     return reflector;
 }
 
-void TwoLayeredGbuffers::createNewTexture(Texture::SharedPtr &pTex, const Falcor::uint2 &curDim, enum Falcor::ResourceFormat dataFormat = ResourceFormat::RGBA32Float)
+void TwoLayeredGbuffers::createNewTexture(Texture::SharedPtr &pTex,
+                                        const Falcor::uint2 &curDim,
+                                        enum Falcor::ResourceFormat dataFormat = ResourceFormat::RGBA32Float,
+                                        Falcor::Resource::BindFlags bindFlags = Resource::BindFlags::AllColorViews)
 {
 
     if (!pTex || pTex->getWidth() != curDim.x || pTex->getHeight() != curDim.y) {
 
         pTex = Texture::create2D(curDim.x, curDim.y, dataFormat,
                                     1U, 1, nullptr,
-                                    Resource::BindFlags::AllColorViews);
+                                    bindFlags);
 
     }
 
@@ -435,6 +507,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 createNewTexture(mSecondLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpDiffOpacity, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpDepth, curDim, ResourceFormat::R32Float);
+
+                createNewTexture(mAdditionalGbuffer.mpProjDepth, curDim, ResourceFormat::R32Float);
+                createNewTexture(mAdditionalGbuffer.mpPosWS, curDim);
+                createNewTexture(mAdditionalGbuffer.mpNormWS, curDim);
+                createNewTexture(mAdditionalGbuffer.mpDiffOpacity, curDim);
+                createNewTexture(mAdditionalGbuffer.mpDepth, curDim, ResourceFormat::D32Float, Resource::BindFlags::DepthStencil);
             }
 
 
@@ -494,6 +572,114 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             pRenderContext->blit(renderData.getTexture("tl_SecondDiffOpacity")->getSRV(), mSecondLayerGbuffer.mpDiffOpacity->getRTV());
             pRenderContext->blit(renderData.getTexture("tl_SecondPosWS")->getSRV(), mSecondLayerGbuffer.mpPosWS->getRTV());
 
+
+            for (int i = 0; i < mAdditionalCamNum; i++) {
+
+                float4x4 AdditionalCamViewProjMat = mCenterMatrix;
+                float3 AdditionalCamPos = mpScene->getCamera()->getPosition();
+
+                {
+                    // Rasterization
+                    mAddtionalGbufferPass.pVars["PerFrameCB"]["gViewProjMat"] = AdditionalCamViewProjMat;
+                    mAddtionalGbufferPass.pVars["PerFrameCB"]["gCamPos"] = AdditionalCamPos;
+
+                    {
+                        mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpNormWS, 0);
+                        mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpDiffOpacity, 1);
+                        mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpPosWS, 2);
+                        mAddtionalGbufferPass.pFbo->attachDepthStencilTarget(mAdditionalGbuffer.mpDepth);
+                    }
+
+                    pRenderContext->clearFbo(mAddtionalGbufferPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
+                                            0, FboAttachmentType::All);
+                    mAddtionalGbufferPass.pGraphicsState->setFbo(mAddtionalGbufferPass.pFbo);
+
+                    // Rasterize it!
+                    mpScene->rasterize(pRenderContext, mAddtionalGbufferPass.pGraphicsState.get(),
+                                    mAddtionalGbufferPass.pVars.get(),
+                                    RasterizerState::CullMode::None);
+                }
+
+                {
+
+                    // Depth Projection Test
+                    {
+                        mpAdditionalGbufferCopyDepthPass["PerFrameCB"]["gFrameDim"] = curDim;
+                        mpAdditionalGbufferCopyDepthPass["PerFrameCB"]["gCenterViewProjMat"] = mCenterMatrix;
+                    }
+
+                    {
+                        // Input Texture
+                        auto pPosWSSRV = mAdditionalGbuffer.mpPosWS->getSRV();
+                        mpAdditionalGbufferCopyDepthPass["gPosWS"].setSrv(pPosWSSRV);
+                    }
+
+                    {
+                        // Output Texture
+                        auto pProjDepthUAV = mAdditionalGbuffer.mpProjDepth->getUAV();
+                        pRenderContext->clearUAV(pProjDepthUAV.get(), uint4(-1));
+                        mpAdditionalGbufferCopyDepthPass["gProjDepthBuf"].setUav(pProjDepthUAV);
+                    }
+
+                    mpAdditionalGbufferCopyDepthPass->execute(pRenderContext, uint3(curDim, 1));
+
+                    {
+                        pRenderContext->uavBarrier(mAdditionalGbuffer.mpProjDepth.get());
+                    }
+
+                }
+
+
+
+                {
+
+                    {
+                        mpAdditionalGbufferCopyPass["PerFrameCB"]["gFrameDim"] = curDim;
+                        mpAdditionalGbufferCopyPass["PerFrameCB"]["gCenterViewProjMat"] = mCenterMatrix;
+                    }
+
+                    {
+                        // Input Texture
+                        auto pPosWSSRV = mAdditionalGbuffer.mpPosWS->getSRV();
+                        mpAdditionalGbufferCopyPass["gPosWS"].setSrv(pPosWSSRV);
+
+                        auto pNormWSSRV = mAdditionalGbuffer.mpNormWS->getSRV();
+                        mpAdditionalGbufferCopyPass["gNormWS"].setSrv(pNormWSSRV);
+
+                        auto pDiffOpacitySRV = mAdditionalGbuffer.mpDiffOpacity->getSRV();
+                        mpAdditionalGbufferCopyPass["gDiffOpacity"].setSrv(pDiffOpacitySRV);
+
+                        auto pProjDepthSRV = mAdditionalGbuffer.mpProjDepth->getSRV();
+                        mpAdditionalGbufferCopyPass["gProjDepthBuf"].setSrv(pProjDepthSRV);
+                    }
+
+                    {
+                        // Output Texture
+
+                        auto pProjPosWSUAV = mSecondLayerGbuffer.mpPosWS->getUAV();
+                        mpAdditionalGbufferCopyPass["gProjPosWS"].setUav(pProjPosWSUAV);
+
+                        auto pProjNormWSUAV = mSecondLayerGbuffer.mpNormWS->getUAV();
+                        mpAdditionalGbufferCopyPass["gProjNormWS"].setUav(pProjNormWSUAV);
+
+                        auto pProjDiffOpacityUAV = mSecondLayerGbuffer.mpDiffOpacity->getUAV();
+                        mpAdditionalGbufferCopyPass["gProjDiffOpacity"].setUav(pProjDiffOpacityUAV);
+
+                    }
+
+                    mpAdditionalGbufferCopyPass->execute(pRenderContext, uint3(curDim, 1));
+
+                    {
+                        pRenderContext->uavBarrier(mSecondLayerGbuffer.mpPosWS.get());
+                        pRenderContext->uavBarrier(mSecondLayerGbuffer.mpNormWS.get());
+                        pRenderContext->uavBarrier(mSecondLayerGbuffer.mpDiffOpacity.get());
+                    }
+
+
+                }
+
+
+            }
 
         }
 
@@ -798,7 +984,8 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
 
     widget.var<uint32_t>("Fresh Frequency", mFreshNum, 1);
     widget.var<uint>("Nearest Filling Dist", mNearestThreshold, 0);
-    widget.var<uint>("Sub Pixel Sample", mSubPixelSample, 1);
+    widget.var<uint>("Sub Pixel Sample", mSubPixelSample, 1);;
+    widget.var<uint>("Additional Camera Number", mAdditionalCamNum, 0);
 
     widget.checkbox("Max Depth Constraint", mMaxDepthContraint);
     widget.checkbox("Normal Constraint", mNormalConstraint);

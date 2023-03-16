@@ -56,7 +56,8 @@ public:
 private:
     TwoLayeredGbuffers();
 
-    void createNewTexture(Texture::SharedPtr &pTex, const Falcor::uint2 &curDim, enum Falcor::ResourceFormat dataFormat);
+    void createNewTexture(Texture::SharedPtr &pTex, const Falcor::uint2 &curDim, enum Falcor::ResourceFormat dataFormat, Falcor::Resource::BindFlags bindFlags);
+
     void ClearVariables();
 
     Scene::SharedPtr mpScene;
@@ -67,12 +68,14 @@ private:
         GraphicsState::SharedPtr pGraphicsState;
         GraphicsVars::SharedPtr pVars;
         Fbo::SharedPtr pFbo;
-    } mRasterPass, mWarpGbufferPass, mTwoLayerGbufferGenPass;
+    } mRasterPass, mWarpGbufferPass, mTwoLayerGbufferGenPass, mAddtionalGbufferPass;
 
     // Compute Pass
     ComputePass::SharedPtr mpProjectionDepthTestPass;
     ComputePass::SharedPtr mpForwardWarpPass;
     ComputePass::SharedPtr mpMergeLayerPass;
+    ComputePass::SharedPtr mpAdditionalGbufferCopyPass;
+    ComputePass::SharedPtr mpAdditionalGbufferCopyDepthPass;
 
     struct {
         Texture::SharedPtr mpPosWS;
@@ -93,6 +96,14 @@ private:
         Texture::SharedPtr mpDiffOpacity;
     } mMergedLayer;
 
+    struct{
+        Texture::SharedPtr mpPosWS;
+        Texture::SharedPtr mpNormWS;
+        Texture::SharedPtr mpDiffOpacity;
+        Texture::SharedPtr mpProjDepth;
+        Texture::SharedPtr mpDepth;
+    } mAdditionalGbuffer;
+
     // Texture::SharedPtr mpPosWSBuffer;
     // Texture::SharedPtr mpPosWSBufferTemp;
     Texture::SharedPtr mpLinearZBuffer;
@@ -104,6 +115,7 @@ private:
     float mNormalThreshold; // Threshold for back face culling
     uint mNearestThreshold; // Nearest Filter size
     uint mSubPixelSample;
+    uint mAdditionalCamNum;
 
     uint32_t mMode; // Current mode
 
