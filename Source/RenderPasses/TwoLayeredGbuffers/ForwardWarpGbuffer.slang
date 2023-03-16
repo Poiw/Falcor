@@ -3,8 +3,10 @@ import GBufferHelpers;
 
 cbuffer PerFrameCB {
     uint2 gFrameDim;
-    float4x4 gCenterViewProjMatNoJitter;
+    float4x4 gCenterViewProjMat;
+    float4x4 gCenterViewProjMatInv;
     float4x4 gCurViewProjMat;
+    uint subSampleNum;
 };
 
 
@@ -14,6 +16,9 @@ Texture2D<float4> gFirstLayerDiffOpacity;
 Texture2D<float4> gSecondLayerNormWS;
 Texture2D<float4> gSecondLayerPosWS;
 Texture2D<float4> gSecondLayerDiffOpacity;
+
+Texture2D<float2> gFirstLinearZ;
+Texture2D<float2> gSecondLinearZ;
 
 Texture2D<uint> gProjFirstLayerDepthTest;
 Texture2D<uint> gProjSecondLayerDepthTest;
@@ -32,47 +37,108 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // First Layer
     uint2 pixelCoord = dispatchThreadId.xy;
 
-    float3 posWS = gFirstLayerPosWS[pixelCoord].xyz;
 
-    float4 tarPosH = mul(gCurViewProjMat, float4(posWS, 1.0f));
-    float2 tarCrd = tarPosH.xy / tarPosH.w;
-    float z = tarPosH.z / tarPosH.w;
+    float st = 0.5 / subSampleNum;
+    float step = 1.0 / subSampleNum;
 
-#ifdef FALCOR_FLIP_Y
-    tarCrd *= float2(0.5, 0.5);
-#else
-    tarCrd *= float2(0.5, -0.5);
-#endif
-    tarCrd += 0.5;
+    for (float ix = st; ix < 1.0; ix += step) {
+        for (float iy = st; iy < 1.0; iy += step) {
 
-    uint2 tarIpos = uint2(tarCrd * gFrameDim);
+            float2 uv = float2(pixelCoord) / gFrameDim + float2(ix, iy) / gFrameDim;
+            float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gFirstLinearZ[pixelCoord][0], 1));
 
-    if (asuint(z) == gProjFirstLayerDepthTest[tarIpos]) {
-        gProjFirstLayerNormWS[tarIpos] = gFirstLayerNormWS[pixelCoord];
-        gProjFirstLayerDiffOpacity[tarIpos] = gFirstLayerDiffOpacity[pixelCoord];
+            float4 tarPosH = mul(gCurViewProjMat, posWS);
+            float2 tarCrd = tarPosH.xy / tarPosH.w;
+            float z = tarPosH.z / tarPosH.w;
+
+            #ifdef FALCOR_FLIP_Y
+                tarCrd *= float2(0.5, 0.5);
+            #else
+                tarCrd *= float2(0.5, -0.5);
+            #endif
+                tarCrd += 0.5;
+
+            uint2 tarIpos = uint2(tarCrd * gFrameDim);
+
+            if (asuint(z) == gProjFirstLayerDepthTest[tarIpos]) {
+                gProjFirstLayerNormWS[tarIpos] = gFirstLayerNormWS[pixelCoord];
+                gProjFirstLayerDiffOpacity[tarIpos] = gFirstLayerDiffOpacity[pixelCoord];
+            }
+
+        }
     }
-
 
     // Second Layer
-    posWS = gSecondLayerPosWS[pixelCoord].xyz;
 
-    tarPosH = mul(gCurViewProjMat, float4(posWS, 1.0f));
-    tarCrd = tarPosH.xy / tarPosH.w;
-    z = tarPosH.z / tarPosH.w;
+    for (float ix = st; ix < 1.0; ix += step) {
+        for (float iy = st; iy < 1.0; iy += step) {
 
-#ifdef FALCOR_FLIP_Y
-    tarCrd *= float2(0.5, 0.5);
-#else
-    tarCrd *= float2(0.5, -0.5);
-#endif
-    tarCrd += 0.5;
+            float2 uv = float2(pixelCoord) / gFrameDim + float2(ix, iy) / gFrameDim;
+            float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gSecondLinearZ[pixelCoord][0], 1));
 
-    tarIpos = uint2(tarCrd * gFrameDim);
+            float4 tarPosH = mul(gCurViewProjMat, posWS);
+            float2 tarCrd = tarPosH.xy / tarPosH.w;
+            float z = tarPosH.z / tarPosH.w;
 
-    if (asuint(z) == gProjSecondLayerDepthTest[tarIpos]) {
-        gProjSecondLayerNormWS[tarIpos] = gSecondLayerNormWS[pixelCoord];
-        gProjSecondLayerDiffOpacity[tarIpos] = gSecondLayerDiffOpacity[pixelCoord];
+            #ifdef FALCOR_FLIP_Y
+                tarCrd *= float2(0.5, 0.5);
+            #else
+                tarCrd *= float2(0.5, -0.5);
+            #endif
+                tarCrd += 0.5;
+
+            uint2 tarIpos = uint2(tarCrd * gFrameDim);
+
+            if (asuint(z) == gProjSecondLayerDepthTest[tarIpos]) {
+                gProjSecondLayerNormWS[tarIpos] = gSecondLayerNormWS[pixelCoord];
+                gProjSecondLayerDiffOpacity[tarIpos] = gSecondLayerDiffOpacity[pixelCoord];
+            }
+
+        }
     }
+
+
+//     float3 posWS = gFirstLayerPosWS[pixelCoord].xyz;
+
+//     float4 tarPosH = mul(gCurViewProjMat, float4(posWS, 1.0f));
+//     float2 tarCrd = tarPosH.xy / tarPosH.w;
+//     float z = tarPosH.z / tarPosH.w;
+
+// #ifdef FALCOR_FLIP_Y
+//     tarCrd *= float2(0.5, 0.5);
+// #else
+//     tarCrd *= float2(0.5, -0.5);
+// #endif
+//     tarCrd += 0.5;
+
+//     uint2 tarIpos = uint2(tarCrd * gFrameDim);
+
+//     if (asuint(z) == gProjFirstLayerDepthTest[tarIpos]) {
+//         gProjFirstLayerNormWS[tarIpos] = gFirstLayerNormWS[pixelCoord];
+//         gProjFirstLayerDiffOpacity[tarIpos] = gFirstLayerDiffOpacity[pixelCoord];
+//     }
+
+
+//     // Second Layer
+//     posWS = gSecondLayerPosWS[pixelCoord].xyz;
+
+//     tarPosH = mul(gCurViewProjMat, float4(posWS, 1.0f));
+//     tarCrd = tarPosH.xy / tarPosH.w;
+//     z = tarPosH.z / tarPosH.w;
+
+// #ifdef FALCOR_FLIP_Y
+//     tarCrd *= float2(0.5, 0.5);
+// #else
+//     tarCrd *= float2(0.5, -0.5);
+// #endif
+//     tarCrd += 0.5;
+
+//     tarIpos = uint2(tarCrd * gFrameDim);
+
+//     if (asuint(z) == gProjSecondLayerDepthTest[tarIpos]) {
+//         gProjSecondLayerNormWS[tarIpos] = gSecondLayerNormWS[pixelCoord];
+//         gProjSecondLayerDiffOpacity[tarIpos] = gSecondLayerDiffOpacity[pixelCoord];
+//     }
 
 
     return;

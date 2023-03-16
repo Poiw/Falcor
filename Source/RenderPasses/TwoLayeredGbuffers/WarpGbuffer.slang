@@ -11,7 +11,7 @@ Texture2D<float4> gSecondLayerDiffOpacity;
 cbuffer PerFrameCB
 {
     uint2 gFrameDim;
-    float4x4 gCenterViewProjMatNoJitter;
+    float4x4 gCenterViewProjMat;
     // float gCurEps;
 };
 
@@ -22,7 +22,7 @@ VSOut vsMain(VSIn vIn) {
 
     float3 posW = vOut.posW; // Assume no dynamic object, no world matrix changes
 
-    vOut.prevPosH = mul(gCenterViewProjMatNoJitter, float4(posW, 1.f));
+    vOut.prevPosH = mul(gCenterViewProjMat, float4(posW, 1.f));
 
     return vOut;
 

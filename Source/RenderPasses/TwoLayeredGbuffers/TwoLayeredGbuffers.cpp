@@ -106,6 +106,7 @@ TwoLayeredGbuffers::TwoLayeredGbuffers() : RenderPass(kInfo) {
     mFreshNum = 8;
     mMode = 0;
     mNearestThreshold = 1;
+    mSubPixelSample = 1;
 
     // // Create sample generator
     // mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
@@ -395,7 +396,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             }
 
             // Save the projection matrix
-            mCenterMatrix = mpScene->getCamera()->getViewProjMatrixNoJitter();
+            mCenterMatrix = mpScene->getCamera()->getViewProjMatrix();
+            mCenterMatrixInv = mpScene->getCamera()->getInvViewProjMatrix();
 
 
             auto curDim = renderData.getDefaultTextureDims();
@@ -425,10 +427,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 createNewTexture(mFirstLayerGbuffer.mpPosWS, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpDiffOpacity, curDim);
+                createNewTexture(mFirstLayerGbuffer.mpLinearZ, curDim, ResourceFormat::RG32Float);
 
                 createNewTexture(mSecondLayerGbuffer.mpPosWS, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpDiffOpacity, curDim);
+                createNewTexture(mSecondLayerGbuffer.mpLinearZ, curDim, ResourceFormat::RG32Float);
             }
 
 
@@ -461,6 +465,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondNormWS"), 2);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondDiffOpacity"), 3);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondPosWS"), 4);
+            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(mSecondLayerGbuffer.mpLinearZ, 5);
 
             mTwoLayerGbufferGenPass.pFbo->attachDepthStencilTarget(renderData.getTexture("tl_Depth"));
 
@@ -481,6 +486,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), mFirstLayerGbuffer.mpNormWS->getRTV());
             pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), mFirstLayerGbuffer.mpDiffOpacity->getRTV());
             pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), mFirstLayerGbuffer.mpPosWS->getRTV());
+            pRenderContext->blit(renderData.getTexture("gLinearZ")->getSRV(), mFirstLayerGbuffer.mpLinearZ->getRTV());
+
             pRenderContext->blit(renderData.getTexture("tl_SecondNormWS")->getSRV(), mSecondLayerGbuffer.mpNormWS->getRTV());
             pRenderContext->blit(renderData.getTexture("tl_SecondDiffOpacity")->getSRV(), mSecondLayerGbuffer.mpDiffOpacity->getRTV());
             pRenderContext->blit(renderData.getTexture("tl_SecondPosWS")->getSRV(), mSecondLayerGbuffer.mpPosWS->getRTV());
@@ -498,7 +505,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 // Vairables
                 {
                     mWarpGbufferPass.pVars["PerFrameCB"]["gFrameDim"] = curDim;
-                    mWarpGbufferPass.pVars["PerFrameCB"]["gCenterViewProjMatNoJitter"] = mCenterMatrix;
+                    mWarpGbufferPass.pVars["PerFrameCB"]["gCenterViewProjMat"] = mCenterMatrix;
                     // mWarpGbufferPass.pVars["PerFrameCB"]["gCurEps"] = mCurEps;
                 }
 
@@ -566,20 +573,29 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     // Varibales
                     {
                         mpProjectionDepthTestPass["PerFrameCB"]["gFrameDim"] = curDim;
-                        mpProjectionDepthTestPass["PerFrameCB"]["gCenterViewProjMatNoJitter"] = mCenterMatrix;
+                        mpProjectionDepthTestPass["PerFrameCB"]["gCenterViewProjMat"] = mCenterMatrix;
+                        mpProjectionDepthTestPass["PerFrameCB"]["gCenterViewProjMatInv"] = mCenterMatrixInv;
                         mpProjectionDepthTestPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
+                        mpProjectionDepthTestPass["PerFrameCB"]["subSampleNum"] = mSubPixelSample;
                     }
 
                     // Input Textures
                     {
                         // Textures
 
-
                         auto pFirstPosWSMip = mFirstLayerGbuffer.mpPosWS->getSRV();
                         mpProjectionDepthTestPass["gFirstLayerPosWS"].setSrv(pFirstPosWSMip);
 
                         auto pSecondPosWSMip = mSecondLayerGbuffer.mpPosWS->getSRV();
                         mpProjectionDepthTestPass["gSecondLayerPosWS"].setSrv(pSecondPosWSMip);
+
+                        auto pFirstLinearZMip = mFirstLayerGbuffer.mpLinearZ->getSRV();
+                        mpProjectionDepthTestPass["gFirstLinearZ"].setSrv(pFirstLinearZMip);
+
+                        auto pSecondLinearZMip = mSecondLayerGbuffer.mpLinearZ->getSRV();
+                        mpProjectionDepthTestPass["gSecondLinearZ"].setSrv(pSecondLinearZMip);
+
+
                     }
 
                     // Output Textures
@@ -615,8 +631,10 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     // Varibales
                     {
                         mpForwardWarpPass["PerFrameCB"]["gFrameDim"] = curDim;
-                        mpForwardWarpPass["PerFrameCB"]["gCenterViewProjMatNoJitter"] = mCenterMatrix;
+                        mpForwardWarpPass["PerFrameCB"]["gCenterViewProjMat"] = mCenterMatrix;
+                        mpForwardWarpPass["PerFrameCB"]["gCenterViewProjMatInv"] = mCenterMatrixInv;
                         mpForwardWarpPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
+                        mpForwardWarpPass["PerFrameCB"]["subSampleNum"] = mSubPixelSample;
                     }
 
                     // Input Textures
@@ -646,6 +664,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
                         auto pSecondDepthTestMip = mProjSecondLayer.mpDepthTest->getSRV();
                         mpForwardWarpPass["gProjSecondLayerDepthTest"].setSrv(pSecondDepthTestMip);
+
+                        auto pFirstLinearZMip = mFirstLayerGbuffer.mpLinearZ->getSRV();
+                        mpForwardWarpPass["gFirstLinearZ"].setSrv(pFirstLinearZMip);
+
+                        auto pSecondLinearZMip = mSecondLayerGbuffer.mpLinearZ->getSRV();
+                        mpForwardWarpPass["gSecondLinearZ"].setSrv(pSecondLinearZMip);
                     }
 
                     // Output Textures
@@ -771,6 +795,7 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
 
     widget.var<uint32_t>("Fresh Frequency", mFreshNum, 1);
     widget.var<uint>("Nearest Filling Dist", mNearestThreshold, 0);
+    widget.var<uint>("Sub Pixel Sample", mSubPixelSample, 1);
 
     widget.checkbox("Max Depth Constraint", mMaxDepthContraint);
     widget.checkbox("Normal Constraint", mNormalConstraint);

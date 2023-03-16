@@ -78,6 +78,7 @@ private:
         Texture::SharedPtr mpPosWS;
         Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
+        Texture::SharedPtr mpLinearZ;
     } mFirstLayerGbuffer, mSecondLayerGbuffer;
 
     struct {
@@ -102,6 +103,7 @@ private:
     float mEps; // Threshold for two layered g-buffers
     float mNormalThreshold; // Threshold for back face culling
     uint mNearestThreshold; // Nearest Filter size
+    uint mSubPixelSample;
 
     uint32_t mMode; // Current mode
 
@@ -110,6 +112,7 @@ private:
 
     // Camera
     Falcor::float4x4 mCenterMatrix;
+    Falcor::float4x4 mCenterMatrixInv;
 
     // Options
     bool mMaxDepthContraint;
