@@ -46,9 +46,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                     uv *= float2(2, -2);
                 #endif
 
-                float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gFirstDepth[pixelCoord], 1));
+                // float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gFirstDepth[pixelCoord], 1));
 
-                float4 tarPosH = mul(gCurViewProjMat, posWS);
+                // float4 tarPosH = mul(gCurViewProjMat, posWS);
+                float4 tarPosH = mul(mul(gCurViewProjMat, gCenterViewProjMatInv), float4(uv, gFirstDepth[pixelCoord], 1));
                 float2 tarCrd = tarPosH.xy / tarPosH.w;
                 float z = tarPosH.z / tarPosH.w;
 
@@ -78,9 +79,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                     uv *= float2(2, -2);
                 #endif
 
-                float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gSecondDepth[pixelCoord], 1));
+                // float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gSecondDepth[pixelCoord], 1));
 
-                float4 tarPosH = mul(gCurViewProjMat, posWS);
+                // float4 tarPosH = mul(gCurViewProjMat, posWS);
+                float4 tarPosH = mul(mul(gCurViewProjMat, gCenterViewProjMatInv), float4(uv, gSecondDepth[pixelCoord], 1));
                 float2 tarCrd = tarPosH.xy / tarPosH.w;
                 float z = tarPosH.z / tarPosH.w;
 

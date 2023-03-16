@@ -55,9 +55,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                     uv *= float2(2, -2);
                 #endif
 
-                float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gFirstDepth[pixelCoord], 1));
+                // float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gFirstDepth[pixelCoord], 1));
 
-                float4 tarPosH = mul(gCurViewProjMat, posWS);
+                // float4 tarPosH = mul(gCurViewProjMat, posWS);
+                float4 tarPosH = mul(mul(gCurViewProjMat, gCenterViewProjMatInv), float4(uv, gFirstDepth[pixelCoord], 1));
                 float2 tarCrd = tarPosH.xy / tarPosH.w;
                 float z = tarPosH.z / tarPosH.w;
 
@@ -70,9 +71,12 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
                 uint2 tarIpos = uint2(tarCrd * gFrameDim);
 
+                // Debug
+                // gProjFirstLayerNormWS[tarIpos] = float4(tarCrd * gFrameDim, 1, 1);
+
                 if (asuint(z) == gProjFirstLayerDepthTest[tarIpos]) {
-                    // gProjFirstLayerNormWS[tarIpos] = gFirstLayerNormWS[pixelCoord];
-                    gProjFirstLayerNormWS[tarIpos] = float4(posWS.xyz - gFirstLayerPosWS[pixelCoord].xyz, 1);
+                    gProjFirstLayerNormWS[tarIpos] = gFirstLayerNormWS[pixelCoord];
+                    // gProjFirstLayerNormWS[tarIpos] = float4(posWS.xyz - gFirstLayerPosWS[pixelCoord].xyz, 1);
                     gProjFirstLayerDiffOpacity[tarIpos] = gFirstLayerDiffOpacity[pixelCoord];
                 }
 
@@ -93,9 +97,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                     uv *= float2(2, -2);
                 #endif
 
-                float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gSecondDepth[pixelCoord], 1));
+                // float4 posWS = mul(gCenterViewProjMatInv, float4(uv, gSecondDepth[pixelCoord], 1));
 
-                float4 tarPosH = mul(gCurViewProjMat, posWS);
+                // float4 tarPosH = mul(gCurViewProjMat, posWS);
+                float4 tarPosH = mul(mul(gCurViewProjMat, gCenterViewProjMatInv), float4(uv, gSecondDepth[pixelCoord], 1));
                 float2 tarCrd = tarPosH.xy / tarPosH.w;
                 float z = tarPosH.z / tarPosH.w;
 
@@ -109,8 +114,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                 uint2 tarIpos = uint2(tarCrd * gFrameDim);
 
                 if (asuint(z) == gProjSecondLayerDepthTest[tarIpos]) {
-                    // gProjSecondLayerNormWS[tarIpos] = gSecondLayerNormWS[pixelCoord];
-                    gProjSecondLayerNormWS[tarIpos] = float4(posWS.xyz - gSecondLayerPosWS[pixelCoord].xyz, 1);
+                    gProjSecondLayerNormWS[tarIpos] = gSecondLayerNormWS[pixelCoord];
+                    // gProjSecondLayerNormWS[tarIpos] = float4(posWS.xyz - gSecondLayerPosWS[pixelCoord].xyz, 1);
                     gProjSecondLayerDiffOpacity[tarIpos] = gSecondLayerDiffOpacity[pixelCoord];
                 }
 
