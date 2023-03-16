@@ -105,12 +105,12 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     if (layer1.z < layer2.z) {
         gNormWS[pixelCoord] = layer1.normWS;
         gDiffOpacity[pixelCoord] = layer1.diffOpacity;
-        gMask[pixelCoord] == float4(1.0, 0.0, 0.0, 1.0);
+        gMask[pixelCoord] = float4(1.0, 0.0, 0.0, 1.0);
     }
     else {
         gNormWS[pixelCoord] = layer2.normWS;
         gDiffOpacity[pixelCoord] = layer2.diffOpacity;
-        gMask[pixelCoord] == float4(0.0, 0.0, 1.0, 1.0);
+        gMask[pixelCoord] = float4(0.0, 0.0, 1.0, 1.0);
     }
 
 
