@@ -15,10 +15,13 @@ Texture2D<float4> gSecondLayerNormWS;
 Texture2D<float4> gSecondLayerPosWS;
 Texture2D<float4> gSecondLayerDiffOpacity;
 
-RWTexture2D<float> gDepthTest;
-RWTexture2D<float4> gNormWS;
-RWTexture2D<float4> gDiffOpacity;
-RWTexture2D<float4> gMask;
+RWTexture2D<float> gProjFirstLayerDepthTest;
+RWTexture2D<float4> gProjFirstLayerNormWS;
+RWTexture2D<float4> gProjFirstLayerDiffOpacity;
+
+RWTexture2D<float> gProjSecondLayerDepthTest;
+RWTexture2D<float4> gProjSecondLayerNormWS;
+RWTexture2D<float4> gProjSecondLayerDiffOpacity;
 
 
 
@@ -43,11 +46,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     uint2 tarIpos = uint2(tarCrd * gFrameDim);
 
-    if (z < gDepthTest[tarIpos]) {
-        gDepthTest[tarIpos] = z;
-        gNormWS[tarIpos] = gFirstLayerNormWS[pixelCoord];
-        gDiffOpacity[tarIpos] = gFirstLayerDiffOpacity[pixelCoord];
-        gMask[tarIpos] = float4(1.0f, 0.0f, 0.0f, 1.0f);
+    if (z < gProjFirstLayerDepthTest[tarIpos]) {
+        gProjFirstLayerDepthTest[tarIpos] = z;
+        gProjFirstLayerNormWS[tarIpos] = gFirstLayerNormWS[pixelCoord];
+        gProjFirstLayerDiffOpacity[tarIpos] = gFirstLayerDiffOpacity[pixelCoord];
     }
 
 
@@ -67,11 +69,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     tarIpos = uint2(tarCrd * gFrameDim);
 
-    if (z < gDepthTest[tarIpos]) {
-        gDepthTest[tarIpos] = z;
-        gNormWS[tarIpos] = gSecondLayerNormWS[pixelCoord];
-        gDiffOpacity[tarIpos] = gSecondLayerDiffOpacity[pixelCoord];
-        gMask[tarIpos] = float4(0.0f, 0.0f, 1.0f, 1.0f);
+    if (z < gProjSecondLayerDepthTest[tarIpos]) {
+        gProjSecondLayerDepthTest[tarIpos] = z;
+        gProjSecondLayerNormWS[tarIpos] = gSecondLayerNormWS[pixelCoord];
+        gProjSecondLayerDiffOpacity[tarIpos] = gSecondLayerDiffOpacity[pixelCoord];
     }
 
 

@@ -71,16 +71,28 @@ private:
 
     // Compute Pass
     ComputePass::SharedPtr mpForwardWarpPass;
+    ComputePass::SharedPtr mpMergeLayerPass;
 
     struct {
         Texture::SharedPtr mpPosWS;
         Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
-        Texture::SharedPtr mpMask;
-    } mFirstLayerGbuffer, mSecondLayerGbuffer, mTemp;
+    } mFirstLayerGbuffer, mSecondLayerGbuffer;
 
-    Texture::SharedPtr mpPosWSBuffer;
-    Texture::SharedPtr mpPosWSBufferTemp;
+    struct {
+        Texture::SharedPtr mpDepthTest;
+        Texture::SharedPtr mpNormWS;
+        Texture::SharedPtr mpDiffOpacity;
+    } mProjFirstLayer, mProjSecondLayer;
+
+    struct {
+        Texture::SharedPtr mpMask;
+        Texture::SharedPtr mpNormWS;
+        Texture::SharedPtr mpDiffOpacity;
+    } mMergedLayer;
+
+    // Texture::SharedPtr mpPosWSBuffer;
+    // Texture::SharedPtr mpPosWSBufferTemp;
     Texture::SharedPtr mpLinearZBuffer;
     Texture::SharedPtr mpDepthTestBuffer;
 
@@ -88,6 +100,7 @@ private:
     // Parameters
     float mEps; // Threshold for two layered g-buffers
     float mNormalThreshold; // Threshold for back face culling
+    uint mNearestThreshold; // Nearest Filter size
 
     uint32_t mMode; // Current mode
 
