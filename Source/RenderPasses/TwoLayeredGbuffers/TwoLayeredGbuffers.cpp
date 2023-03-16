@@ -144,6 +144,8 @@ void TwoLayeredGbuffers::ClearVariables()
     mFreshNum = 8;
     mMaxDepthContraint = 0;
     mNormalConstraint = 0;
+
+    mEnableSubPixel = false;
 }
 
 void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -577,6 +579,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         mpProjectionDepthTestPass["PerFrameCB"]["gCenterViewProjMatInv"] = mCenterMatrixInv;
                         mpProjectionDepthTestPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
                         mpProjectionDepthTestPass["PerFrameCB"]["subSampleNum"] = mSubPixelSample;
+                        mpProjectionDepthTestPass["PerFrameCB"]["gEnableSubPixel"] = mEnableSubPixel;
                     }
 
                     // Input Textures
@@ -634,6 +637,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         mpForwardWarpPass["PerFrameCB"]["gCenterViewProjMatInv"] = mCenterMatrixInv;
                         mpForwardWarpPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
                         mpForwardWarpPass["PerFrameCB"]["subSampleNum"] = mSubPixelSample;
+                        mpForwardWarpPass["PerFrameCB"]["gEnableSubPixel"] = mEnableSubPixel;
                     }
 
                     // Input Textures
@@ -798,4 +802,5 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
 
     widget.checkbox("Max Depth Constraint", mMaxDepthContraint);
     widget.checkbox("Normal Constraint", mNormalConstraint);
+    widget.checkbox("Enable Subpixel Sampling in Forward Warping", mEnableSubPixel);
 }

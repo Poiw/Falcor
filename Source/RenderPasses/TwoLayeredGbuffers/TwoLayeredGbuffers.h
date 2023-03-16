@@ -117,4 +117,5 @@ private:
     // Options
     bool mMaxDepthContraint;
     bool mNormalConstraint;
+    bool mEnableSubPixel;
 };
