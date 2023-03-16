@@ -21,7 +21,7 @@ RWTexture2D<uint> gProjSecondLayerDepthTest;
 
 
 
-[numthreads(16, 16, 1)]
+[numthreads(1, 1, 1)]
 void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     // First Layer
