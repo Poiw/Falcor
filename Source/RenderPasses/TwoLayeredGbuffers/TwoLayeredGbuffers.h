@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include <random>
 
 using namespace Falcor;
 
@@ -116,6 +117,7 @@ private:
     uint mNearestThreshold; // Nearest Filter size
     uint mSubPixelSample;
     uint mAdditionalCamNum;
+    float mAdditionalCamRadius;
 
     uint32_t mMode; // Current mode
 
@@ -130,4 +132,12 @@ private:
     bool mMaxDepthContraint;
     bool mNormalConstraint;
     bool mEnableSubPixel;
+
+    // Variables
+    float3 mPrevPos;
+
+    // Random Generator
+    std::default_random_engine mRng;
+    std::uniform_real_distribution<float> mRandomGen;
+
 };
