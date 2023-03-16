@@ -7,6 +7,7 @@ cbuffer PerFrameCB {
 };
 
 Texture2D<float4> gPosWS;
+Texture2D<float2> gProjFirstLinearZ;
 
 RWTexture2D<uint> gProjDepthBuf;
 
@@ -31,7 +32,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     uint2 tarIpos = uint2(tarCrd * gFrameDim);
 
-    InterlockedMin(gProjDepthBuf[tarIpos], asuint(z));
+    if (z * tarPosH.w > gProjFirstLinearZ[tarIpos][0])
+        InterlockedMax(gProjDepthBuf[tarIpos], asuint(z), gProjDepthBuf[tarIpos]);
 
     return;
 }

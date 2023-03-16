@@ -118,6 +118,7 @@ private:
     uint mSubPixelSample;
     uint mAdditionalCamNum;
     float mAdditionalCamRadius;
+    float mAdditionalCamTarDist;
 
     uint32_t mMode; // Current mode
 

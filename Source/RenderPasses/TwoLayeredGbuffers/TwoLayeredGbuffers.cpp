@@ -173,6 +173,7 @@ void TwoLayeredGbuffers::ClearVariables()
 
     mPrevPos = float3(0.0f, 0.0f, 0.0f);
     mAdditionalCamRadius = 0.1f;
+    mAdditionalCamTarDist = 1.0f;
 
     mRandomGen = std::uniform_real_distribution<float>(0, 2 * glm::pi<float>());
 }
@@ -481,6 +482,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             Falcor::Logger::log(Falcor::Logger::Level::Info, "Current Camera Speed: "
                                 + Falcor::to_string(mpScene->getCamera()->getPosition() - mPrevPos) + " "
                                 + Falcor::to_string((float16_t)glm::length(mpScene->getCamera()->getPosition() - mPrevPos)));
+            Falcor::Logger::log(Falcor::Logger::Level::Info, "Target - CamPos: "
+                                + Falcor::to_string(mpScene->getCamera()->getPosition() - mpScene->getCamera()->getTarget()));
             mPrevPos = mpScene->getCamera()->getPosition();
 
             auto curDim = renderData.getDefaultTextureDims();
@@ -588,20 +591,28 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 *AdditionalCam = *(mpScene->getCamera());
 
                 auto dir = AdditionalCam->getTarget() - AdditionalCam->getPosition();
+                // AdditionalCam->setTarget(AdditionalCam->getPosition() + glm::normalize(dir) * mAdditionalCamTarDist);
                 auto base_x = glm::normalize(glm::cross(dir, AdditionalCam->getUpVector()));
                 auto base_y = glm::normalize(glm::cross(dir, base_x));
 
                 auto randomAngle = mRandomGen(mRng);
 
 
-                Falcor::Logger::log(Falcor::Logger::Level::Info, "Random Number: "
-                                    + Falcor::to_string((float16_t)randomAngle));
+                // Falcor::Logger::log(Falcor::Logger::Level::Info, "Random Number: "
+                //                     + Falcor::to_string((float16_t)randomAngle));
 
 
                 auto newPos = AdditionalCam->getPosition() + base_x * cos(randomAngle) * mAdditionalCamRadius
                             + base_y * sin(randomAngle) * mAdditionalCamRadius;
 
+                auto newTar = AdditionalCam->getTarget() + base_x * cos(randomAngle) * mAdditionalCamRadius
+                            + base_y * sin(randomAngle) * mAdditionalCamRadius;
+
+
+                // auto newPos = AdditionalCam->getPosition() + base_x * (randomAngle - glm::pi<float>());
+
                 AdditionalCam->setPosition(newPos);
+                AdditionalCam->setTarget(newTar);
 
 
                 float4x4 AdditionalCamViewProjMat = AdditionalCam->getViewProjMatrix();
@@ -642,12 +653,17 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         // Input Texture
                         auto pPosWSSRV = mAdditionalGbuffer.mpPosWS->getSRV();
                         mpAdditionalGbufferCopyDepthPass["gPosWS"].setSrv(pPosWSSRV);
+
+                        auto pProjFirstLinearZSRV = renderData.getTexture("gLinearZ")->getSRV();
+                        mpAdditionalGbufferCopyDepthPass["gProjFirstLinearZ"].setSrv(pProjFirstLinearZSRV);
                     }
 
                     {
                         // Output Texture
                         auto pProjDepthUAV = mAdditionalGbuffer.mpProjDepth->getUAV();
-                        pRenderContext->clearUAV(pProjDepthUAV.get(), uint4(-1));
+                        if (i == 0) {
+                            pRenderContext->clearUAV(pProjDepthUAV.get(), uint4(0));
+                        }
                         mpAdditionalGbufferCopyDepthPass["gProjDepthBuf"].setUav(pProjDepthUAV);
                     }
 
@@ -708,8 +724,14 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
                 }
 
+                pRenderContext->blit(mAdditionalGbuffer.mpNormWS->getSRV(), renderData.getTexture("tl_Debug")->getRTV());
 
             }
+
+
+            pRenderContext->blit(mSecondLayerGbuffer.mpPosWS->getSRV(), renderData.getTexture("tl_SecondPosWS")->getRTV());
+            pRenderContext->blit(mSecondLayerGbuffer.mpNormWS->getSRV(), renderData.getTexture("tl_SecondNormWS")->getRTV());
+            pRenderContext->blit(mSecondLayerGbuffer.mpDiffOpacity->getSRV(), renderData.getTexture("tl_SecondDiffOpacity")->getRTV());
 
         }
 
@@ -983,7 +1005,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     }
 
                     // Copy Data
-                    pRenderContext->blit(mProjFirstLayer.mpDepthTest ->getSRV(), renderData.getTexture("tl_Debug")->getRTV());
+                    // pRenderContext->blit(mProjFirstLayer.mpDepthTest ->getSRV(), renderData.getTexture("tl_Debug")->getRTV());
                     pRenderContext->blit(mMergedLayer.mpNormWS->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
                     pRenderContext->blit(mMergedLayer.mpDiffOpacity->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
                     pRenderContext->blit(mMergedLayer.mpMask->getSRV(), renderData.getTexture("tl_Mask")->getRTV());
@@ -1017,6 +1039,7 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
     widget.var<uint>("Sub Pixel Sample", mSubPixelSample, 1);
     widget.var<uint>("Additional Camera Number", mAdditionalCamNum, 0);
     widget.var<float>("Additional Camera Radius", mAdditionalCamRadius, 0, 10);
+    widget.var<float>("Additional Camera Target Distance", mAdditionalCamTarDist, 0, 10);
 
     widget.checkbox("Max Depth Constraint", mMaxDepthContraint);
     widget.checkbox("Normal Constraint", mNormalConstraint);
