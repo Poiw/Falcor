@@ -49,6 +49,8 @@ const std::string twoLayerGbuffersGenShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/TwoLayerGbufferGen.slang";
 const std::string warpGbuffersShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/WarpGbuffer.slang";
+const std::string projectionDepthTestShaderFilePath =
+    "RenderPasses/TwoLayeredGbuffers/ProjectionDepthTest.slang";
 const std::string forwardWarpGbufferShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/ForwardWarpGbuffer.slang";
 const std::string mergeLayersShaderFilePath =
@@ -103,7 +105,7 @@ TwoLayeredGbuffers::TwoLayeredGbuffers() : RenderPass(kInfo) {
     mFrameCount = 0;
     mFreshNum = 8;
     mMode = 0;
-    mNearestThreshold = 1.0f;
+    mNearestThreshold = 1;
 
     // // Create sample generator
     // mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
@@ -194,6 +196,21 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
             mTwoLayerGbufferGenPass.pGraphicsState->setProgram(program);
             mTwoLayerGbufferGenPass.pVars = GraphicsVars::create(program.get());
         }
+
+        // Create a Forward Warping Pass
+        {
+            Program::Desc desc;
+            desc.addShaderModules(mpScene->getShaderModules());
+            desc.addShaderLibrary(projectionDepthTestShaderFilePath).csEntry("csMain");
+            desc.addTypeConformances(mpScene->getTypeConformances());
+            Program::DefineList defines;
+            defines.add(mpScene->getSceneDefines());
+            mpProjectionDepthTestPass = ComputePass::create(desc, defines, false);
+            // Bind the scene.
+            mpProjectionDepthTestPass->setVars(nullptr);  // Trigger vars creation
+            // mpForwardWarpPass["gScene"] = mpScene->getParameterBlock();
+        }
+
 
         // Create a Forward Warping Pass
         {
@@ -527,166 +544,208 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
                 // Create Depth Buffer
                 {
-                    createNewTexture(mProjFirstLayer.mpDepthTest, curDim, ResourceFormat::R32Float);
+                    createNewTexture(mProjFirstLayer.mpDepthTest, curDim, ResourceFormat::R32Uint);
                     createNewTexture(mProjFirstLayer.mpNormWS, curDim, ResourceFormat::RGBA32Float);
                     createNewTexture(mProjFirstLayer.mpDiffOpacity, curDim, ResourceFormat::RGBA32Float);
 
 
-                    createNewTexture(mProjSecondLayer.mpDepthTest, curDim, ResourceFormat::R32Float);
+                    createNewTexture(mProjSecondLayer.mpDepthTest, curDim, ResourceFormat::R32Uint);
                     createNewTexture(mProjSecondLayer.mpNormWS, curDim, ResourceFormat::RGBA32Float);
                     createNewTexture(mProjSecondLayer.mpDiffOpacity, curDim, ResourceFormat::RGBA32Float);
 
-                    createNewTexture(mMergedLayer.mpMask, curDim, ResourceFormat::R32Float);
+                    createNewTexture(mMergedLayer.mpMask, curDim, ResourceFormat::RGBA32Float);
                     createNewTexture(mMergedLayer.mpNormWS, curDim, ResourceFormat::RGBA32Float);
                     createNewTexture(mMergedLayer.mpDiffOpacity, curDim, ResourceFormat::RGBA32Float);
                 }
 
-                // Varibales
+
+                // ------------------------------ Depth Test ------------------------------ //
+
                 {
-                    mpForwardWarpPass["PerFrameCB"]["gFrameDim"] = curDim;
-                    mpForwardWarpPass["PerFrameCB"]["gCenterViewProjMatNoJitter"] = mCenterMatrix;
-                    mpForwardWarpPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
-                }
 
-                // Input Textures
-                {
-                    // Textures
+                    // Varibales
+                    {
+                        mpProjectionDepthTestPass["PerFrameCB"]["gFrameDim"] = curDim;
+                        mpProjectionDepthTestPass["PerFrameCB"]["gCenterViewProjMatNoJitter"] = mCenterMatrix;
+                        mpProjectionDepthTestPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
+                    }
 
-                    auto pFirstNormWSMip = mFirstLayerGbuffer.mpNormWS->getSRV();
-                    mpForwardWarpPass["gFirstLayerNormWS"].setSrv(pFirstNormWSMip);
+                    // Input Textures
+                    {
+                        // Textures
 
-                    auto pFirstDiffOpacityMip = mFirstLayerGbuffer.mpDiffOpacity->getSRV();
-                    mpForwardWarpPass["gFirstLayerDiffOpacity"].setSrv(pFirstDiffOpacityMip);
 
-                    auto pFirstPosWSMip = mFirstLayerGbuffer.mpPosWS->getSRV();
-                    mpForwardWarpPass["gFirstLayerPosWS"].setSrv(pFirstPosWSMip);
+                        auto pFirstPosWSMip = mFirstLayerGbuffer.mpPosWS->getSRV();
+                        mpProjectionDepthTestPass["gFirstLayerPosWS"].setSrv(pFirstPosWSMip);
 
-                    auto pSecondNormWSMip = mSecondLayerGbuffer.mpNormWS->getSRV();
-                    mpForwardWarpPass["gSecondLayerNormWS"].setSrv(pSecondNormWSMip);
+                        auto pSecondPosWSMip = mSecondLayerGbuffer.mpPosWS->getSRV();
+                        mpProjectionDepthTestPass["gSecondLayerPosWS"].setSrv(pSecondPosWSMip);
+                    }
 
-                    auto pSecondDiffOpacityMip = mSecondLayerGbuffer.mpDiffOpacity->getSRV();
-                    mpForwardWarpPass["gSecondLayerDiffOpacity"].setSrv(pSecondDiffOpacityMip);
+                    // Output Textures
+                    {
 
-                    auto pSecondPosWSMip = mSecondLayerGbuffer.mpPosWS->getSRV();
-                    mpForwardWarpPass["gSecondLayerPosWS"].setSrv(pSecondPosWSMip);
-                }
+                        auto pFirstDepthTestUAV = mProjFirstLayer.mpDepthTest->getUAV();
+                        pRenderContext->clearUAV(pFirstDepthTestUAV.get(), uint4(-1));
+                        mpProjectionDepthTestPass["gProjFirstLayerDepthTest"].setUav(pFirstDepthTestUAV);
 
-                // Output Textures
-                {
-                    // auto pDepthTestUAV = mpDepthTestBuffer->getUAV();
-                    // pRenderContext->clearUAV(pDepthTestUAV.get(), float4(10.f));
-                    // mpForwardWarpPass["gDepthTest"].setUav(pDepthTestUAV);
+                        auto pSecondDepthTestUAV = mProjSecondLayer.mpDepthTest->getUAV();
+                        pRenderContext->clearUAV(pSecondDepthTestUAV.get(), uint4(-1));
+                        mpProjectionDepthTestPass["gProjSecondLayerDepthTest"].setUav(pSecondDepthTestUAV);
 
-                    // auto pNormWSUAV = mTemp.mpNormWS->getUAV();
-                    // pRenderContext->clearUAV(pNormWSUAV.get(), float4(0.f));
-                    // mpForwardWarpPass["gNormWS"].setUav(pNormWSUAV);
+                    }
 
-                    // auto pDiffOpacityUAV = mTemp.mpDiffOpacity->getUAV();
-                    // pRenderContext->clearUAV(pDiffOpacityUAV.get(), float4(0.f));
-                    // mpForwardWarpPass["gDiffOpacity"].setUav(pDiffOpacityUAV);
+                    // Run Forward Warping Shader
+                    mpProjectionDepthTestPass->execute(pRenderContext, uint3(curDim, 1));
 
-                    // // auto pMaskUAV = mTemp.mpMask->getUAV();
-                    // // pRenderContext->clearUAV(pMaskUAV.get(), float4(0.f));
-                    // // mpForwardWarpPass["gMask"].setUav(pMaskUAV);
+                    // Set barriers
+                    {
 
-                    auto pFirstDepthTestUAV = mProjFirstLayer.mpDepthTest->getUAV();
-                    pRenderContext->clearUAV(pFirstDepthTestUAV.get(), float4(10.f));
-                    mpForwardWarpPass["gProjFirstLayerDepthTest"].setUav(pFirstDepthTestUAV);
+                        pRenderContext->uavBarrier(mProjFirstLayer.mpDepthTest.get());
+                        pRenderContext->uavBarrier(mProjSecondLayer.mpDepthTest.get());
 
-                    auto pFirstNormWSUAV = mProjFirstLayer.mpNormWS->getUAV();
-                    pRenderContext->clearUAV(pFirstNormWSUAV.get(), float4(0.f));
-                    mpForwardWarpPass["gProjFirstLayerNormWS"].setUav(pFirstNormWSUAV);
-
-                    auto pFirstDiffOpacityUAV = mProjFirstLayer.mpDiffOpacity->getUAV();
-                    pRenderContext->clearUAV(pFirstDiffOpacityUAV.get(), float4(0.f));
-                    mpForwardWarpPass["gProjFirstLayerDiffOpacity"].setUav(pFirstDiffOpacityUAV);
-
-                    auto pSecondDepthTestUAV = mProjSecondLayer.mpDepthTest->getUAV();
-                    pRenderContext->clearUAV(pSecondDepthTestUAV.get(), float4(10.f));
-                    mpForwardWarpPass["gProjSecondLayerDepthTest"].setUav(pSecondDepthTestUAV);
-
-                    auto pSecondNormWSUAV = mProjSecondLayer.mpNormWS->getUAV();
-                    pRenderContext->clearUAV(pSecondNormWSUAV.get(), float4(0.f));
-                    mpForwardWarpPass["gProjSecondLayerNormWS"].setUav(pSecondNormWSUAV);
-
-                    auto pSecondDiffOpacityUAV = mProjSecondLayer.mpDiffOpacity->getUAV();
-                    pRenderContext->clearUAV(pSecondDiffOpacityUAV.get(), float4(0.f));
-                    mpForwardWarpPass["gProjSecondLayerDiffOpacity"].setUav(pSecondDiffOpacityUAV);
+                    }
 
                 }
 
-                // Run Forward Warping Shader
-                mpForwardWarpPass->execute(pRenderContext, uint3(curDim, 1));
 
-                // Set barriers
+                // ------------------------------ Forward Warping ------------------------------ //
+
                 {
-                    pRenderContext->uavBarrier(mProjFirstLayer.mpDepthTest.get());
-                    pRenderContext->uavBarrier(mProjFirstLayer.mpNormWS.get());
-                    pRenderContext->uavBarrier(mProjFirstLayer.mpDiffOpacity.get());
+                    // Varibales
+                    {
+                        mpForwardWarpPass["PerFrameCB"]["gFrameDim"] = curDim;
+                        mpForwardWarpPass["PerFrameCB"]["gCenterViewProjMatNoJitter"] = mCenterMatrix;
+                        mpForwardWarpPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
+                    }
 
-                    pRenderContext->uavBarrier(mProjSecondLayer.mpDepthTest.get());
-                    pRenderContext->uavBarrier(mProjSecondLayer.mpNormWS.get());
-                    pRenderContext->uavBarrier(mProjSecondLayer.mpDiffOpacity.get());
+                    // Input Textures
+                    {
+                        // Textures
+
+                        auto pFirstNormWSMip = mFirstLayerGbuffer.mpNormWS->getSRV();
+                        mpForwardWarpPass["gFirstLayerNormWS"].setSrv(pFirstNormWSMip);
+
+                        auto pFirstDiffOpacityMip = mFirstLayerGbuffer.mpDiffOpacity->getSRV();
+                        mpForwardWarpPass["gFirstLayerDiffOpacity"].setSrv(pFirstDiffOpacityMip);
+
+                        auto pFirstPosWSMip = mFirstLayerGbuffer.mpPosWS->getSRV();
+                        mpForwardWarpPass["gFirstLayerPosWS"].setSrv(pFirstPosWSMip);
+
+                        auto pSecondNormWSMip = mSecondLayerGbuffer.mpNormWS->getSRV();
+                        mpForwardWarpPass["gSecondLayerNormWS"].setSrv(pSecondNormWSMip);
+
+                        auto pSecondDiffOpacityMip = mSecondLayerGbuffer.mpDiffOpacity->getSRV();
+                        mpForwardWarpPass["gSecondLayerDiffOpacity"].setSrv(pSecondDiffOpacityMip);
+
+                        auto pSecondPosWSMip = mSecondLayerGbuffer.mpPosWS->getSRV();
+                        mpForwardWarpPass["gSecondLayerPosWS"].setSrv(pSecondPosWSMip);
+
+                        auto pFirstDepthTestMip = mProjFirstLayer.mpDepthTest->getSRV();
+                        mpForwardWarpPass["gProjFirstLayerDepthTest"].setSrv(pFirstDepthTestMip);
+
+                        auto pSecondDepthTestMip = mProjSecondLayer.mpDepthTest->getSRV();
+                        mpForwardWarpPass["gProjSecondLayerDepthTest"].setSrv(pSecondDepthTestMip);
+                    }
+
+                    // Output Textures
+                    {
+
+                        auto pFirstNormWSUAV = mProjFirstLayer.mpNormWS->getUAV();
+                        pRenderContext->clearUAV(pFirstNormWSUAV.get(), float4(0.f));
+                        mpForwardWarpPass["gProjFirstLayerNormWS"].setUav(pFirstNormWSUAV);
+
+                        auto pFirstDiffOpacityUAV = mProjFirstLayer.mpDiffOpacity->getUAV();
+                        pRenderContext->clearUAV(pFirstDiffOpacityUAV.get(), float4(0.f));
+                        mpForwardWarpPass["gProjFirstLayerDiffOpacity"].setUav(pFirstDiffOpacityUAV);
+
+                        auto pSecondNormWSUAV = mProjSecondLayer.mpNormWS->getUAV();
+                        pRenderContext->clearUAV(pSecondNormWSUAV.get(), float4(0.f));
+                        mpForwardWarpPass["gProjSecondLayerNormWS"].setUav(pSecondNormWSUAV);
+
+                        auto pSecondDiffOpacityUAV = mProjSecondLayer.mpDiffOpacity->getUAV();
+                        pRenderContext->clearUAV(pSecondDiffOpacityUAV.get(), float4(0.f));
+                        mpForwardWarpPass["gProjSecondLayerDiffOpacity"].setUav(pSecondDiffOpacityUAV);
+
+                    }
+
+                    // Run Forward Warping Shader
+                    mpForwardWarpPass->execute(pRenderContext, uint3(curDim, 1));
+
+                    // Set barriers
+                    {
+                        pRenderContext->uavBarrier(mProjFirstLayer.mpNormWS.get());
+                        pRenderContext->uavBarrier(mProjFirstLayer.mpDiffOpacity.get());
+
+                        pRenderContext->uavBarrier(mProjSecondLayer.mpNormWS.get());
+                        pRenderContext->uavBarrier(mProjSecondLayer.mpDiffOpacity.get());
+
+                    }
 
                 }
 
                 // ---------------------------------- Merge Layers ---------------------------------------
 
-                // Input Textures
                 {
+                    // Input Textures
+                    {
 
-                    mpMergeLayerPass["gNearestFilter"] = mNearestThreshold;
+                        mpMergeLayerPass["PerFrameCB"]["gNearestFilter"] = mNearestThreshold;
+                        mpMergeLayerPass["PerFrameCB"]["gFrameDim"] = curDim;
 
-                    auto pFirstDepthTestSRV = mProjFirstLayer.mpDepthTest->getSRV();
-                    mpMergeLayerPass["gFirstLayerDepthTest"].setSrv(pFirstDepthTestSRV);
+                        auto pFirstDepthTestSRV = mProjFirstLayer.mpDepthTest->getSRV();
+                        mpMergeLayerPass["gFirstLayerDepthTest"].setSrv(pFirstDepthTestSRV);
 
-                    auto pFirstNormWSSRV = mProjFirstLayer.mpNormWS->getSRV();
-                    mpMergeLayerPass["gFirstLayerNormWS"].setSrv(pFirstNormWSSRV);
+                        auto pFirstNormWSSRV = mProjFirstLayer.mpNormWS->getSRV();
+                        mpMergeLayerPass["gFirstLayerNormWS"].setSrv(pFirstNormWSSRV);
 
-                    auto pFirstDiffOpacitySRV = mProjFirstLayer.mpDiffOpacity->getSRV();
-                    mpMergeLayerPass["gFirstLayerDiffOpacity"].setSrv(pFirstDiffOpacitySRV);
+                        auto pFirstDiffOpacitySRV = mProjFirstLayer.mpDiffOpacity->getSRV();
+                        mpMergeLayerPass["gFirstLayerDiffOpacity"].setSrv(pFirstDiffOpacitySRV);
 
-                    auto pSecondDepthTestSRV = mProjSecondLayer.mpDepthTest->getSRV();
-                    mpMergeLayerPass["gSecondLayerDepthTest"].setSrv(pSecondDepthTestSRV);
+                        auto pSecondDepthTestSRV = mProjSecondLayer.mpDepthTest->getSRV();
+                        mpMergeLayerPass["gSecondLayerDepthTest"].setSrv(pSecondDepthTestSRV);
 
-                    auto pSecondNormWSSRV = mProjSecondLayer.mpNormWS->getSRV();
-                    mpMergeLayerPass["gSecondLayerNormWS"].setSrv(pSecondNormWSSRV);
+                        auto pSecondNormWSSRV = mProjSecondLayer.mpNormWS->getSRV();
+                        mpMergeLayerPass["gSecondLayerNormWS"].setSrv(pSecondNormWSSRV);
 
-                    auto pSecondDiffOpacitySRV = mProjSecondLayer.mpDiffOpacity->getSRV();
-                    mpMergeLayerPass["gSecondLayerDiffOpacity"].setSrv(pSecondDiffOpacitySRV);
+                        auto pSecondDiffOpacitySRV = mProjSecondLayer.mpDiffOpacity->getSRV();
+                        mpMergeLayerPass["gSecondLayerDiffOpacity"].setSrv(pSecondDiffOpacitySRV);
+
+                    }
+
+                    // Output Textures
+                    {
+
+                        auto pNormWSUAV = mMergedLayer.mpNormWS->getUAV();
+                        pRenderContext->clearUAV(pNormWSUAV.get(), float4(0.f));
+                        mpMergeLayerPass["gNormWS"].setUav(pNormWSUAV);
+
+                        auto pDiffOpacityUAV = mMergedLayer.mpDiffOpacity->getUAV();
+                        pRenderContext->clearUAV(pDiffOpacityUAV.get(), float4(0.f));
+                        mpMergeLayerPass["gDiffOpacity"].setUav(pDiffOpacityUAV);
+
+                        auto pMaskUAV = mMergedLayer.mpMask->getUAV();
+                        pRenderContext->clearUAV(pMaskUAV.get(), float4(0.f));
+                        mpMergeLayerPass["gMask"].setUav(pMaskUAV);
+
+                    }
+
+                    mpMergeLayerPass->execute(pRenderContext, uint3(curDim, 1));
+
+                    // Set Barriers
+                    {
+                        pRenderContext->uavBarrier(mMergedLayer.mpNormWS.get());
+                        pRenderContext->uavBarrier(mMergedLayer.mpDiffOpacity.get());
+                        pRenderContext->uavBarrier(mMergedLayer.mpMask.get());
+                    }
+
+                    // Copy Data
+                    pRenderContext->blit(mProjFirstLayer.mpDepthTest ->getSRV(), renderData.getTexture("tl_Debug")->getRTV());
+                    pRenderContext->blit(mMergedLayer.mpNormWS->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
+                    pRenderContext->blit(mMergedLayer.mpDiffOpacity->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
+                    pRenderContext->blit(mMergedLayer.mpMask->getSRV(), renderData.getTexture("tl_Mask")->getRTV());
 
                 }
-
-                // Output Textures
-                {
-
-                    auto pNormWSUAV = mMergedLayer.mpNormWS->getUAV();
-                    pRenderContext->clearUAV(pNormWSUAV.get(), float4(0.f));
-                    mpMergeLayerPass["gNormWS"].set(pNormWSUAV);
-
-                    auto pDiffOpacityUAV = mMergedLayer.mpDiffOpacity->getUAV();
-                    pRenderContext->clearUAV(pDiffOpacityUAV.get(), float4(0.f));
-                    mpMergeLayerPass["gDiffOpacity"].set(pDiffOpacityUAV);
-
-                    auto pMaskUAV = mMergedLayer.mpMask->getUAV();
-                    pRenderContext->clearUAV(pMaskUAV.get(), float4(0.f));
-                    mpMergeLayerPass["gMask"].set(pMaskUAV);
-
-                }
-
-                mpMergeLayerPass->execute(pRenderContext, uint3(curDim, 1));
-
-                // Set Barriers
-                {
-                    pRenderContext->uavBarrier(mMergedLayer.mpNormWS.get());
-                    pRenderContext->uavBarrier(mMergedLayer.mpDiffOpacity.get());
-                    pRenderContext->uavBarrier(mMergedLayer.mpMask.get());
-                }
-
-                // Copy Data
-                pRenderContext->blit(mMergedLayer.mpNormWS->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
-                pRenderContext->blit(mMergedLayer.mpDiffOpacity->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
-                pRenderContext->blit(mMergedLayer.mpMask->getSRV(), renderData.getTexture("tl_Mask")->getRTV());
 
             }
 

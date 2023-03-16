@@ -70,6 +70,7 @@ private:
     } mRasterPass, mWarpGbufferPass, mTwoLayerGbufferGenPass;
 
     // Compute Pass
+    ComputePass::SharedPtr mpProjectionDepthTestPass;
     ComputePass::SharedPtr mpForwardWarpPass;
     ComputePass::SharedPtr mpMergeLayerPass;
 

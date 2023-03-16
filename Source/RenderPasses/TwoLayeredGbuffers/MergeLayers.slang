@@ -2,11 +2,11 @@ import Scene.Raster;
 import GBufferHelpers;
 
 
-Texture2D<float> gFirstLayerDepthTest;
+Texture2D<uint> gFirstLayerDepthTest;
 Texture2D<float4> gFirstLayerNormWS;
 Texture2D<float4> gFirstLayerDiffOpacity;
 
-Texture2D<float> gSecondLayerDepthTest;
+Texture2D<uint> gSecondLayerDepthTest;
 Texture2D<float4> gSecondLayerNormWS;
 Texture2D<float4> gSecondLayerDiffOpacity;
 
@@ -24,7 +24,7 @@ cbuffer PerFrameCB {
 struct Gbuf {
     float4 normWS;
     float4 diffOpacity;
-    float z;
+    uint z;
 };
 
 float Dist(int x, int y)
@@ -40,7 +40,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     Gbuf layer1, layer2;
 
-    if (gFirstLayerDepthTest[pixelCoord] > 1.0) {
+    if (gFirstLayerDepthTest[pixelCoord] == uint(-1)) {
 
         float minDist = 1000000.0;
 
@@ -48,7 +48,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
             for (int j = -gNearestFilter; j <= gNearestFilter; j++) {
                 uint2 tarCrd = pixelCoord + uint2(i, j);
                 if (tarCrd.x >= 0 && tarCrd.y >= 0 && tarCrd.x < gFrameDim.x && tarCrd.y < gFrameDim.y &&
-                        gFirstLayerDepthTest[tarCrd] < 1.0 &&
+                        gFirstLayerDepthTest[tarCrd] != uint(-1) &&
                         Dist(i, j) < minDist) {
 
                     minDist = Dist(i, j);
@@ -68,7 +68,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     // Second Layer
 
-    if (gSecondLayerDepthTest[pixelCoord] > 1.0) {
+    if (gSecondLayerDepthTest[pixelCoord] == uint(-1)) {
 
         float minDist = 1000000.0;
 
@@ -76,7 +76,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
             for (int j = -gNearestFilter; j <= gNearestFilter; j++) {
                 uint2 tarCrd = pixelCoord + uint2(i, j);
                 if (tarCrd.x >= 0 && tarCrd.y >= 0 && tarCrd.x < gFrameDim.x && tarCrd.y < gFrameDim.y &&
-                        gSecondLayerDepthTest[tarCrd] < 1.0 &&
+                        gSecondLayerDepthTest[tarCrd] != uint(-1) &&
                         Dist(i, j) < minDist) {
 
                     minDist = Dist(i, j);

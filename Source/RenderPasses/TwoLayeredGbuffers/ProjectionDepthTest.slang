@@ -7,22 +7,11 @@ cbuffer PerFrameCB {
     float4x4 gCurViewProjMat;
 };
 
-
-Texture2D<float4> gFirstLayerNormWS;
 Texture2D<float4> gFirstLayerPosWS;
-Texture2D<float4> gFirstLayerDiffOpacity;
-Texture2D<float4> gSecondLayerNormWS;
 Texture2D<float4> gSecondLayerPosWS;
-Texture2D<float4> gSecondLayerDiffOpacity;
 
-Texture2D<uint> gProjFirstLayerDepthTest;
-Texture2D<uint> gProjSecondLayerDepthTest;
-
-RWTexture2D<float4> gProjFirstLayerNormWS;
-RWTexture2D<float4> gProjFirstLayerDiffOpacity;
-
-RWTexture2D<float4> gProjSecondLayerNormWS;
-RWTexture2D<float4> gProjSecondLayerDiffOpacity;
+RWTexture2D<uint> gProjFirstLayerDepthTest;
+RWTexture2D<uint> gProjSecondLayerDepthTest;
 
 
 
@@ -47,10 +36,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     uint2 tarIpos = uint2(tarCrd * gFrameDim);
 
-    if (asuint(z) == gProjFirstLayerDepthTest[tarIpos]) {
-        gProjFirstLayerNormWS[tarIpos] = gFirstLayerNormWS[pixelCoord];
-        gProjFirstLayerDiffOpacity[tarIpos] = gFirstLayerDiffOpacity[pixelCoord];
-    }
+    InterlockedMin(gProjFirstLayerDepthTest[tarIpos], asuint(z));
+    // gProjFirstLayerDepthTest[tarIpos] = uint(z * 128);
 
 
     // Second Layer
@@ -69,11 +56,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     tarIpos = uint2(tarCrd * gFrameDim);
 
-    if (asuint(z) == gProjSecondLayerDepthTest[tarIpos]) {
-        gProjSecondLayerNormWS[tarIpos] = gSecondLayerNormWS[pixelCoord];
-        gProjSecondLayerDiffOpacity[tarIpos] = gSecondLayerDiffOpacity[pixelCoord];
-    }
-
+    InterlockedMin(gProjSecondLayerDepthTest[tarIpos], asuint(z));
 
     return;
 }
