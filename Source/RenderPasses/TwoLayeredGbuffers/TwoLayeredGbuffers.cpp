@@ -169,6 +169,7 @@ void TwoLayeredGbuffers::ClearVariables()
     mNormalConstraint = 0;
 
     mEnableSubPixel = false;
+    mEnableAdatpiveRadius = false;
     mAdditionalCamNum = 0;
 
     mPrevPos = float3(0.0f, 0.0f, 0.0f);
@@ -479,6 +480,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             mCenterMatrix = mpScene->getCamera()->getViewProjMatrix();
             mCenterMatrixInv = mpScene->getCamera()->getInvViewProjMatrix();
 
+            float speed = glm::length(mpScene->getCamera()->getPosition() - mPrevPos);
+
             Falcor::Logger::log(Falcor::Logger::Level::Info, "Current Camera Speed: "
                                 + Falcor::to_string(mpScene->getCamera()->getPosition() - mPrevPos) + " "
                                 + Falcor::to_string((float16_t)glm::length(mpScene->getCamera()->getPosition() - mPrevPos)));
@@ -606,12 +609,18 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 // Falcor::Logger::log(Falcor::Logger::Level::Info, "Random Number: "
                 //                     + Falcor::to_string((float16_t)randomAngle));
 
+                float disRadius = mAdditionalCamRadius;
+                if (mEnableAdatpiveRadius) disRadius = std::max<float>(speed * mAdditionalCamRadius, 0.4f);
+
+                Falcor::Logger::log(Falcor::Logger::Level::Info, "Current Radius: "
+                    + Falcor::to_string((float16_t)disRadius));
+
                 float3 offset;
                 if (i < 4) {
-                    offset = base_x * mAdditionalCamRadius * preDefineX[i] + base_y * mAdditionalCamRadius * preDefineY[i];
+                    offset = base_x * disRadius * preDefineX[i] + base_y * disRadius * preDefineY[i];
                 }
                 else {
-                    offset = base_x * cos(randomAngle) * mAdditionalCamRadius + base_y * sin(randomAngle) * mAdditionalCamRadius;
+                    offset = base_x * cos(randomAngle) * disRadius + base_y * sin(randomAngle) * disRadius;
                 }
 
                 auto newPos = AdditionalCam->getPosition() + offset;
@@ -1053,4 +1062,5 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
     widget.checkbox("Max Depth Constraint", mMaxDepthContraint);
     widget.checkbox("Normal Constraint", mNormalConstraint);
     widget.checkbox("Enable Subpixel Sampling in Forward Warping", mEnableSubPixel);
+    widget.checkbox("Enable Adatptive Radius", mEnableAdatpiveRadius);
 }

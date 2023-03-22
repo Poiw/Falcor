@@ -133,6 +133,7 @@ private:
     bool mMaxDepthContraint;
     bool mNormalConstraint;
     bool mEnableSubPixel;
+    bool mEnableAdatpiveRadius;
 
     // Variables
     float3 mPrevPos;
