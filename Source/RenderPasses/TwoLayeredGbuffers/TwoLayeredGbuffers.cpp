@@ -585,6 +585,11 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             pRenderContext->blit(renderData.getTexture("tl_SecondPosWS")->getSRV(), mSecondLayerGbuffer.mpPosWS->getRTV());
 
 
+
+            float preDefineX[] = {-1, 0, 1, 0};
+            float preDefineY[] = {0, -1, 0, 1};
+
+
             for (int i = 0; i < mAdditionalCamNum; i++) {
 
                 auto AdditionalCam = Camera::create("AdditionalCam");
@@ -601,12 +606,16 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 // Falcor::Logger::log(Falcor::Logger::Level::Info, "Random Number: "
                 //                     + Falcor::to_string((float16_t)randomAngle));
 
+                float3 offset;
+                if (i < 4) {
+                    offset = base_x * mAdditionalCamRadius * preDefineX[i] + base_y * mAdditionalCamRadius * preDefineY[i];
+                }
+                else {
+                    offset = base_x * cos(randomAngle) * mAdditionalCamRadius + base_y * sin(randomAngle) * mAdditionalCamRadius;
+                }
 
-                auto newPos = AdditionalCam->getPosition() + base_x * cos(randomAngle) * mAdditionalCamRadius
-                            + base_y * sin(randomAngle) * mAdditionalCamRadius;
-
-                auto newTar = AdditionalCam->getTarget() + base_x * cos(randomAngle) * mAdditionalCamRadius
-                            + base_y * sin(randomAngle) * mAdditionalCamRadius;
+                auto newPos = AdditionalCam->getPosition() + offset;
+                auto newTar = AdditionalCam->getTarget() + offset;
 
 
                 // auto newPos = AdditionalCam->getPosition() + base_x * (randomAngle - glm::pi<float>());
