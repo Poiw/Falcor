@@ -32,8 +32,11 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     uint2 tarIpos = uint2(tarCrd * gFrameDim);
 
-    if (z * tarPosH.w > gProjFirstLinearZ[tarIpos][0])
-        InterlockedMax(gProjDepthBuf[tarIpos], asuint(z), gProjDepthBuf[tarIpos]);
+    if (tarPosH.w > gProjFirstLinearZ[tarIpos][0] + 1e-2) {
+        InterlockedMax(gProjDepthBuf[tarIpos], asuint(z));
+        // InterlockedMax(gProjDepthBuf[tarIpos], asuint(z), gProjDepthBuf[tarIpos]);
+        // gProjDepthBuf[tarIpos] = asuint(z);
+    }
 
     return;
 }
