@@ -79,6 +79,7 @@ private:
     ComputePass::SharedPtr mpMergeLayerPass;
     ComputePass::SharedPtr mpAdditionalGbufferCopyPass;
     ComputePass::SharedPtr mpAdditionalGbufferCopyDepthPass;
+    ComputePass::SharedPtr mpShadingWarpingPass;
 
     struct {
         Texture::SharedPtr mpPosWS;
@@ -86,6 +87,8 @@ private:
         Texture::SharedPtr mpDiffOpacity;
         Texture::SharedPtr mpDepth;
     } mFirstLayerGbuffer, mSecondLayerGbuffer;
+
+    Texture::SharedPtr mpCenterRender;
 
     struct {
         Texture::SharedPtr mpDepthTest;
@@ -101,6 +104,7 @@ private:
         Texture::SharedPtr mpDiffOpacity;
         Texture::SharedPtr mpPosWS;
         Texture::SharedPtr mpPrevCoord;
+        Texture::SharedPtr mpRender;
     } mMergedLayer;
 
     struct{

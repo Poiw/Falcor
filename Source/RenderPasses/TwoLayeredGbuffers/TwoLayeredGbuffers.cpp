@@ -61,6 +61,8 @@ const std::string forwardWarpGbufferShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/ForwardWarpGbuffer.slang";
 const std::string mergeLayersShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/MergeLayers.slang";
+const std::string shadingWarpingShaderFilePath =
+    "RenderPasses/TwoLayeredGbuffers/ShadingWarping.slang";
 }  // namespace
 
 
@@ -162,12 +164,15 @@ void TwoLayeredGbuffers::ClearVariables()
     mMergedLayer.mpDiffOpacity = nullptr;
     mMergedLayer.mpPosWS = nullptr;
     mMergedLayer.mpPrevCoord = nullptr;
+    mMergedLayer.mpRender = nullptr;
 
     mAdditionalGbuffer.mpPosWS = nullptr;
     mAdditionalGbuffer.mpNormWS = nullptr;
     mAdditionalGbuffer.mpDiffOpacity = nullptr;
     mAdditionalGbuffer.mpDepth = nullptr;
     mAdditionalGbuffer.mpProjDepth = nullptr;
+
+    mpCenterRender = nullptr;
 
     mMode = 0;
     mNormalThreshold = 1.0;
@@ -331,6 +336,19 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
             // Bind the scene.
             mpMergeLayerPass->setVars(nullptr);  // Trigger vars creation
             // mpForwardWarpPass["gScene"] = mpScene->getParameterBlock();
+        }
+
+        // create a shading warping pass
+        {
+            Program::Desc desc;
+            desc.addShaderModules(mpScene->getShaderModules());
+            desc.addShaderLibrary(shadingWarpingShaderFilePath).csEntry("csMain");
+            desc.addTypeConformances(mpScene->getTypeConformances());
+            Program::DefineList defines;
+            defines.add(mpScene->getSceneDefines());
+            mpShadingWarpingPass = ComputePass::create(desc, defines, false);
+            // Bind the scene.
+            mpShadingWarpingPass->setVars(nullptr);  // Trigger vars creation
         }
     }
 }
@@ -548,6 +566,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 createNewTexture(mFirstLayerGbuffer.mpDiffOpacity, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpDepth, curDim, ResourceFormat::R32Float);
 
+                createNewTexture(mpCenterRender, curDim);
+
                 createNewTexture(mSecondLayerGbuffer.mpPosWS, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpDiffOpacity, curDim);
@@ -613,6 +633,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), mFirstLayerGbuffer.mpDiffOpacity->getRTV());
             pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), mFirstLayerGbuffer.mpPosWS->getRTV());
             pRenderContext->blit(renderData.getTexture("gDepth")->getSRV(), mFirstLayerGbuffer.mpDepth->getRTV());
+
+            pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), mpCenterRender->getRTV());
 
             pRenderContext->blit(renderData.getTexture("tl_SecondNormWS")->getSRV(), mSecondLayerGbuffer.mpNormWS->getRTV());
             pRenderContext->blit(renderData.getTexture("tl_SecondDiffOpacity")->getSRV(), mSecondLayerGbuffer.mpDiffOpacity->getRTV());
@@ -867,6 +889,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     createNewTexture(mMergedLayer.mpDiffOpacity, curDim, ResourceFormat::RGBA32Float);
                     createNewTexture(mMergedLayer.mpPosWS, curDim, ResourceFormat::RGBA32Float);
                     createNewTexture(mMergedLayer.mpPrevCoord, curDim, ResourceFormat::RG32Int);
+                    createNewTexture(mMergedLayer.mpRender, curDim, ResourceFormat::RGBA32Float);
                 }
 
 
@@ -1143,6 +1166,60 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     pRenderContext->blit(mMergedLayer.mpPrevCoord->getSRV(), renderData.getTexture("tl_FirstPrevCoord")->getRTV());
                     pRenderContext->blit(mMergedLayer.mpMask->getSRV(), renderData.getTexture("tl_Mask")->getRTV());
 
+                }
+
+
+                // ---------------------------------- Warp Shading ---------------------------------------
+                {
+                    // Input
+                    {
+
+
+                        mpShadingWarpingPass["PerFrameCB"]["gFrameDim"] = curDim;
+
+
+                        auto pCurDiffOpacitySRV = mMergedLayer.mpDiffOpacity->getSRV();
+                        mpShadingWarpingPass["gCurDiffOpacity"].setSrv(pCurDiffOpacitySRV);
+
+                        auto pCurPosWSSRV = mMergedLayer.mpPosWS->getSRV();
+                        mpShadingWarpingPass["gCurPosWS"].setSrv(pCurPosWSSRV);
+
+                        auto pCurNormWSSRV = mMergedLayer.mpNormWS->getSRV();
+                        mpShadingWarpingPass["gCurNormWS"].setSrv(pCurNormWSSRV);
+
+                        auto pCurPrevCoordSRV = mMergedLayer.mpPrevCoord->getSRV();
+                        mpShadingWarpingPass["gCurPrevCoord"].setSrv(pCurPrevCoordSRV);
+
+
+                        auto pCenterDiffOpacitySRV = mFirstLayerGbuffer.mpDiffOpacity->getSRV();
+                        mpShadingWarpingPass["gCenterDiffOpacity"].setSrv(pCenterDiffOpacitySRV);
+
+                        auto pCenterPosWSSRV = mFirstLayerGbuffer.mpPosWS->getSRV();
+                        mpShadingWarpingPass["gCenterPosWS"].setSrv(pCenterPosWSSRV);
+
+                        auto pCenterNormWSSRV = mFirstLayerGbuffer.mpNormWS->getSRV();
+                        mpShadingWarpingPass["gCenterNormWS"].setSrv(pCenterNormWSSRV);
+
+                        auto pCenterRenderSRV = mpCenterRender->getSRV();
+                        mpShadingWarpingPass["gCenterRender"].setSrv(pCenterRenderSRV);
+                    }
+
+                    // Output
+                    {
+                        auto pRenderUAV = mMergedLayer.mpRender->getUAV();
+                        pRenderContext->clearUAV(pRenderUAV.get(), float4(-1.f));
+                        mpShadingWarpingPass["gRender"].setUav(pRenderUAV);
+                    }
+
+                    mpShadingWarpingPass->execute(pRenderContext, uint3(curDim, 1));
+
+                    // Set Barriers
+                    {
+                        pRenderContext->uavBarrier(mMergedLayer.mpRender.get());
+                    }
+
+                    // Copy Data
+                    pRenderContext->blit(mMergedLayer.mpRender->getSRV(), renderData.getTexture("tl_FirstPreTonemap")->getRTV());
                 }
 
             }
