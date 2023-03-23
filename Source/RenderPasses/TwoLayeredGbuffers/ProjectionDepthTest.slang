@@ -16,8 +16,14 @@ Texture2D<float4> gSecondLayerPosWS;
 Texture2D<float> gFirstDepth;
 Texture2D<float> gSecondDepth;
 
-RWTexture2D<uint> gProjFirstLayerDepthTest;
-RWTexture2D<uint> gProjSecondLayerDepthTest;
+RWTexture2D<uint> gProjFirstLayerDepthTest0;
+RWTexture2D<uint> gProjSecondLayerDepthTest0;
+RWTexture2D<uint> gProjFirstLayerDepthTest1;
+RWTexture2D<uint> gProjSecondLayerDepthTest1;
+RWTexture2D<uint> gProjFirstLayerDepthTest2;
+RWTexture2D<uint> gProjSecondLayerDepthTest2;
+RWTexture2D<uint> gProjFirstLayerDepthTest3;
+RWTexture2D<uint> gProjSecondLayerDepthTest3;
 
 
 
@@ -60,9 +66,15 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                 #endif
                     tarCrd += 0.5;
 
-                uint2 tarIpos = uint2(tarCrd * gFrameDim);
+                uint2 tarIpos0 = uint2(tarCrd * gFrameDim);
+                uint2 tarIpos1 = uint2(tarCrd * gFrameDim) / 2;
+                uint2 tarIpos2 = uint2(tarCrd * gFrameDim) / 4;
+                uint2 tarIpos3 = uint2(tarCrd * gFrameDim) / 8;
 
-                InterlockedMin(gProjFirstLayerDepthTest[tarIpos], asuint(z));
+                InterlockedMin(gProjFirstLayerDepthTest0[tarIpos0], asuint(z));
+                InterlockedMin(gProjFirstLayerDepthTest1[tarIpos1], asuint(z));
+                InterlockedMin(gProjFirstLayerDepthTest2[tarIpos2], asuint(z));
+                InterlockedMin(gProjFirstLayerDepthTest3[tarIpos3], asuint(z));
             }
         }
 
@@ -93,9 +105,15 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                 #endif
                     tarCrd += 0.5;
 
-                uint2 tarIpos = uint2(tarCrd * gFrameDim);
+                uint2 tarIpos0 = uint2(tarCrd * gFrameDim);
+                uint2 tarIpos1 = uint2(tarCrd * gFrameDim) / 2;
+                uint2 tarIpos2 = uint2(tarCrd * gFrameDim) / 4;
+                uint2 tarIpos3 = uint2(tarCrd * gFrameDim) / 8;
 
-                InterlockedMin(gProjSecondLayerDepthTest[tarIpos], asuint(z));
+                InterlockedMin(gProjSecondLayerDepthTest0[tarIpos0], asuint(z));
+                InterlockedMin(gProjSecondLayerDepthTest1[tarIpos1], asuint(z));
+                InterlockedMin(gProjSecondLayerDepthTest2[tarIpos2], asuint(z));
+                InterlockedMin(gProjSecondLayerDepthTest3[tarIpos3], asuint(z));
             }
         }
     }
@@ -115,10 +133,18 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     #endif
         tarCrd += 0.5;
 
-        uint2 tarIpos = uint2(tarCrd * gFrameDim);
+        // uint2 tarIpos = uint2(tarCrd * gFrameDim);
 
-        InterlockedMin(gProjFirstLayerDepthTest[tarIpos], asuint(z));
-        // gProjFirstLayerDepthTest[tarIpos] = uint(z * 128);
+        // InterlockedMin(gProjFirstLayerDepthTest[tarIpos], asuint(z));
+        uint2 tarIpos0 = uint2(tarCrd * gFrameDim);
+        uint2 tarIpos1 = uint2(tarCrd * gFrameDim) / 2;
+        uint2 tarIpos2 = uint2(tarCrd * gFrameDim) / 4;
+        uint2 tarIpos3 = uint2(tarCrd * gFrameDim) / 8;
+
+        InterlockedMin(gProjFirstLayerDepthTest0[tarIpos0], asuint(z));
+        InterlockedMin(gProjFirstLayerDepthTest1[tarIpos1], asuint(z));
+        InterlockedMin(gProjFirstLayerDepthTest2[tarIpos2], asuint(z));
+        InterlockedMin(gProjFirstLayerDepthTest3[tarIpos3], asuint(z));
 
 
         // Second Layer
@@ -135,9 +161,18 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     #endif
         tarCrd += 0.5;
 
-        tarIpos = uint2(tarCrd * gFrameDim);
+        // tarIpos = uint2(tarCrd * gFrameDim);
 
-        InterlockedMin(gProjSecondLayerDepthTest[tarIpos], asuint(z));
+        // InterlockedMin(gProjSecondLayerDepthTest[tarIpos], asuint(z));
+        tarIpos0 = uint2(tarCrd * gFrameDim);
+        tarIpos1 = uint2(tarCrd * gFrameDim) / 2;
+        tarIpos2 = uint2(tarCrd * gFrameDim) / 4;
+        tarIpos3 = uint2(tarCrd * gFrameDim) / 8;
+
+        InterlockedMin(gProjSecondLayerDepthTest0[tarIpos0], asuint(z));
+        InterlockedMin(gProjSecondLayerDepthTest1[tarIpos1], asuint(z));
+        InterlockedMin(gProjSecondLayerDepthTest2[tarIpos2], asuint(z));
+        InterlockedMin(gProjSecondLayerDepthTest3[tarIpos3], asuint(z));
 
     }
 

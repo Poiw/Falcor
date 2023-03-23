@@ -31,6 +31,8 @@
 
 using namespace Falcor;
 
+const int maxTexLevel = 4;
+
 class TwoLayeredGbuffers : public RenderPass
 {
 public:
@@ -89,7 +91,7 @@ private:
         Texture::SharedPtr mpDepthTest;
         Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
-    } mProjFirstLayer, mProjSecondLayer;
+    } mProjFirstLayer[maxTexLevel], mProjSecondLayer[maxTexLevel];
 
     struct {
         Texture::SharedPtr mpMask;
@@ -117,6 +119,7 @@ private:
     uint mNearestThreshold; // Nearest Filter size
     uint mSubPixelSample;
     uint mAdditionalCamNum;
+    uint mForwardMipLevel;
     float mAdditionalCamRadius;
     float mAdditionalCamTarDist;
 
