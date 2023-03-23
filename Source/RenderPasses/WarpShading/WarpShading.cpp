@@ -41,10 +41,37 @@ extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
     lib.registerPass(WarpShading::kInfo, WarpShading::create);
 }
 
+namespace {
+const std::string shadingWarpingShaderFilePath =
+    "RenderPasses/WarpShading/ShadingWarping.slang";
+}  // namespace
+
+
 WarpShading::SharedPtr WarpShading::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
     SharedPtr pPass = SharedPtr(new WarpShading());
     return pPass;
+}
+
+void WarpShading::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+{
+     if (pScene) {
+        mpScene = pScene;
+
+        // create a shading warping pass
+        {
+            Program::Desc desc;
+            desc.addShaderModules(mpScene->getShaderModules());
+            desc.addShaderLibrary(shadingWarpingShaderFilePath).csEntry("csMain");
+            desc.addTypeConformances(mpScene->getTypeConformances());
+            Program::DefineList defines;
+            defines.add(mpScene->getSceneDefines());
+            mpShadingWarpingPass = ComputePass::create(desc, defines, false);
+            // Bind the scene.
+            mpShadingWarpingPass->setVars(nullptr);  // Trigger vars creation
+        }
+
+    }
 }
 
 Dictionary WarpShading::getScriptingDictionary()
@@ -56,15 +83,112 @@ RenderPassReflection WarpShading::reflect(const CompileData& compileData)
 {
     // Define the required resources here
     RenderPassReflection reflector;
-    //reflector.addOutput("dst");
-    //reflector.addInput("src");
+
+    reflector.addInput("tl_FrameCount", "Current Frame Count")
+        .format(ResourceFormat::R32Uint)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D(1, 1);
+
+    reflector.addInput("tl_CenterDiffOpacity", "Center Diff Opactiy")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+    reflector.addInput("tl_CenterNormWS", "Center Norm WS")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+    reflector.addInput("tl_CenterPosWS", "Center Pos WS")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+    reflector.addInput("tl_CenterRender", "Center Render")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+
+
+    reflector.addInput("tl_CurDiffOpacity", "Cur Diff Opactiy")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+    reflector.addInput("tl_CurNormWS", "Cur Norm WS")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+    reflector.addInput("tl_CurPosWS", "Cur Pos WS")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+    reflector.addInput("tl_CurPrevCoord", "Prev Coord")
+        .format(ResourceFormat::RG32Uint)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+
+    reflector.addOutput("tl_FirstPreTonemap", "Pre Tonemapped Rendering")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
+
     return reflector;
 }
 
 void WarpShading::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    // renderData holds the requested resources
-    // auto& pTexture = renderData.getTexture("src");
+
+
+    if (mpScene == nullptr) return;
+
+    auto curDim = renderData.getDefaultTextureDims();
+    // ---------------------------------- Warp Shading ---------------------------------------
+    {
+        // Input
+        {
+            mpShadingWarpingPass["PerFrameCB"]["gFrameDim"] = curDim;
+
+            auto pFrameCountSRV = renderData["tl_FrameCount"]->getSRV();
+            mpShadingWarpingPass["gFrameCount"].setSrv(pFrameCountSRV);
+
+
+            auto pCurDiffOpacitySRV = renderData["tl_CurDiffOpacity"]->getSRV();
+            mpShadingWarpingPass["gCurDiffOpacity"].setSrv(pCurDiffOpacitySRV);
+
+            auto pCurPosWSSRV = renderData["tl_CurPosWS"]->getSRV();
+            mpShadingWarpingPass["gCurPosWS"].setSrv(pCurPosWSSRV);
+
+            auto pCurNormWSSRV = renderData["tl_CurNormWS"]->getSRV();
+            mpShadingWarpingPass["gCurNormWS"].setSrv(pCurNormWSSRV);
+
+            auto pCurPrevCoordSRV = renderData["tl_CurPrevCoord"]->getSRV();
+            mpShadingWarpingPass["gCurPrevCoord"].setSrv(pCurPrevCoordSRV);
+
+            auto pCenterDiffOpacitySRV = renderData["tl_CenterDiffOpacity"]->getSRV();
+            mpShadingWarpingPass["gCenterDiffOpacity"].setSrv(pCenterDiffOpacitySRV);
+
+            auto pCenterPosWSSRV = renderData["tl_CenterPosWS"]->getSRV();
+            mpShadingWarpingPass["gCenterPosWS"].setSrv(pCenterPosWSSRV);
+
+            auto pCenterNormWSSRV = renderData["tl_CenterNormWS"]->getSRV();
+            mpShadingWarpingPass["gCenterNormWS"].setSrv(pCenterNormWSSRV);
+
+            auto pCenterRenderSRV = renderData["tl_CenterRender"]->getSRV();
+            mpShadingWarpingPass["gCenterRender"].setSrv(pCenterRenderSRV);
+        }
+
+        // Output
+        {
+            auto pRenderUAV = renderData["tl_FirstPreTonemap"]->getUAV();
+            pRenderContext->clearUAV(pRenderUAV.get(), float4(-1.f));
+            mpShadingWarpingPass["gRender"].setUav(pRenderUAV);
+        }
+
+        mpShadingWarpingPass->execute(pRenderContext, uint3(curDim, 1));
+
+        // Set Barriers
+        {
+            pRenderContext->uavBarrier(renderData["tl_FirstPreTonemap"].get());
+        }
+
+    }
 }
 
 void WarpShading::renderUI(Gui::Widgets& widget)

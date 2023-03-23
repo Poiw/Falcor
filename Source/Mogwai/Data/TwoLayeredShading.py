@@ -11,11 +11,15 @@ def render_graph_TwoLayeredShading():
     loadRenderPassLibrary("PathTracer.dll")
     loadRenderPassLibrary("ToneMapper.dll")
     loadRenderPassLibrary("TwoLayeredGbuffers.dll")
+    loadRenderPassLibrary("WarpShading.dll")
 
     gbuffer_raster = createPass("GBufferRaster", {'adjustShadingNormals': False})
     g.addPass(gbuffer_raster, "GBufferRaster")
     gen_twoLayerGbuffer = createPass("TwoLayeredGbuffers")
     g.addPass(gen_twoLayerGbuffer, "TwoLayeredGbuffers")
+
+    warp_shading = createPass("WarpShading")
+    g.addPass(warp_shading, "WarpShading")
 
     GBufferRT = createPass("GBufferRT", {'samplePattern': SamplePattern.Halton, 'sampleCount': 32, 'useAlphaTest': True})
     g.addPass(GBufferRT, "GBufferRT")
@@ -110,7 +114,18 @@ def render_graph_TwoLayeredShading():
     g.addEdge("GBufferRaster.linearZ", "TwoLayeredGbuffers.gLinearZ")
     g.addEdge("GBufferRaster.depth", "TwoLayeredGbuffers.gDepth")
 
-    g.addEdge("TwoLayeredGbuffers.tl_FirstPreTonemap", "ToneMapperTwoLayered.src")
+    g.addEdge("TwoLayeredGbuffers.tl_FrameCount", "WarpShading.tl_FrameCount")
+    g.addEdge("TwoLayeredGbuffers.tl_FirstDiffOpacity", "WarpShading.tl_CurDiffOpacity")
+    g.addEdge("TwoLayeredGbuffers.tl_FirstNormWS", "WarpShading.tl_CurNormWS")
+    g.addEdge("TwoLayeredGbuffers.tl_FirstPosWS", "WarpShading.tl_CurPosWS")
+    g.addEdge("TwoLayeredGbuffers.tl_FirstPrevCoord", "WarpShading.tl_CurPrevCoord")
+
+    g.addEdge("TwoLayeredGbuffers.tl_CenterDiffOpacity", "WarpShading.tl_CenterDiffOpacity")
+    g.addEdge("TwoLayeredGbuffers.tl_CenterNormWS", "WarpShading.tl_CenterNormWS")
+    g.addEdge("TwoLayeredGbuffers.tl_CenterPosWS", "WarpShading.tl_CenterPosWS")
+    g.addEdge("TwoLayeredGbuffers.tl_CenterRender", "WarpShading.tl_CenterRender")
+
+    g.addEdge("WarpShading.tl_FirstPreTonemap", "ToneMapperTwoLayered.src")
 
     # Outputs
     g.markOutput('TwoLayeredGbuffers.tl_Debug')

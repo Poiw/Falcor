@@ -61,8 +61,8 @@ const std::string forwardWarpGbufferShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/ForwardWarpGbuffer.slang";
 const std::string mergeLayersShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/MergeLayers.slang";
-const std::string shadingWarpingShaderFilePath =
-    "RenderPasses/TwoLayeredGbuffers/ShadingWarping.slang";
+// const std::string shadingWarpingShaderFilePath =
+//     "RenderPasses/TwoLayeredGbuffers/ShadingWarping.slang";
 }  // namespace
 
 
@@ -338,18 +338,18 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
             // mpForwardWarpPass["gScene"] = mpScene->getParameterBlock();
         }
 
-        // create a shading warping pass
-        {
-            Program::Desc desc;
-            desc.addShaderModules(mpScene->getShaderModules());
-            desc.addShaderLibrary(shadingWarpingShaderFilePath).csEntry("csMain");
-            desc.addTypeConformances(mpScene->getTypeConformances());
-            Program::DefineList defines;
-            defines.add(mpScene->getSceneDefines());
-            mpShadingWarpingPass = ComputePass::create(desc, defines, false);
-            // Bind the scene.
-            mpShadingWarpingPass->setVars(nullptr);  // Trigger vars creation
-        }
+        // // create a shading warping pass
+        // {
+        //     Program::Desc desc;
+        //     desc.addShaderModules(mpScene->getShaderModules());
+        //     desc.addShaderLibrary(shadingWarpingShaderFilePath).csEntry("csMain");
+        //     desc.addTypeConformances(mpScene->getTypeConformances());
+        //     Program::DefineList defines;
+        //     defines.add(mpScene->getSceneDefines());
+        //     mpShadingWarpingPass = ComputePass::create(desc, defines, false);
+        //     // Bind the scene.
+        //     mpShadingWarpingPass->setVars(nullptr);  // Trigger vars creation
+        // }
     }
 }
 
@@ -424,7 +424,7 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
     reflector.addOutput("tl_FirstPrevCoord", "Coord for center images")
-        .format(ResourceFormat::RG32Int)
+        .format(ResourceFormat::RG32Uint)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
     reflector.addOutput("tl_FirstPreTonemap", "Pre Tonemapped Rendering")
@@ -446,7 +446,29 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
     reflector.addOutput("tl_SecondPrevCoord", "Coord for center images")
-        .format(ResourceFormat::RG32Int)
+        .format(ResourceFormat::RG32Uint)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
+
+    reflector.addOutput("tl_FrameCount", "Current Frame Count")
+        .format(ResourceFormat::R32Uint)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D(1, 1);
+
+    reflector.addOutput("tl_CenterDiffOpacity", "Center Diff Opactiy")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
+    reflector.addOutput("tl_CenterNormWS", "Center Norm WS")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
+    reflector.addOutput("tl_CenterPosWS", "Center Pos WS")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
+    reflector.addOutput("tl_CenterRender", "Center Render")
+        .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
 
@@ -513,6 +535,16 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
     }
 
     else if (mMode == 1 || mMode == 2) {
+
+        // auto pFrameCountUAV = renderData.getTexture("tl_FrameCount")->getUAV();
+        // pRenderContext->clearUAV(pFrameCountUAV.get(), uint4(mFrameCount % mFreshNum));
+
+        uint tempV = mFrameCount % mFreshNum;
+        Texture::SharedPtr Temp = nullptr;
+        Temp = Texture::create2D(1, 1, ResourceFormat::R32Uint,
+                                    1U, 1, &tempV,
+                                    Resource::BindFlags::RenderTarget);
+        pRenderContext->blit(Temp->getSRV(), renderData.getTexture("tl_FrameCount")->getRTV());
 
         if (mFrameCount % mFreshNum == 0) {
 
@@ -621,25 +653,6 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             mpScene->rasterize(pRenderContext, mTwoLayerGbufferGenPass.pGraphicsState.get(),
                             mTwoLayerGbufferGenPass.pVars.get(),
                             RasterizerState::CullMode::None);
-
-            // Copy to render target
-            pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
-            pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
-            pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), renderData.getTexture("tl_FirstPosWS")->getRTV());
-            pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), renderData.getTexture("tl_FirstPreTonemap")->getRTV());
-
-            // Copy to texture
-            pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), mFirstLayerGbuffer.mpNormWS->getRTV());
-            pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), mFirstLayerGbuffer.mpDiffOpacity->getRTV());
-            pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), mFirstLayerGbuffer.mpPosWS->getRTV());
-            pRenderContext->blit(renderData.getTexture("gDepth")->getSRV(), mFirstLayerGbuffer.mpDepth->getRTV());
-
-            pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), mpCenterRender->getRTV());
-
-            pRenderContext->blit(renderData.getTexture("tl_SecondNormWS")->getSRV(), mSecondLayerGbuffer.mpNormWS->getRTV());
-            pRenderContext->blit(renderData.getTexture("tl_SecondDiffOpacity")->getSRV(), mSecondLayerGbuffer.mpDiffOpacity->getRTV());
-            pRenderContext->blit(renderData.getTexture("tl_SecondPosWS")->getSRV(), mSecondLayerGbuffer.mpPosWS->getRTV());
-
 
 
             float preDefineX[] = {-1, 0, 1, 0};
@@ -803,10 +816,32 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
             }
 
+            // Copy to render target
+            pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
+            pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
+            pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), renderData.getTexture("tl_FirstPosWS")->getRTV());
+            pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), renderData.getTexture("tl_FirstPreTonemap")->getRTV());
+
+            // Copy to texture
+            pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), mFirstLayerGbuffer.mpNormWS->getRTV());
+            pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), mFirstLayerGbuffer.mpDiffOpacity->getRTV());
+            pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), mFirstLayerGbuffer.mpPosWS->getRTV());
+            pRenderContext->blit(renderData.getTexture("gDepth")->getSRV(), mFirstLayerGbuffer.mpDepth->getRTV());
+
+            pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), mpCenterRender->getRTV());
+
+            pRenderContext->blit(renderData.getTexture("tl_SecondNormWS")->getSRV(), mSecondLayerGbuffer.mpNormWS->getRTV());
+            pRenderContext->blit(renderData.getTexture("tl_SecondDiffOpacity")->getSRV(), mSecondLayerGbuffer.mpDiffOpacity->getRTV());
+            pRenderContext->blit(renderData.getTexture("tl_SecondPosWS")->getSRV(), mSecondLayerGbuffer.mpPosWS->getRTV());
 
             pRenderContext->blit(mSecondLayerGbuffer.mpPosWS->getSRV(), renderData.getTexture("tl_SecondPosWS")->getRTV());
             pRenderContext->blit(mSecondLayerGbuffer.mpNormWS->getSRV(), renderData.getTexture("tl_SecondNormWS")->getRTV());
             pRenderContext->blit(mSecondLayerGbuffer.mpDiffOpacity->getSRV(), renderData.getTexture("tl_SecondDiffOpacity")->getRTV());
+
+            pRenderContext->blit(mFirstLayerGbuffer.mpDiffOpacity->getSRV(), renderData.getTexture("tl_CenterDiffOpacity")->getRTV());
+            pRenderContext->blit(mFirstLayerGbuffer.mpNormWS->getSRV(), renderData.getTexture("tl_CenterNormWS")->getRTV());
+            pRenderContext->blit(mFirstLayerGbuffer.mpPosWS->getSRV(), renderData.getTexture("tl_CenterPosWS")->getRTV());
+            pRenderContext->blit(mpCenterRender->getSRV(), renderData.getTexture("tl_CenterRender")->getRTV());
 
         }
 
@@ -874,21 +909,21 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         createNewTexture(mProjFirstLayer[level].mpNormWS, texDim, ResourceFormat::RGBA32Float);
                         createNewTexture(mProjFirstLayer[level].mpDiffOpacity, texDim, ResourceFormat::RGBA32Float);
                         createNewTexture(mProjFirstLayer[level].mpPosWS, texDim, ResourceFormat::RGBA32Float);
-                        createNewTexture(mProjFirstLayer[level].mpPrevCoord, texDim, ResourceFormat::RG32Int);
+                        createNewTexture(mProjFirstLayer[level].mpPrevCoord, texDim, ResourceFormat::RG32Uint);
 
 
                         createNewTexture(mProjSecondLayer[level].mpDepthTest, texDim, ResourceFormat::R32Uint);
                         createNewTexture(mProjSecondLayer[level].mpNormWS, texDim, ResourceFormat::RGBA32Float);
                         createNewTexture(mProjSecondLayer[level].mpDiffOpacity, texDim, ResourceFormat::RGBA32Float);
                         createNewTexture(mProjSecondLayer[level].mpPosWS, texDim, ResourceFormat::RGBA32Float);
-                        createNewTexture(mProjSecondLayer[level].mpPrevCoord, texDim, ResourceFormat::RG32Int);
+                        createNewTexture(mProjSecondLayer[level].mpPrevCoord, texDim, ResourceFormat::RG32Uint);
                     }
 
                     createNewTexture(mMergedLayer.mpMask, curDim, ResourceFormat::RGBA32Float);
                     createNewTexture(mMergedLayer.mpNormWS, curDim, ResourceFormat::RGBA32Float);
                     createNewTexture(mMergedLayer.mpDiffOpacity, curDim, ResourceFormat::RGBA32Float);
                     createNewTexture(mMergedLayer.mpPosWS, curDim, ResourceFormat::RGBA32Float);
-                    createNewTexture(mMergedLayer.mpPrevCoord, curDim, ResourceFormat::RG32Int);
+                    createNewTexture(mMergedLayer.mpPrevCoord, curDim, ResourceFormat::RG32Uint);
                     createNewTexture(mMergedLayer.mpRender, curDim, ResourceFormat::RGBA32Float);
                 }
 
@@ -1169,58 +1204,58 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 }
 
 
-                // ---------------------------------- Warp Shading ---------------------------------------
-                {
-                    // Input
-                    {
+                // // ---------------------------------- Warp Shading ---------------------------------------
+                // {
+                //     // Input
+                //     {
 
 
-                        mpShadingWarpingPass["PerFrameCB"]["gFrameDim"] = curDim;
+                //         mpShadingWarpingPass["PerFrameCB"]["gFrameDim"] = curDim;
 
 
-                        auto pCurDiffOpacitySRV = mMergedLayer.mpDiffOpacity->getSRV();
-                        mpShadingWarpingPass["gCurDiffOpacity"].setSrv(pCurDiffOpacitySRV);
+                //         auto pCurDiffOpacitySRV = mMergedLayer.mpDiffOpacity->getSRV();
+                //         mpShadingWarpingPass["gCurDiffOpacity"].setSrv(pCurDiffOpacitySRV);
 
-                        auto pCurPosWSSRV = mMergedLayer.mpPosWS->getSRV();
-                        mpShadingWarpingPass["gCurPosWS"].setSrv(pCurPosWSSRV);
+                //         auto pCurPosWSSRV = mMergedLayer.mpPosWS->getSRV();
+                //         mpShadingWarpingPass["gCurPosWS"].setSrv(pCurPosWSSRV);
 
-                        auto pCurNormWSSRV = mMergedLayer.mpNormWS->getSRV();
-                        mpShadingWarpingPass["gCurNormWS"].setSrv(pCurNormWSSRV);
+                //         auto pCurNormWSSRV = mMergedLayer.mpNormWS->getSRV();
+                //         mpShadingWarpingPass["gCurNormWS"].setSrv(pCurNormWSSRV);
 
-                        auto pCurPrevCoordSRV = mMergedLayer.mpPrevCoord->getSRV();
-                        mpShadingWarpingPass["gCurPrevCoord"].setSrv(pCurPrevCoordSRV);
+                //         auto pCurPrevCoordSRV = mMergedLayer.mpPrevCoord->getSRV();
+                //         mpShadingWarpingPass["gCurPrevCoord"].setSrv(pCurPrevCoordSRV);
 
 
-                        auto pCenterDiffOpacitySRV = mFirstLayerGbuffer.mpDiffOpacity->getSRV();
-                        mpShadingWarpingPass["gCenterDiffOpacity"].setSrv(pCenterDiffOpacitySRV);
+                //         auto pCenterDiffOpacitySRV = mFirstLayerGbuffer.mpDiffOpacity->getSRV();
+                //         mpShadingWarpingPass["gCenterDiffOpacity"].setSrv(pCenterDiffOpacitySRV);
 
-                        auto pCenterPosWSSRV = mFirstLayerGbuffer.mpPosWS->getSRV();
-                        mpShadingWarpingPass["gCenterPosWS"].setSrv(pCenterPosWSSRV);
+                //         auto pCenterPosWSSRV = mFirstLayerGbuffer.mpPosWS->getSRV();
+                //         mpShadingWarpingPass["gCenterPosWS"].setSrv(pCenterPosWSSRV);
 
-                        auto pCenterNormWSSRV = mFirstLayerGbuffer.mpNormWS->getSRV();
-                        mpShadingWarpingPass["gCenterNormWS"].setSrv(pCenterNormWSSRV);
+                //         auto pCenterNormWSSRV = mFirstLayerGbuffer.mpNormWS->getSRV();
+                //         mpShadingWarpingPass["gCenterNormWS"].setSrv(pCenterNormWSSRV);
 
-                        auto pCenterRenderSRV = mpCenterRender->getSRV();
-                        mpShadingWarpingPass["gCenterRender"].setSrv(pCenterRenderSRV);
-                    }
+                //         auto pCenterRenderSRV = mpCenterRender->getSRV();
+                //         mpShadingWarpingPass["gCenterRender"].setSrv(pCenterRenderSRV);
+                //     }
 
-                    // Output
-                    {
-                        auto pRenderUAV = mMergedLayer.mpRender->getUAV();
-                        pRenderContext->clearUAV(pRenderUAV.get(), float4(-1.f));
-                        mpShadingWarpingPass["gRender"].setUav(pRenderUAV);
-                    }
+                //     // Output
+                //     {
+                //         auto pRenderUAV = mMergedLayer.mpRender->getUAV();
+                //         pRenderContext->clearUAV(pRenderUAV.get(), float4(-1.f));
+                //         mpShadingWarpingPass["gRender"].setUav(pRenderUAV);
+                //     }
 
-                    mpShadingWarpingPass->execute(pRenderContext, uint3(curDim, 1));
+                //     mpShadingWarpingPass->execute(pRenderContext, uint3(curDim, 1));
 
-                    // Set Barriers
-                    {
-                        pRenderContext->uavBarrier(mMergedLayer.mpRender.get());
-                    }
+                //     // Set Barriers
+                //     {
+                //         pRenderContext->uavBarrier(mMergedLayer.mpRender.get());
+                //     }
 
-                    // Copy Data
-                    pRenderContext->blit(mMergedLayer.mpRender->getSRV(), renderData.getTexture("tl_FirstPreTonemap")->getRTV());
-                }
+                //     // Copy Data
+                //     pRenderContext->blit(mMergedLayer.mpRender->getSRV(), renderData.getTexture("tl_FirstPreTonemap")->getRTV());
+                // }
 
             }
 

@@ -79,7 +79,7 @@ private:
     ComputePass::SharedPtr mpMergeLayerPass;
     ComputePass::SharedPtr mpAdditionalGbufferCopyPass;
     ComputePass::SharedPtr mpAdditionalGbufferCopyDepthPass;
-    ComputePass::SharedPtr mpShadingWarpingPass;
+    // ComputePass::SharedPtr mpShadingWarpingPass;
 
     struct {
         Texture::SharedPtr mpPosWS;
