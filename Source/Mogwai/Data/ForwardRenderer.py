@@ -22,7 +22,7 @@ def render_graph_ForwardRenderer():
     ForwardRenderer.addEdge("SkyBox.target", "LightingPass.color")
     ForwardRenderer.addEdge("DepthPrePass.depth", "ShadowPass.depth")
     ForwardRenderer.addEdge("DepthPrePass.depth", "LightingPass.depth")
-    ForwardRenderer.addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer")
+    # ForwardRenderer.addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer")
     ForwardRenderer.addEdge("LightingPass.color", "ToneMapping.src")
     ForwardRenderer.addEdge("ToneMapping.dst", "SSAO.colorIn")
     ForwardRenderer.addEdge("LightingPass.normals", "SSAO.normals")

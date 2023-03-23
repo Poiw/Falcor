@@ -371,6 +371,10 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .format(ResourceFormat::D32Float)
         .bindFlags(Resource::BindFlags::ShaderResource)
         .texture2D();
+    reflector.addInput("rPreTonemapped", "PreTonemapped Image")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
 
     // Outputs
     reflector.addOutput("tl_Depth", "Depth buffer")
@@ -403,6 +407,10 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .texture2D();
     reflector.addOutput("tl_FirstPrevCoord", "Coord for center images")
         .format(ResourceFormat::RG32Int)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
+    reflector.addOutput("tl_FirstPreTonemap", "Pre Tonemapped Rendering")
+        .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
 
@@ -598,6 +606,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
             pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
             pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), renderData.getTexture("tl_FirstPosWS")->getRTV());
+            pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), renderData.getTexture("tl_FirstPreTonemap")->getRTV());
 
             // Copy to texture
             pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), mFirstLayerGbuffer.mpNormWS->getRTV());
