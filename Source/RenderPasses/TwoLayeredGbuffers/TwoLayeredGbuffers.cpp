@@ -176,7 +176,12 @@ void TwoLayeredGbuffers::ClearVariables()
     mAdditionalCamRadius = 0.1f;
     mAdditionalCamTarDist = 1.0f;
 
-    mRandomGen = std::uniform_real_distribution<float>(0, 2 * glm::pi<float>());
+    mRandomGen = std::uniform_real_distribution<float>(0, 1);
+}
+
+float TwoLayeredGbuffers::mGetRandom(float min, float max)
+{
+    return mRandomGen(mRng) * (max - min) + min;
 }
 
 void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -480,7 +485,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             mCenterMatrix = mpScene->getCamera()->getViewProjMatrix();
             mCenterMatrixInv = mpScene->getCamera()->getInvViewProjMatrix();
 
-            float speed = glm::length(mpScene->getCamera()->getPosition() - mPrevPos);
+            auto speed = mpScene->getCamera()->getPosition() - mPrevPos;
 
             Falcor::Logger::log(Falcor::Logger::Level::Info, "Current Camera Speed: "
                                 + Falcor::to_string(mpScene->getCamera()->getPosition() - mPrevPos) + " "
@@ -603,24 +608,28 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 auto base_x = glm::normalize(glm::cross(dir, AdditionalCam->getUpVector()));
                 auto base_y = glm::normalize(glm::cross(dir, base_x));
 
-                auto randomAngle = mRandomGen(mRng);
+                auto randomAngle = mGetRandom(0, 2. * glm::pi<float>());
+                auto scale_ratio = mGetRandom(0, 1.0);
 
 
                 // Falcor::Logger::log(Falcor::Logger::Level::Info, "Random Number: "
                 //                     + Falcor::to_string((float16_t)randomAngle));
 
                 float disRadius = mAdditionalCamRadius;
-                if (mEnableAdatpiveRadius) disRadius = std::max<float>(speed * mAdditionalCamRadius, 0.4f);
+                if (mEnableAdatpiveRadius) disRadius = std::max<float>(glm::length(speed) * mAdditionalCamRadius, 0.4f);
 
                 Falcor::Logger::log(Falcor::Logger::Level::Info, "Current Radius: "
                     + Falcor::to_string((float16_t)disRadius));
 
                 float3 offset;
-                if (i < 4) {
+                if (i == 0) {
+                    offset = speed;
+                }
+                else if (i < 5 && i > 0) {
                     offset = base_x * disRadius * preDefineX[i] + base_y * disRadius * preDefineY[i];
                 }
                 else {
-                    offset = base_x * cos(randomAngle) * disRadius + base_y * sin(randomAngle) * disRadius;
+                    offset = base_x * cos(randomAngle) * disRadius * scale_ratio + base_y * sin(randomAngle) * disRadius * scale_ratio;
                 }
 
                 auto newPos = AdditionalCam->getPosition() + offset;
