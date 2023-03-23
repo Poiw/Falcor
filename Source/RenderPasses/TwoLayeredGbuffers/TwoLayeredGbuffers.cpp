@@ -654,6 +654,24 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                             mTwoLayerGbufferGenPass.pVars.get(),
                             RasterizerState::CullMode::None);
 
+            // Copy to render target
+            pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
+            pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
+            pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), renderData.getTexture("tl_FirstPosWS")->getRTV());
+            pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), renderData.getTexture("tl_FirstPreTonemap")->getRTV());
+
+            // Copy to texture
+            pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), mFirstLayerGbuffer.mpNormWS->getRTV());
+            pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), mFirstLayerGbuffer.mpDiffOpacity->getRTV());
+            pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), mFirstLayerGbuffer.mpPosWS->getRTV());
+            pRenderContext->blit(renderData.getTexture("gDepth")->getSRV(), mFirstLayerGbuffer.mpDepth->getRTV());
+
+            pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), mpCenterRender->getRTV());
+
+            pRenderContext->blit(renderData.getTexture("tl_SecondNormWS")->getSRV(), mSecondLayerGbuffer.mpNormWS->getRTV());
+            pRenderContext->blit(renderData.getTexture("tl_SecondDiffOpacity")->getSRV(), mSecondLayerGbuffer.mpDiffOpacity->getRTV());
+            pRenderContext->blit(renderData.getTexture("tl_SecondPosWS")->getSRV(), mSecondLayerGbuffer.mpPosWS->getRTV());
+
 
             float preDefineX[] = {-1, 0, 1, 0};
             float preDefineY[] = {0, -1, 0, 1};
@@ -816,23 +834,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
             }
 
-            // Copy to render target
-            pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
-            pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
-            pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), renderData.getTexture("tl_FirstPosWS")->getRTV());
-            pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), renderData.getTexture("tl_FirstPreTonemap")->getRTV());
 
-            // Copy to texture
-            pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), mFirstLayerGbuffer.mpNormWS->getRTV());
-            pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), mFirstLayerGbuffer.mpDiffOpacity->getRTV());
-            pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), mFirstLayerGbuffer.mpPosWS->getRTV());
-            pRenderContext->blit(renderData.getTexture("gDepth")->getSRV(), mFirstLayerGbuffer.mpDepth->getRTV());
-
-            pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), mpCenterRender->getRTV());
-
-            pRenderContext->blit(renderData.getTexture("tl_SecondNormWS")->getSRV(), mSecondLayerGbuffer.mpNormWS->getRTV());
-            pRenderContext->blit(renderData.getTexture("tl_SecondDiffOpacity")->getSRV(), mSecondLayerGbuffer.mpDiffOpacity->getRTV());
-            pRenderContext->blit(renderData.getTexture("tl_SecondPosWS")->getSRV(), mSecondLayerGbuffer.mpPosWS->getRTV());
 
             pRenderContext->blit(mSecondLayerGbuffer.mpPosWS->getSRV(), renderData.getTexture("tl_SecondPosWS")->getRTV());
             pRenderContext->blit(mSecondLayerGbuffer.mpNormWS->getSRV(), renderData.getTexture("tl_SecondNormWS")->getRTV());
