@@ -23,8 +23,12 @@ def render_occupancy_map():
     g.markOutput('TwoLayeredGbuffers.tl_Mask')
     g.markOutput('TwoLayeredGbuffers.tl_FirstNormWS')
     g.markOutput('TwoLayeredGbuffers.tl_FirstDiffOpacity')
+    g.markOutput('TwoLayeredGbuffers.tl_FirstPosWS')
+    g.markOutput('TwoLayeredGbuffers.tl_FirstPrevCoord')
     g.markOutput('TwoLayeredGbuffers.tl_SecondNormWS')
     g.markOutput('TwoLayeredGbuffers.tl_SecondDiffOpacity')
+    g.markOutput('TwoLayeredGbuffers.tl_SecondPosWS')
+    g.markOutput('TwoLayeredGbuffers.tl_SecondPrevCoord')
     return g
 
 

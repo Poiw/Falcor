@@ -5,39 +5,57 @@ import GBufferHelpers;
 Texture2D<uint> gFirstLayerDepthTest0;
 Texture2D<float4> gFirstLayerNormWS0;
 Texture2D<float4> gFirstLayerDiffOpacity0;
+Texture2D<float4> gFirstLayerPosWS0;
+Texture2D<uint2>  gFirstLayerPrevCoord0;
 
 Texture2D<uint> gFirstLayerDepthTest1;
 Texture2D<float4> gFirstLayerNormWS1;
 Texture2D<float4> gFirstLayerDiffOpacity1;
+Texture2D<float4> gFirstLayerPosWS1;
+Texture2D<uint2>  gFirstLayerPrevCoord1;
 
 Texture2D<uint> gFirstLayerDepthTest2;
 Texture2D<float4> gFirstLayerNormWS2;
 Texture2D<float4> gFirstLayerDiffOpacity2;
+Texture2D<float4> gFirstLayerPosWS2;
+Texture2D<uint2>  gFirstLayerPrevCoord2;
 
 Texture2D<uint> gFirstLayerDepthTest3;
 Texture2D<float4> gFirstLayerNormWS3;
 Texture2D<float4> gFirstLayerDiffOpacity3;
+Texture2D<float4> gFirstLayerPosWS3;
+Texture2D<uint2>  gFirstLayerPrevCoord3;
 
 Texture2D<uint> gSecondLayerDepthTest0;
 Texture2D<float4> gSecondLayerNormWS0;
 Texture2D<float4> gSecondLayerDiffOpacity0;
+Texture2D<float4> gSecondLayerPosWS0;
+Texture2D<uint2>  gSecondLayerPrevCoord0;
 
 Texture2D<uint> gSecondLayerDepthTest1;
 Texture2D<float4> gSecondLayerNormWS1;
 Texture2D<float4> gSecondLayerDiffOpacity1;
+Texture2D<float4> gSecondLayerPosWS1;
+Texture2D<uint2>  gSecondLayerPrevCoord1;
 
 Texture2D<uint> gSecondLayerDepthTest2;
 Texture2D<float4> gSecondLayerNormWS2;
 Texture2D<float4> gSecondLayerDiffOpacity2;
+Texture2D<float4> gSecondLayerPosWS2;
+Texture2D<uint2>  gSecondLayerPrevCoord2;
 
 Texture2D<uint> gSecondLayerDepthTest3;
 Texture2D<float4> gSecondLayerNormWS3;
 Texture2D<float4> gSecondLayerDiffOpacity3;
+Texture2D<float4> gSecondLayerPosWS3;
+Texture2D<uint2>  gSecondLayerPrevCoord3;
 
 
 
 RWTexture2D<float4> gNormWS;
 RWTexture2D<float4> gDiffOpacity;
+RWTexture2D<float4> gPosWS;
+RWTexture2D<uint2>  gPrevCoord;
 RWTexture2D<float4> gMask;
 
 cbuffer PerFrameCB {
@@ -49,6 +67,8 @@ cbuffer PerFrameCB {
 struct Gbuf {
     float4 normWS;
     float4 diffOpacity;
+    float4 posWS;
+    uint2 prevCoord;
     uint z;
 };
 
@@ -106,21 +126,29 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         if (gFirstLayerDepthTest0[pixelCoord] < layer1.z) {
             layer1.normWS = gFirstLayerNormWS0[pixelCoord];
             layer1.diffOpacity = gFirstLayerDiffOpacity0[pixelCoord];
+            layer1.posWS = gFirstLayerPosWS0[pixelCoord];
+            layer1.prevCoord = gFirstLayerPrevCoord0[pixelCoord];
             layer1.z = gFirstLayerDepthTest0[pixelCoord];
         }
         if (gUsedMipLevel >= 1 && gFirstLayerDepthTest1[pixelCoord / 2] + eps < layer1.z) {
             layer1.normWS = gFirstLayerNormWS1[pixelCoord / 2];
             layer1.diffOpacity = gFirstLayerDiffOpacity1[pixelCoord / 2];
+            layer1.posWS = gFirstLayerPosWS1[pixelCoord / 2];
+            layer1.prevCoord = gFirstLayerPrevCoord1[pixelCoord / 2];
             layer1.z = gFirstLayerDepthTest1[pixelCoord / 2];
         }
         if (gUsedMipLevel >= 2 && gFirstLayerDepthTest2[pixelCoord / 4] + eps * 2 < layer1.z) {
             layer1.normWS = gFirstLayerNormWS2[pixelCoord / 4];
             layer1.diffOpacity = gFirstLayerDiffOpacity2[pixelCoord / 4];
+            layer1.posWS = gFirstLayerPosWS2[pixelCoord / 4];
+            layer1.prevCoord = gFirstLayerPrevCoord2[pixelCoord / 4];
             layer1.z = gFirstLayerDepthTest2[pixelCoord / 4];
         }
         if (gUsedMipLevel >= 3 && gFirstLayerDepthTest3[pixelCoord / 8] + eps * 4 < layer1.z) {
             layer1.normWS = gFirstLayerNormWS3[pixelCoord / 8];
             layer1.diffOpacity = gFirstLayerDiffOpacity3[pixelCoord / 8];
+            layer1.posWS = gFirstLayerPosWS3[pixelCoord / 8];
+            layer1.prevCoord = gFirstLayerPrevCoord3[pixelCoord / 8];
             layer1.z = gFirstLayerDepthTest3[pixelCoord / 8];
         }
 
@@ -180,21 +208,29 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         if (gSecondLayerDepthTest0[pixelCoord] < layer2.z) {
             layer2.normWS = gSecondLayerNormWS0[pixelCoord];
             layer2.diffOpacity = gSecondLayerDiffOpacity0[pixelCoord];
+            layer2.posWS = gSecondLayerPosWS0[pixelCoord];
+            layer2.prevCoord = gSecondLayerPrevCoord0[pixelCoord];
             layer2.z = gSecondLayerDepthTest0[pixelCoord];
         }
         if (gUsedMipLevel >= 1 && gSecondLayerDepthTest1[pixelCoord / 2] + eps < layer2.z) {
             layer2.normWS = gSecondLayerNormWS1[pixelCoord / 2];
             layer2.diffOpacity = gSecondLayerDiffOpacity1[pixelCoord / 2];
+            layer2.posWS = gSecondLayerPosWS1[pixelCoord / 2];
+            layer2.prevCoord = gSecondLayerPrevCoord1[pixelCoord / 2];
             layer2.z = gSecondLayerDepthTest1[pixelCoord / 2];
         }
         if (gUsedMipLevel >= 2 && gSecondLayerDepthTest2[pixelCoord / 4] + eps * 2 < layer2.z) {
             layer2.normWS = gSecondLayerNormWS2[pixelCoord / 4];
             layer2.diffOpacity = gSecondLayerDiffOpacity2[pixelCoord / 4];
+            layer2.posWS = gSecondLayerPosWS2[pixelCoord / 4];
+            layer2.prevCoord = gSecondLayerPrevCoord2[pixelCoord / 4];
             layer2.z = gSecondLayerDepthTest2[pixelCoord / 4];
         }
         if (gUsedMipLevel >= 3 && gSecondLayerDepthTest3[pixelCoord / 8] + eps * 4 < layer2.z) {
             layer2.normWS = gSecondLayerNormWS3[pixelCoord / 8];
             layer2.diffOpacity = gSecondLayerDiffOpacity3[pixelCoord / 8];
+            layer2.posWS = gSecondLayerPosWS3[pixelCoord / 8];
+            layer2.prevCoord = gSecondLayerPrevCoord3[pixelCoord / 8];
             layer2.z = gSecondLayerDepthTest3[pixelCoord / 8];
         }
 
@@ -226,11 +262,15 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     if (layer1.z < layer2.z) {
         gNormWS[pixelCoord] = layer1.normWS;
         gDiffOpacity[pixelCoord] = layer1.diffOpacity;
+        gPosWS[pixelCoord] = layer1.posWS;
+        gPrevCoord[pixelCoord] = layer1.prevCoord;
         gMask[pixelCoord] = float4(1.0, 0.0, 0.0, 1.0);
     }
     else {
         gNormWS[pixelCoord] = layer2.normWS;
         gDiffOpacity[pixelCoord] = layer2.diffOpacity;
+        gPosWS[pixelCoord] = layer2.posWS;
+        gPrevCoord[pixelCoord] = layer2.prevCoord;
         gMask[pixelCoord] = float4(0.0, 0.0, 1.0, 1.0);
     }
 

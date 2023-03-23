@@ -91,12 +91,16 @@ private:
         Texture::SharedPtr mpDepthTest;
         Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
+        Texture::SharedPtr mpPosWS;
+        Texture::SharedPtr mpPrevCoord;
     } mProjFirstLayer[maxTexLevel], mProjSecondLayer[maxTexLevel];
 
     struct {
         Texture::SharedPtr mpMask;
         Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
+        Texture::SharedPtr mpPosWS;
+        Texture::SharedPtr mpPrevCoord;
     } mMergedLayer;
 
     struct{
