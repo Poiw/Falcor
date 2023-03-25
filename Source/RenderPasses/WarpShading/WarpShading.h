@@ -56,10 +56,15 @@ public:
 private:
     WarpShading() : RenderPass(kInfo) {}
 
+    void initVariables();
 
     Scene::SharedPtr mpScene;
 
     ComputePass::SharedPtr mpShadingWarpingPass;
 
+    float mAlbedoSigma;
+    float mNormSigma;
+    float mPosWSigma;
+    float mCoordSigma;
 
 };

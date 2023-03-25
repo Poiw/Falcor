@@ -53,10 +53,20 @@ WarpShading::SharedPtr WarpShading::create(RenderContext* pRenderContext, const 
     return pPass;
 }
 
+void WarpShading::initVariables()
+{
+    mAlbedoSigma = 0.005f;
+    mNormSigma = 0.005f;
+    mPosWSigma = 0.005f;
+    mCoordSigma = 10.f;
+}
+
 void WarpShading::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
      if (pScene) {
         mpScene = pScene;
+
+        initVariables();
 
         // create a shading warping pass
         {
@@ -144,6 +154,10 @@ void WarpShading::execute(RenderContext* pRenderContext, const RenderData& rende
         // Input
         {
             mpShadingWarpingPass["PerFrameCB"]["gFrameDim"] = curDim;
+            mpShadingWarpingPass["PerFrameCB"]["gAlbedoSigma"] = mAlbedoSigma;
+            mpShadingWarpingPass["PerFrameCB"]["gNormSigma"] = mNormSigma;
+            mpShadingWarpingPass["PerFrameCB"]["gPosWSigma"] = mPosWSigma;
+            mpShadingWarpingPass["PerFrameCB"]["gCoordSigma"] = mCoordSigma;
 
             auto pFrameCountSRV = renderData["tl_FrameCount"]->getSRV();
             mpShadingWarpingPass["gFrameCount"].setSrv(pFrameCountSRV);
@@ -193,4 +207,8 @@ void WarpShading::execute(RenderContext* pRenderContext, const RenderData& rende
 
 void WarpShading::renderUI(Gui::Widgets& widget)
 {
+    widget.var<float>("Albedo Sigma", mAlbedoSigma, 0);
+    widget.var<float>("PosW Sigma", mPosWSigma, 0);
+    widget.var<float>("Normal Sigma", mNormSigma, 0);
+    widget.var<float>("Coord Sigma", mCoordSigma, 0);
 }

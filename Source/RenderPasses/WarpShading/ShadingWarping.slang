@@ -14,6 +14,10 @@ RWTexture2D<float4> gRender;
 
 cbuffer PerFrameCB {
     uint2 gFrameDim;
+    float gAlbedoSigma;
+    float gPosWSigma;
+    float gNormSigma;
+    float gCoordSigma;
 };
 
 struct Prop {
@@ -23,40 +27,47 @@ struct Prop {
     float3 posW;
 };
 
-float gaussian(float x) {
-    return exp(-x * x) / sqrt(2 * 3.14159265358979323846) * 3;
+float gaussian(float x, float sigma) {
+    return exp(-x * x / (2 * sigma * sigma)) / (sqrt(2 * 3.1415926) * sigma);
 }
 
-float gaussian3(float3 a) {
-    return gaussian(a.x) * gaussian(a.y) * gaussian(a.z);
+float gaussian3(float3 a, float sigma) {
+    return gaussian(a.x, sigma) * gaussian(a.y, sigma) * gaussian(a.z, sigma);
 }
 
-float gaussian2(float2 a) {
-    return gaussian(a.x) * gaussian(a.y);
+float gaussian2(float2 a, float sigma) {
+    return gaussian(a.x, sigma) * gaussian(a.y, sigma);
 }
 
 float similarity(const Prop cur, const Prop near)
 {
-    float2 coord_dif = (cur.coord - near.coord);
-    float3 pos_dif = (cur.posW - near.posW) * 5;
-    float3 pos_max = max(cur.posW, near.posW);
-    float3 pos_min = min(cur.posW, near.posW);
-    // pos_dif = (pos_dif - pos_min) / (pos_max - pos_min);
-    float3 norm_dif = (cur.norm - near.norm) / 2;
-    float3 albedo_dif = (cur.albedo - near.albedo);
+    // float2 coord_dif = (cur.coord - near.coord);
+    // float3 pos_dif = (cur.posW - near.posW) * 5;
+    // float3 pos_max = max(cur.posW, near.posW);
+    // float3 pos_min = min(cur.posW, near.posW);
+    // // pos_dif = (pos_dif - pos_min) / (pos_max - pos_min);
+    // float3 norm_dif = (cur.norm - near.norm) / 2;
+    // float3 albedo_dif = (cur.albedo - near.albedo);
 
-    return gaussian3(albedo_dif) * gaussian3(pos_dif) * gaussian3(norm_dif);
+    // return gaussian3(albedo_dif) * gaussian3(pos_dif) * gaussian3(norm_dif);
 
-    // float3 albedo_dif = abs(cur.albedo - near.albedo);
-    // return albedo_dif.x + albedo_dif.y + albedo_dif.z;
+    // // float3 albedo_dif = abs(cur.albedo - near.albedo);
+    // // return albedo_dif.x + albedo_dif.y + albedo_dif.z;
+
+    float coord_w = gaussian2(cur.coord - near.coord, gCoordSigma);
+    float pos_w = gaussian3(cur.posW - near.posW, gPosWSigma);
+    float norm_w = gaussian3(cur.norm - near.norm, gNormSigma);
+    float albedo_w = gaussian3(cur.albedo - near.albedo, gAlbedoSigma);
+
+    return coord_w * pos_w * norm_w * albedo_w;
 
 }
 
-float albedoDiff(const Prop cur, const Prop near)
-{
-    float3 albedo_dif = abs(cur.albedo - near.albedo);
-    return albedo_dif.x + albedo_dif.y + albedo_dif.z;
-}
+// float albedoDiff(const Prop cur, const Prop near)
+// {
+//     float3 albedo_dif = abs(cur.albedo - near.albedo);
+//     return albedo_dif.x + albedo_dif.y + albedo_dif.z;
+// }
 
 [numthreads(16, 16, 1)]
 void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
@@ -73,40 +84,73 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     else {
         uint2 prevCoord = gCurPrevCoord[pixelCoord].xy;
 
-        float curSim = -1.;
-        float3 shading = 0;
-
         Prop cur, near;
-        cur.coord = float2(prevCoord) / gFrameDim;
+        cur.coord = float2(prevCoord);
         cur.norm = gCurNormWS[pixelCoord].xyz;
         cur.albedo = gCurDiffOpacity[pixelCoord].xyz;
         cur.posW = gCurPosWS[pixelCoord].xyz;
 
-        for (int step = 1; step <= 9; step += 4) {
-            for (int i = -2; i <= 2; ++i) {
-                for (int j = -2; j <= 2; ++j) {
+        int stepList[] = { 1, 5, 9 };
+        int stepNumList[] = { 4, 3, 2 };
+
+        float weight[] = {0., 0., 0., 0.};
+        float3 shadingList[4];
+        shadingList[0] = float3(0., 0., 0.);
+        shadingList[1] = float3(0., 0., 0.);
+        shadingList[2] = float3(0., 0., 0.);
+        shadingList[3] = float3(0., 0., 0.);
+
+        for (int idx = 0; idx < 3; ++idx) {
+            int step = stepList[idx];
+            int begin = -stepNumList[idx];
+            int end = stepNumList[idx];
+
+            for (int i = begin; i <= end; ++i) {
+                for (int j = begin; j <= end; ++j) {
 
                     int2 nearCoord = (int2)prevCoord + int2(i * step, j * step);
                     if (nearCoord.x >= 0 && nearCoord.x < gFrameDim.x && nearCoord.y >= 0 && nearCoord.y < gFrameDim.y) {
-                        near.coord = float2(nearCoord) / gFrameDim;
+
+                        near.coord = float2(nearCoord);
                         near.norm = gCenterNormWS[nearCoord].xyz;
                         near.albedo = gCenterDiffOpacity[nearCoord].xyz;
                         near.posW = gCenterPosWS[nearCoord].xyz;
+
                         float nearSim = similarity(cur, near);
-                        if (nearSim > curSim) {
-                            curSim = nearSim;
-                            // gRender[pixelCoord] = nearSim;
-                            shading = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
-                            // shading = gCenterRender[nearCoord].xyz;
+
+                        // if (nearSim > curSim) {
+                        //     curSim = nearSim;
+                        //     // gRender[pixelCoord] = nearSim;
+                        //     shading = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
+                        //     // shading = gCenterRender[nearCoord].xyz;
+                        // }
+
+
+                        for (int k = 0; k < 4; ++k) {
+                            if (nearSim > weight[k]) {
+                                weight[k] = nearSim;
+                                shadingList[k] = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
+                                break;
+                            }
                         }
+
                     }
                 }
             }
         }
 
-        // gRender[pixelCoord] = float4(shading, 1.);
+
+        float3 shading = 0;
+        for (int k = 0; k < 4; ++k) {
+            shading += shadingList[k] * weight[k];
+        }
+        float weightSum = weight[0] + weight[1] + weight[2] + weight[3];
+        if (weightSum > 0) {
+            shading /= weightSum;
+        }
 
         gRender[pixelCoord] = float4(shading * max(gCurDiffOpacity[pixelCoord].xyz, float3(1e-2, 1e-2, 1e-2)), 1.);
+        // gRender[pixelCoord] = float4(shading, 1.);
 
         // if (prevCoord.x >= 0 && prevCoord.x < gFrameDim.x && prevCoord.y >= 0 && prevCoord.y < gFrameDim.y) {
 
