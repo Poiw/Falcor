@@ -61,9 +61,9 @@ void WarpShading::setScene(RenderContext* pRenderContext, const Scene::SharedPtr
         // create a shading warping pass
         {
             Program::Desc desc;
-            desc.addShaderModules(mpScene->getShaderModules());
+            // desc.addShaderModules(mpScene->getShaderModules());
             desc.addShaderLibrary(shadingWarpingShaderFilePath).csEntry("csMain");
-            desc.addTypeConformances(mpScene->getTypeConformances());
+            // desc.addTypeConformances(mpScene->getTypeConformances());
             Program::DefineList defines;
             defines.add(mpScene->getSceneDefines());
             mpShadingWarpingPass = ComputePass::create(desc, defines, false);

@@ -269,9 +269,9 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
         // Create Additional Gbuffer Copy Pass
         {
             Program::Desc desc;
-            desc.addShaderModules(mpScene->getShaderModules());
+            // desc.addShaderModules(mpScene->getShaderModules());
             desc.addShaderLibrary(additionalGbufferCopyShaderFilePath).csEntry("csMain");
-            desc.addTypeConformances(mpScene->getTypeConformances());
+            // desc.addTypeConformances(mpScene->getTypeConformances());
             Program::DefineList defines;
             defines.add(mpScene->getSceneDefines());
             mpAdditionalGbufferCopyPass = ComputePass::create(desc, defines, false);
@@ -283,9 +283,9 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
         // Create Additional Gbuffer Copy Pass
         {
             Program::Desc desc;
-            desc.addShaderModules(mpScene->getShaderModules());
+            // desc.addShaderModules(mpScene->getShaderModules());
             desc.addShaderLibrary(additionalGbufferCopyDepthShaderFilePath).csEntry("csMain");
-            desc.addTypeConformances(mpScene->getTypeConformances());
+            // desc.addTypeConformances(mpScene->getTypeConformances());
             Program::DefineList defines;
             defines.add(mpScene->getSceneDefines());
             mpAdditionalGbufferCopyDepthPass = ComputePass::create(desc, defines, false);
@@ -298,9 +298,9 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
         // Create a Forward Warping Depth Test Pass
         {
             Program::Desc desc;
-            desc.addShaderModules(mpScene->getShaderModules());
+            // desc.addShaderModules(mpScene->getShaderModules());
             desc.addShaderLibrary(projectionDepthTestShaderFilePath).csEntry("csMain");
-            desc.addTypeConformances(mpScene->getTypeConformances());
+            // desc.addTypeConformances(mpScene->getTypeConformances());
             Program::DefineList defines;
             defines.add(mpScene->getSceneDefines());
             mpProjectionDepthTestPass = ComputePass::create(desc, defines, false);
@@ -313,9 +313,9 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
         // Create a Forward Warping Pass
         {
             Program::Desc desc;
-            desc.addShaderModules(mpScene->getShaderModules());
+            // desc.addShaderModules(mpScene->getShaderModules());
             desc.addShaderLibrary(forwardWarpGbufferShaderFilePath).csEntry("csMain");
-            desc.addTypeConformances(mpScene->getTypeConformances());
+            // desc.addTypeConformances(mpScene->getTypeConformances());
             Program::DefineList defines;
             defines.add(mpScene->getSceneDefines());
             mpForwardWarpPass = ComputePass::create(desc, defines, false);
@@ -327,9 +327,9 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
         // Create a Merge Layer Warping Pass
         {
             Program::Desc desc;
-            desc.addShaderModules(mpScene->getShaderModules());
+            // desc.addShaderModules(mpScene->getShaderModules());
             desc.addShaderLibrary(mergeLayersShaderFilePath).csEntry("csMain");
-            desc.addTypeConformances(mpScene->getTypeConformances());
+            // desc.addTypeConformances(mpScene->getTypeConformances());
             Program::DefineList defines;
             defines.add(mpScene->getSceneDefines());
             mpMergeLayerPass = ComputePass::create(desc, defines, false);

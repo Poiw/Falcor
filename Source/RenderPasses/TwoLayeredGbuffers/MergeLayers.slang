@@ -1,7 +1,3 @@
-import Scene.Raster;
-import GBufferHelpers;
-
-
 Texture2D<uint> gFirstLayerDepthTest0;
 Texture2D<float4> gFirstLayerNormWS0;
 Texture2D<float4> gFirstLayerDiffOpacity0;
@@ -93,7 +89,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     layer2.normWS = float4(0.0, 0.0, 0.0, 0.0);
     layer2.z = uint(-1);
 
-    uint eps = 1024;
+    uint eps = 128;
 
     // if (gFirstLayerDepthTest[pixelCoord] == uint(-1)) {
 

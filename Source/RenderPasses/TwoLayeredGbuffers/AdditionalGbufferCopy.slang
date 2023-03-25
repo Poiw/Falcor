@@ -1,6 +1,3 @@
-import Scene.Raster;
-import GBufferHelpers;
-
 cbuffer PerFrameCB {
     uint2 gFrameDim;
     float4x4 gCenterViewProjMat;
