@@ -34,7 +34,7 @@ const RenderPass::Info VBufferRaster::kInfo { "VBufferRaster", "Rasterized V-buf
 
 namespace
 {
-    const std::string kProgramFile = "RenderPasses/GBuffer/VBuffer/VBufferRaster.3d.slang";
+    const std::string kProgramFile = "RenderPasses/MyGBuffer/VBuffer/VBufferRaster.3d.slang";
     const std::string kShaderModel = "6_2";
     const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
 

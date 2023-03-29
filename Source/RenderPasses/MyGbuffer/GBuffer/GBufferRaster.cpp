@@ -33,7 +33,7 @@ const RenderPass::Info GBufferRaster::kInfo { "GBufferRaster", "Rasterized G-buf
 
 namespace
 {
-    const std::string kProgramFile = "RenderPasses/GBuffer/GBuffer/GBufferRaster.3d.slang";
+    const std::string kProgramFile = "RenderPasses/MyGBuffer/GBuffer/GBufferRaster.3d.slang";
     const std::string shaderModel = "6_2";
     const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
 
@@ -49,6 +49,8 @@ namespace
         { "viewW",          "gViewW",               "View direction in world space",            true /* optional */, ResourceFormat::RGBA32Float }, // TODO: Switch to packed 2x16-bit snorm format.
         { "pnFwidth",       "gPosNormalFwidth",     "Position and normal filter width",         true /* optional */, ResourceFormat::RG32Float   },
         { "linearZ",        "gLinearZAndDeriv",     "Linear z (and derivative)",                true /* optional */, ResourceFormat::RG32Float   },
+        { "rawInstanceID",  "gRawInstanceID" ,      "Raw Instance ID",                          true               , ResourceFormat::R32Uint},
+        { "positionLocal",  "gPosL",                "Local Position",                           true               , ResourceFormat::RGBA32Float},
     };
 
     const std::string kDepthName = "depth";

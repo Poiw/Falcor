@@ -6,12 +6,16 @@ cbuffer PerFrameCB {
 Texture2D<float4> gPosWS;
 Texture2D<float4> gNormWS;
 Texture2D<float4> gDiffOpacity;
+Texture2D<uint> gInstanceID;
+Texture2D<float4> gPosL;
 
 Texture2D<uint> gProjDepthBuf;
 
 RWTexture2D<float4> gProjPosWS;
 RWTexture2D<float4> gProjNormWS;
 RWTexture2D<float4> gProjDiffOpacity;
+RWTexture2D<uint> gProjInstanceID;
+RWTexture2D<float4> gProjPosL;
 
 [numthreads(1, 1, 1)]
 void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
@@ -38,6 +42,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjNormWS[tarIpos] = gNormWS[pixelCoord];
         gProjDiffOpacity[tarIpos] = gDiffOpacity[pixelCoord];
         gProjPosWS[tarIpos] = float4(posWS, 1.0f);
+        gProjInstanceID[tarIpos] = gInstanceID[pixelCoord];
+        gProjPosL[tarIpos] = gPosL[pixelCoord];
     }
 
     return;

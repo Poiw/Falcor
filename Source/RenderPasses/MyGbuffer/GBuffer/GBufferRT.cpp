@@ -33,8 +33,8 @@ const RenderPass::Info GBufferRT::kInfo { "GBufferRT", "Ray traced G-buffer gene
 
 namespace
 {
-    const std::string kProgramRaytraceFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.rt.slang";
-    const std::string kProgramComputeFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.cs.slang";
+    const std::string kProgramRaytraceFile = "RenderPasses/MyGBuffer/GBuffer/GBufferRT.rt.slang";
+    const std::string kProgramComputeFile = "RenderPasses/MyGBuffer/GBuffer/GBufferRT.cs.slang";
 
     // Scripting options.
     const char kUseTraceRayInline[] = "useTraceRayInline";

@@ -395,6 +395,14 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::ShaderResource)
         .texture2D();
+    reflector.addInput("gPosL", "Local position")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+    reflector.addInput("gRawInstanceID", "Raw Instance ID")
+        .format(ResourceFormat::R32Uint)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
     reflector.addInput("gNormalWS", "Normal")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::ShaderResource)
@@ -695,6 +703,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), mFirstLayerGbuffer.mpDiffOpacity->getRTV());
             pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), mFirstLayerGbuffer.mpPosWS->getRTV());
             pRenderContext->blit(renderData.getTexture("gDepth")->getSRV(), mFirstLayerGbuffer.mpDepth->getRTV());
+            pRenderContext->blit(renderData.getTexture("gRawInstanceID")->getSRV(), mFirstLayerGbuffer.mpInstanceID->getRTV());
+            pRenderContext->blit(renderData.getTexture("gPosL")->getSRV(), mFirstLayerGbuffer.mpPosL->getRTV());
 
             pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), mpCenterRender->getRTV());
 
@@ -984,6 +994,13 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     }
 
                     {
+
+                        auto pFirstInstanceIDSRV = mFirstLayerGbuffer.mpInstanceID->getSRV();
+                        mpCalculateCurrentPosWSPass["gFirstLayerInstanceID"].setSrv(pFirstInstanceIDSRV);
+
+                        auto pFirstPosLSRV = mFirstLayerGbuffer.mpPosL->getSRV();
+                        mpCalculateCurrentPosWSPass["gFirstLayerPosL"].setSrv(pFirstPosLSRV);
+
                         auto pSecondInstanceIDSRV = mSecondLayerGbuffer.mpInstanceID->getSRV();
                         mpCalculateCurrentPosWSPass["gSecondLayerInstanceID"].setSrv(pSecondInstanceIDSRV);
 
@@ -992,6 +1009,9 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     }
 
                     {
+                        auto pFirstPosWSUAV = mFirstLayerGbuffer.mpPosWS->getUAV();
+                        mpCalculateCurrentPosWSPass["gFirstLayerPosWS"].setUav(pFirstPosWSUAV);
+
                         auto pSecondPosWSUAV = mSecondLayerGbuffer.mpPosWS->getUAV();
                         mpCalculateCurrentPosWSPass["gSecondLayerPosWS"].setUav(pSecondPosWSUAV);
                     }

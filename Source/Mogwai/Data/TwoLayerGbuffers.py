@@ -2,7 +2,7 @@ from falcor import *
 
 def render_occupancy_map():
     g = RenderGraph("TwoLayerGbuffers")
-    loadRenderPassLibrary("GBuffer.dll")
+    loadRenderPassLibrary("MyGBuffer.dll")
     loadRenderPassLibrary("TwoLayeredGbuffers.dll")
 
 
@@ -16,9 +16,11 @@ def render_occupancy_map():
     g.addEdge("GBufferRaster.posW", "TwoLayeredGbuffers.gPosWS")
     g.addEdge("GBufferRaster.normW", "TwoLayeredGbuffers.gNormalWS")
     g.addEdge("GBufferRaster.diffuseOpacity", "TwoLayeredGbuffers.gDiffOpacity")
-    g.addEdge("GBufferRaster.diffuseOpacity", "TwoLayeredGbuffers.rPreTonemapped")
+    g.addEdge("GBufferRaster.diffuseOpacity", "TwoLayeredGbuffers.rPreTonemapped") # For debugging
     g.addEdge("GBufferRaster.linearZ", "TwoLayeredGbuffers.gLinearZ")
     g.addEdge("GBufferRaster.depth", "TwoLayeredGbuffers.gDepth")
+    g.addEdge("GBufferRaster.rawInstanceID", "TwoLayeredGbuffers.gRawInstanceID")
+    g.addEdge("GBufferRaster.positionLocal", "TwoLayeredGbuffers.gPosL")
     # g.markOutput('TwoLayeredGbuffers.gMyDepth')
     g.markOutput('TwoLayeredGbuffers.tl_Debug')
     g.markOutput('TwoLayeredGbuffers.tl_Mask')

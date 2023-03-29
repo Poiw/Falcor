@@ -5,7 +5,7 @@ def render_graph_TwoLayeredShading():
 
     loadRenderPassLibrary("AccumulatePass.dll")
     loadRenderPassLibrary("DLSSPass.dll")
-    loadRenderPassLibrary("GBuffer.dll")
+    loadRenderPassLibrary("MyGBuffer.dll")
     loadRenderPassLibrary("ModulateIllumination.dll")
     loadRenderPassLibrary("NRDPass.dll")
     loadRenderPassLibrary("PathTracer.dll")
@@ -113,6 +113,8 @@ def render_graph_TwoLayeredShading():
     g.addEdge("GBufferRaster.diffuseOpacity", "TwoLayeredGbuffers.gDiffOpacity")
     g.addEdge("GBufferRaster.linearZ", "TwoLayeredGbuffers.gLinearZ")
     g.addEdge("GBufferRaster.depth", "TwoLayeredGbuffers.gDepth")
+    g.addEdge("GBufferRaster.rawInstanceID", "TwoLayeredGbuffers.gRawInstanceID")
+    g.addEdge("GBufferRaster.positionLocal", "TwoLayeredGbuffers.gPosL")
 
     g.addEdge("TwoLayeredGbuffers.tl_FrameCount", "WarpShading.tl_FrameCount")
     g.addEdge("TwoLayeredGbuffers.tl_FirstDiffOpacity", "WarpShading.tl_CurDiffOpacity")

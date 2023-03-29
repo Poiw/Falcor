@@ -90,6 +90,7 @@ VSOut CopyToVSOut(MyVSOut vsOut) {
     vOut.texC = vsOut.texC;
     vOut.instanceID = vsOut.instanceID;
     vOut.materialID = vsOut.materialID;
+    vOut.prevPosH = vsOut.prevPosH;
     return vOut;
 }
 

@@ -32,6 +32,10 @@ import Utils.Math.MathHelpers;
 import GBufferHelpers;
 import Rendering.Materials.TexLODHelpers;
 
+#ifndef INTERPOLATION_MODE
+#define INTERPOLATION_MODE linear
+#endif
+
 cbuffer PerFrameCB
 {
     uint2 gFrameDim;
@@ -58,12 +62,74 @@ RasterizerOrderedTexture2D<float4> gEmissive;
 RasterizerOrderedTexture2D<float4> gViewW;
 RasterizerOrderedTexture2D<float2> gPosNormalFwidth;
 RasterizerOrderedTexture2D<float2> gLinearZAndDeriv;
+RasterizerOrderedTexture2D<uint> gRawInstanceID;
+RasterizerOrderedTexture2D<float4> gPosL;
 
 #define is_valid(name) (is_valid_##name != 0)
 
-VSOut vsMain(VSIn vsIn)
+struct MyVSOut
 {
-    return defaultVS(vsIn);
+    INTERPOLATION_MODE float3 normalW : NORMAL;    ///< Shading normal in world space (not normalized!).
+    INTERPOLATION_MODE float4 tangentW : TANGENT;  ///< Shading tangent in world space (not normalized!).
+    INTERPOLATION_MODE float2 texC : TEXCRD;       ///< Texture coordinate.
+    INTERPOLATION_MODE float3 posW : POSW;         ///< Position in world space.
+    INTERPOLATION_MODE float4 prevPosH : PREVPOSH; ///< Position in clip space for the previous frame.
+    INTERPOLATION_MODE float4 posL : POSL;         ///< Position in original model space.
+
+    // Per-triangle data
+    nointerpolation GeometryInstanceID instanceID : INSTANCE_ID; ///< Geometry instance ID.
+    nointerpolation uint rawInstanceID : RAW_INSTANCE_ID;        ///< Raw geometry instance ID.
+    nointerpolation uint materialID : MATERIAL_ID;               ///< Material ID.
+
+    float4 posH : SV_POSITION;
+};
+
+MyVSOut vsMain(VSIn vIn)
+{
+    MyVSOut vOut;
+    const GeometryInstanceID instanceID = { vIn.instanceID };
+
+    float4x4 worldMat = gScene.getWorldMatrix(instanceID);
+    float3 posW = mul(worldMat, float4(vIn.pos, 1.f)).xyz;
+    vOut.posW = posW;
+    vOut.posH = mul(gScene.camera.getViewProj(), float4(posW, 1.f));
+
+    vOut.instanceID = instanceID;
+    vOut.materialID = gScene.getMaterialID(instanceID);
+
+    vOut.texC = vIn.texC;
+    vOut.normalW = mul(gScene.getInverseTransposeWorldMatrix(instanceID), vIn.unpack().normal);
+    float4 tangent = vIn.unpack().tangent;
+    vOut.tangentW = float4(mul((float3x3)gScene.getWorldMatrix(instanceID), tangent.xyz), tangent.w);
+
+    // Compute the vertex position in the previous frame.
+    float3 prevPos = vIn.pos;
+    GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+    if (instance.isDynamic())
+    {
+        uint prevVertexIndex = gScene.meshes[instance.geometryIndex].prevVbOffset + vIn.vertexID;
+        prevPos = gScene.prevVertices[prevVertexIndex].position;
+    }
+    float3 prevPosW = mul(gScene.getPrevWorldMatrix(instanceID), float4(prevPos, 1.f)).xyz;
+    vOut.prevPosH = mul(gScene.camera.data.prevViewProjMatNoJitter, float4(prevPosW, 1.f));
+
+    vOut.posL = float4(vIn.pos, 1.f);
+    vOut.rawInstanceID = vIn.instanceID;
+
+    return vOut;
+}
+
+VSOut CopyToVSOut(MyVSOut vsOut) {
+    VSOut vOut;
+    vOut.posH = vsOut.posH;
+    vOut.posW = vsOut.posW;
+    vOut.normalW = vsOut.normalW;
+    vOut.tangentW = vsOut.tangentW;
+    vOut.texC = vsOut.texC;
+    vOut.instanceID = vsOut.instanceID;
+    vOut.materialID = vsOut.materialID;
+    vOut.prevPosH = vsOut.prevPosH;
+    return vOut;
 }
 
 float2 computeMotionVector(const VSOut vsOut, const int2 ipos)
@@ -74,13 +140,15 @@ float2 computeMotionVector(const VSOut vsOut, const int2 ipos)
 }
 
 [earlydepthstencil]
-GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics)
+GBufferPSOut psMain(MyVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics)
 {
     // Using vOut.posH.xy as pixel coordinate since it has the SV_Position semantic.
     int2 ipos = int2(vsOut.posH.xy);
 
+    VSOut rawVSOut = CopyToVSOut(vsOut);
+
     float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
-    VertexData v = prepareVertexData(vsOut, faceNormal);
+    VertexData v = prepareVertexData(rawVSOut, faceNormal);
     let lod = ImplicitLodTextureSampler();
 
 #if USE_ALPHA_TEST
@@ -99,7 +167,7 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
     const GBufferData gbuf = prepareGBufferData(sd, bsdf);
 
     const float4 texGrads = float4(ddx(sd.uv), ddy(sd.uv));
-    const float2 mvec = computeMotionVector(vsOut, ipos);
+    const float2 mvec = computeMotionVector(rawVSOut, ipos);
 
     GBufferPSOut psOut = {};
 
@@ -118,6 +186,8 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 bar
     if (is_valid(gDiffOpacity))     gDiffOpacity[ipos]  = gbuf.diffuseOpacity;
     if (is_valid(gSpecRough))       gSpecRough[ipos]    = gbuf.specRough;
     if (is_valid(gEmissive))        gEmissive[ipos]     = gbuf.emissive;
+    if (is_valid(gRawInstanceID))   gRawInstanceID[ipos] = vsOut.rawInstanceID;
+    if (is_valid(gPosL))            gPosL[ipos] = vsOut.posL;
 
     // Length of derivatives of position and normal
     if (is_valid(gPosNormalFwidth))
