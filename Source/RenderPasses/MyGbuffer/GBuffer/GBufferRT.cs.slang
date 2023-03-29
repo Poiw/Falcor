@@ -25,34 +25,35 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Falcor.h"
+import Scene.RaytracingInline;
+import GBufferRT;
 
-using namespace Falcor;
+ConstantBuffer<GBufferRT> gGBufferRT;
 
-class MyGbuffer : public RenderPass
+[numthreads(16, 16, 1)]
+void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-public:
-    using SharedPtr = std::shared_ptr<MyGbuffer>;
+    uint2 pixel = dispatchThreadId.xy;
+    if (any(pixel >= gGBufferRT.frameDim)) return;
 
-    static const Info kInfo;
+    GpuTimer timer;
+    gGBufferRT.beginTime(timer);
 
-    /** Create a new render pass object.
-        \param[in] pRenderContext The render context.
-        \param[in] dict Dictionary of serialized parameters.
-        \return A new object, or an exception is thrown if creation failed.
-    */
-    static SharedPtr create(RenderContext* pRenderContext = nullptr, const Dictionary& dict = {});
+    const Ray ray = gGBufferRT.generateRay(pixel);
 
-    virtual Dictionary getScriptingDictionary() override;
-    virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
-    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override {}
-    virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
-    virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
+    SceneRayQuery<GBufferRT::kUseAlphaTest> sceneRayQuery;
+    HitInfo hit;
+    float hitT;
+    if (sceneRayQuery.traceRay(ray, hit, hitT, GBufferRT::kRayFlags, 0xff))
+    {
+        gGBufferRT.writeHit(pixel, ray.origin, ray.dir, hit, hitT);
+    }
+    else
+    {
+        gGBufferRT.writeMiss(pixel, ray.origin, ray.dir);
+    }
 
-private:
-    MyGbuffer() : RenderPass(kInfo) {}
-};
+    gGBufferRT.writeAux(pixel, ray);
+
+    gGBufferRT.endTime(pixel, timer);
+}

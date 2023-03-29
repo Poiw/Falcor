@@ -25,48 +25,31 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "MyGbuffer.h"
-#include "RenderGraph/RenderPassLibrary.h"
+#include "GBuffer.h"
 
-const RenderPass::Info MyGbuffer::kInfo { "MyGbuffer", "Insert pass description here." };
-
-// Don't remove this. it's required for hot-reload to function properly
-extern "C" FALCOR_API_EXPORT const char* getProjDir()
+namespace Falcor
 {
-    return PROJECT_DIR;
+    // Update 'mtlData' channel format if size changes.
+    static_assert(sizeof(MaterialHeader) == 8);
 }
 
-extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
+// List of primary GBuffer channels. These correspond to the render targets
+// used in the GBufferRaster pixel shader. Note that channel order should
+// correspond to SV_TARGET index order.
+const ChannelList GBuffer::kGBufferChannels =
 {
-    lib.registerPass(MyGbuffer::kInfo, MyGbuffer::create);
-}
+    { "posW",           "gPosW",            "World space position",         true /* optional */, ResourceFormat::RGBA32Float },
+    { "normW",          "gNormW",           "World space normal",           true /* optional */, ResourceFormat::RGBA32Float },
+    { "tangentW",       "gTangentW",        "World space tangent",          true /* optional */, ResourceFormat::RGBA32Float },
+    { "faceNormalW",    "gFaceNormalW",     "Face normal in world space",   true /* optional */, ResourceFormat::RGBA32Float },
+    { "texC",           "gTexC",            "Texture coordinate",           true /* optional */, ResourceFormat::RG32Float   },
+    { "texGrads",       "gTexGrads",        "Texture gradients (ddx, ddy)", true /* optional */, ResourceFormat::RGBA16Float },
+    { "mvec",           "gMotionVector",    "Motion vector",                true /* optional */, ResourceFormat::RG32Float   },
+    { "mtlData",        "gMaterialData",    "Material data (ID, header)",   true /* optional */, ResourceFormat::RGBA32Uint  },
+};
 
-MyGbuffer::SharedPtr MyGbuffer::create(RenderContext* pRenderContext, const Dictionary& dict)
+GBuffer::GBuffer(const Info& info)
+    : GBufferBase(info)
 {
-    SharedPtr pPass = SharedPtr(new MyGbuffer());
-    return pPass;
-}
-
-Dictionary MyGbuffer::getScriptingDictionary()
-{
-    return Dictionary();
-}
-
-RenderPassReflection MyGbuffer::reflect(const CompileData& compileData)
-{
-    // Define the required resources here
-    RenderPassReflection reflector;
-    //reflector.addOutput("dst");
-    //reflector.addInput("src");
-    return reflector;
-}
-
-void MyGbuffer::execute(RenderContext* pRenderContext, const RenderData& renderData)
-{
-    // renderData holds the requested resources
-    // auto& pTexture = renderData.getTexture("src");
-}
-
-void MyGbuffer::renderUI(Gui::Widgets& widget)
-{
+    FALCOR_ASSERT(kGBufferChannels.size() == 8); // The list of primary GBuffer channels should contain 8 entries, corresponding to the 8 render targets.
 }
