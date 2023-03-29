@@ -65,7 +65,7 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
     float3 posW = loadPosition(texC, depth);
 
     float4 color = float4(0,0,0,0);
-    color.r = calcShadowFactor(gCsmData, depth, posW, ndcXy);
+    // color.r = calcShadowFactor(gCsmData, depth, posW, ndcXy); // Shadow pass has bugs, so I disabled it
 
     if(gPass.visualizeCascades)
     {
