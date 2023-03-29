@@ -255,7 +255,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // gNormWS[pixelCoord] = layer1.normWS;
     // gDiffOpacity[pixelCoord] = layer1.diffOpacity;
     // gMask[pixelCoord] = float4(1.0, 0.0, 0.0, 1.0);
-    if (layer1.z < layer2.z) {
+    if (layer1.z < uint(-1)) {
         gNormWS[pixelCoord] = layer1.normWS;
         gDiffOpacity[pixelCoord] = layer1.diffOpacity;
         gPosWS[pixelCoord] = layer1.posWS;
