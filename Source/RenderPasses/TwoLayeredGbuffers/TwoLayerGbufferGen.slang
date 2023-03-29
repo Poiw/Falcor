@@ -1,6 +1,10 @@
 import Scene.Raster;
 import GBufferHelpers;
 
+#ifndef INTERPOLATION_MODE
+#define INTERPOLATION_MODE linear
+#endif
+
 Texture2D<float2> gFirstLinearZBuffer;
 Texture2D<float4> gFirstNormWSBuffer;
 RasterizerOrderedTexture2D<float4> gLinearZThresholdBuffer; // 0: threshold, 1: max
@@ -13,8 +17,25 @@ cbuffer PerFrameCB {
     bool normalConstraint;
 };
 
+struct MyVSOut
+{
+    INTERPOLATION_MODE float3 normalW : NORMAL;    ///< Shading normal in world space (not normalized!).
+    INTERPOLATION_MODE float4 tangentW : TANGENT;  ///< Shading tangent in world space (not normalized!).
+    INTERPOLATION_MODE float2 texC : TEXCRD;       ///< Texture coordinate.
+    INTERPOLATION_MODE float3 posW : POSW;         ///< Position in world space.
+    INTERPOLATION_MODE float4 prevPosH : PREVPOSH; ///< Position in clip space for the previous frame.
+    INTERPOLATION_MODE float4 posL : POSL;         ///< Position in original model space.
+
+    // Per-triangle data
+    nointerpolation GeometryInstanceID instanceID : INSTANCE_ID; ///< Geometry instance ID.
+    nointerpolation uint rawInstanceID : RAW_INSTANCE_ID;       ///< Raw geometry instance ID.
+    nointerpolation uint materialID : MATERIAL_ID;               ///< Material ID.
+
+    float4 posH : SV_POSITION;
+};
+
 // Default Vertex Shader
-VSOut vsMain(VSIn vIn) {
+MyVSOut vsMain(VSIn vIn) {
     // VSOut vOut;
     // const GeometryInstanceID instanceID = { vIn.instanceID };
 
@@ -24,10 +45,53 @@ VSOut vsMain(VSIn vIn) {
     // vOut.posH = mul(gViewProjMat, float4(posW, 1.f));
     // return vOut;
 
-    return defaultVS(vIn);
+    // return defaultVS(vIn);
+
+    MyVSOut vOut;
+    const GeometryInstanceID instanceID = { vIn.instanceID };
+
+    float4x4 worldMat = gScene.getWorldMatrix(instanceID);
+    float3 posW = mul(worldMat, float4(vIn.pos, 1.f)).xyz;
+    vOut.posW = posW;
+    vOut.posH = mul(gScene.camera.getViewProj(), float4(posW, 1.f));
+
+    vOut.instanceID = instanceID;
+    vOut.materialID = gScene.getMaterialID(instanceID);
+
+    vOut.texC = vIn.texC;
+    vOut.normalW = mul(gScene.getInverseTransposeWorldMatrix(instanceID), vIn.unpack().normal);
+    float4 tangent = vIn.unpack().tangent;
+    vOut.tangentW = float4(mul((float3x3)gScene.getWorldMatrix(instanceID), tangent.xyz), tangent.w);
+
+    // Compute the vertex position in the previous frame.
+    float3 prevPos = vIn.pos;
+    GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+    if (instance.isDynamic())
+    {
+        uint prevVertexIndex = gScene.meshes[instance.geometryIndex].prevVbOffset + vIn.vertexID;
+        prevPos = gScene.prevVertices[prevVertexIndex].position;
+    }
+    float3 prevPosW = mul(gScene.getPrevWorldMatrix(instanceID), float4(prevPos, 1.f)).xyz;
+    vOut.prevPosH = mul(gScene.camera.data.prevViewProjMatNoJitter, float4(prevPosW, 1.f));
+
+    vOut.posL = float4(vIn.pos, 1.f);
+    vOut.rawInstanceID = vIn.instanceID;
+
+    return vOut;
 
 }
 
+VSOut CopyToVSOut(MyVSOut vsOut) {
+    VSOut vOut;
+    vOut.posH = vsOut.posH;
+    vOut.posW = vsOut.posW;
+    vOut.normalW = vsOut.normalW;
+    vOut.tangentW = vsOut.tangentW;
+    vOut.texC = vsOut.texC;
+    vOut.instanceID = vsOut.instanceID;
+    vOut.materialID = vsOut.materialID;
+    return vOut;
+}
 
 #define is_valid(name) (is_valid_##name != 0)
 
@@ -38,13 +102,17 @@ struct PSOut {
     float4 gDiffOpacity : SV_TARGET3;
     float4 gPosWS : SV_TARGET4;
     float  gDepth : SV_TARGET5;
+    uint   gInstanceID : SV_TARGET6;
+    float4 gPosL   : SV_TARGET7;
     // float4 tangentWS : SV_TARGET2;
     // float4 posWS : SV_TARGET3;
 };
 
-PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) : SV_TARGET {
+PSOut psMain(MyVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) : SV_TARGET {
 
     int2 ipos = int2(vsOut.posH.xy);
+
+    VSOut rawVSOut = CopyToVSOut(vsOut);
 
 
     // Not a valid second layer gbuffer
@@ -67,7 +135,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     PSOut psOut = {};
 
     float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
-    VertexData v = prepareVertexData(vsOut, faceNormal);
+    VertexData v = prepareVertexData(rawVSOut, faceNormal);
     let lod = ImplicitLodTextureSampler();
 
     if (gScene.materials.alphaTest(v, vsOut.materialID, lod)) discard;
@@ -86,6 +154,8 @@ PSOut psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentri
     psOut.gMask = float4(1., 0., 0., 0.);
     psOut.gPosWS = gbuf.posW;
     psOut.gDepth = vsOut.posH.z;
+    psOut.gInstanceID = vsOut.rawInstanceID;
+    psOut.gPosL = vsOut.posL;
 
     if (normalConstraint) {
         if (dot(gbuf.normW.xyz, normalize(gbuf.posW.xyz - gScene.camera.getPosition())) > gNormalThreshold)

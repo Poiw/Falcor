@@ -57,6 +57,8 @@ const std::string additionalGbufferCopyDepthShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/AdditionalGbufferCopyDepth.slang";
 const std::string projectionDepthTestShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/ProjectionDepthTest.slang";
+const std::string calculateCurrentPosWSShaderFilePath =
+    "RenderPasses/TwoLayeredGbuffers/CalculateCurrentPosWS.slang";
 const std::string forwardWarpGbufferShaderFilePath =
     "RenderPasses/TwoLayeredGbuffers/ForwardWarpGbuffer.slang";
 const std::string mergeLayersShaderFilePath =
@@ -140,10 +142,14 @@ void TwoLayeredGbuffers::ClearVariables()
     mFirstLayerGbuffer.mpPosWS = nullptr;
     mFirstLayerGbuffer.mpNormWS = nullptr;
     mFirstLayerGbuffer.mpDiffOpacity = nullptr;
+    mFirstLayerGbuffer.mpInstanceID = nullptr;
+    mFirstLayerGbuffer.mpPosL = nullptr;
 
     mSecondLayerGbuffer.mpPosWS = nullptr;
     mSecondLayerGbuffer.mpNormWS = nullptr;
     mSecondLayerGbuffer.mpDiffOpacity = nullptr;
+    mSecondLayerGbuffer.mpInstanceID = nullptr;
+    mSecondLayerGbuffer.mpPosL = nullptr;
 
     for (int i = 0; i < maxTexLevel; ++i) {
         mProjFirstLayer[i].mpDepthTest = nullptr;
@@ -171,6 +177,8 @@ void TwoLayeredGbuffers::ClearVariables()
     mAdditionalGbuffer.mpDiffOpacity = nullptr;
     mAdditionalGbuffer.mpDepth = nullptr;
     mAdditionalGbuffer.mpProjDepth = nullptr;
+    mAdditionalGbuffer.mpInstanceID = nullptr;
+    mAdditionalGbuffer.mpPosL = nullptr;
 
     mpCenterRender = nullptr;
 
@@ -292,6 +300,20 @@ void TwoLayeredGbuffers::setScene(RenderContext* pRenderContext, const Scene::Sh
             // Bind the scene.
             mpAdditionalGbufferCopyDepthPass->setVars(nullptr);  // Trigger vars creation
             // mpForwardWarpPass["gScene"] = mpScene->getParameterBlock();
+        }
+
+        // Create a Forward Warping to calculate current world pos
+        {
+            Program::Desc desc;
+            desc.addShaderModules(mpScene->getShaderModules());
+            desc.addShaderLibrary(calculateCurrentPosWSShaderFilePath).csEntry("csMain");
+            desc.addTypeConformances(mpScene->getTypeConformances());
+            Program::DefineList defines;
+            defines.add(mpScene->getSceneDefines());
+            mpCalculateCurrentPosWSPass = ComputePass::create(desc, defines, false);
+            // Bind the scene.
+            mpCalculateCurrentPosWSPass->setVars(nullptr);  // Trigger vars creation
+            mpCalculateCurrentPosWSPass["gScene"] = mpScene->getParameterBlock();
         }
 
 
@@ -596,6 +618,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 createNewTexture(mFirstLayerGbuffer.mpPosWS, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpDiffOpacity, curDim);
+                createNewTexture(mFirstLayerGbuffer.mpInstanceID, curDim, ResourceFormat::R32Uint);
+                createNewTexture(mFirstLayerGbuffer.mpPosL, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpDepth, curDim, ResourceFormat::R32Float);
 
                 createNewTexture(mpCenterRender, curDim);
@@ -603,12 +627,16 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 createNewTexture(mSecondLayerGbuffer.mpPosWS, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpNormWS, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpDiffOpacity, curDim);
+                createNewTexture(mSecondLayerGbuffer.mpInstanceID, curDim, ResourceFormat::R32Uint);
+                createNewTexture(mSecondLayerGbuffer.mpPosL, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpDepth, curDim, ResourceFormat::R32Float);
 
                 createNewTexture(mAdditionalGbuffer.mpProjDepth, curDim, ResourceFormat::R32Float);
                 createNewTexture(mAdditionalGbuffer.mpPosWS, curDim);
                 createNewTexture(mAdditionalGbuffer.mpNormWS, curDim);
                 createNewTexture(mAdditionalGbuffer.mpDiffOpacity, curDim);
+                createNewTexture(mAdditionalGbuffer.mpInstanceID, curDim, ResourceFormat::R32Uint);
+                createNewTexture(mAdditionalGbuffer.mpPosL, curDim);
                 createNewTexture(mAdditionalGbuffer.mpDepth, curDim, ResourceFormat::D32Float, Resource::BindFlags::DepthStencil);
             }
 
@@ -643,6 +671,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondDiffOpacity"), 3);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondPosWS"), 4);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(mSecondLayerGbuffer.mpDepth, 5);
+            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(mSecondLayerGbuffer.mpInstanceID, 6);
+            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(mSecondLayerGbuffer.mpPosL, 7);
 
             mTwoLayerGbufferGenPass.pFbo->attachDepthStencilTarget(renderData.getTexture("tl_Depth"));
 
@@ -734,6 +764,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpNormWS, 0);
                         mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpDiffOpacity, 1);
                         mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpPosWS, 2);
+                        mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpInstanceID, 3);
+                        mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpPosL, 4);
                         mAddtionalGbufferPass.pFbo->attachDepthStencilTarget(mAdditionalGbuffer.mpDepth);
                     }
 
@@ -801,6 +833,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         auto pDiffOpacitySRV = mAdditionalGbuffer.mpDiffOpacity->getSRV();
                         mpAdditionalGbufferCopyPass["gDiffOpacity"].setSrv(pDiffOpacitySRV);
 
+                        auto pInstanceIDSRV = mAdditionalGbuffer.mpInstanceID->getSRV();
+                        mpAdditionalGbufferCopyPass["gInstanceID"].setSrv(pInstanceIDSRV);
+
+                        auto pPosLSRV = mAdditionalGbuffer.mpPosL->getSRV();
+                        mpAdditionalGbufferCopyPass["gPosL"].setSrv(pPosLSRV);
+
                         auto pProjDepthSRV = mAdditionalGbuffer.mpProjDepth->getSRV();
                         mpAdditionalGbufferCopyPass["gProjDepthBuf"].setSrv(pProjDepthSRV);
                     }
@@ -817,6 +855,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         auto pProjDiffOpacityUAV = mSecondLayerGbuffer.mpDiffOpacity->getUAV();
                         mpAdditionalGbufferCopyPass["gProjDiffOpacity"].setUav(pProjDiffOpacityUAV);
 
+                        auto pProjInstanceIDUAV = mSecondLayerGbuffer.mpInstanceID->getUAV();
+                        mpAdditionalGbufferCopyPass["gProjInstanceID"].setUav(pProjInstanceIDUAV);
+
+                        auto pProjPosLUAV = mSecondLayerGbuffer.mpPosL->getUAV();
+                        mpAdditionalGbufferCopyPass["gProjPosL"].setUav(pProjPosLUAV);
+
                     }
 
                     mpAdditionalGbufferCopyPass->execute(pRenderContext, uint3(curDim, 1));
@@ -825,6 +869,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         pRenderContext->uavBarrier(mSecondLayerGbuffer.mpPosWS.get());
                         pRenderContext->uavBarrier(mSecondLayerGbuffer.mpNormWS.get());
                         pRenderContext->uavBarrier(mSecondLayerGbuffer.mpDiffOpacity.get());
+                        pRenderContext->uavBarrier(mSecondLayerGbuffer.mpInstanceID.get());
+                        pRenderContext->uavBarrier(mSecondLayerGbuffer.mpPosL.get());
                     }
 
 
@@ -928,6 +974,37 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     createNewTexture(mMergedLayer.mpPrevCoord, curDim, ResourceFormat::RG32Uint);
                     createNewTexture(mMergedLayer.mpRender, curDim, ResourceFormat::RGBA32Float);
                 }
+
+
+                // ----------------------------- Calculate Current Depth ------------------------//
+
+                {
+                    {
+                        mpCalculateCurrentPosWSPass["PerFrameCB"]["gFrameDim"] = curDim;
+                    }
+
+                    {
+                        auto pSecondInstanceIDSRV = mSecondLayerGbuffer.mpInstanceID->getSRV();
+                        mpCalculateCurrentPosWSPass["gSecondLayerInstanceID"].setSrv(pSecondInstanceIDSRV);
+
+                        auto pSecondPosLSRV = mSecondLayerGbuffer.mpPosL->getSRV();
+                        mpCalculateCurrentPosWSPass["gSecondLayerPosL"].setSrv(pSecondPosLSRV);
+                    }
+
+                    {
+                        auto pSecondPosWSUAV = mSecondLayerGbuffer.mpPosWS->getUAV();
+                        mpCalculateCurrentPosWSPass["gSecondLayerPosWS"].setUav(pSecondPosWSUAV);
+                    }
+
+                    mpCalculateCurrentPosWSPass->execute(pRenderContext, uint3(curDim.x, curDim.y, 1));
+
+                    {
+                        pRenderContext->uavBarrier(mSecondLayerGbuffer.mpPosWS.get());
+                    }
+
+                }
+
+
 
 
                 // ------------------------------ Depth Test ------------------------------ //

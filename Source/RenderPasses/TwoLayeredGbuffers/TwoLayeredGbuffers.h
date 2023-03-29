@@ -75,6 +75,7 @@ private:
 
     // Compute Pass
     ComputePass::SharedPtr mpProjectionDepthTestPass;
+    ComputePass::SharedPtr mpCalculateCurrentPosWSPass;
     ComputePass::SharedPtr mpForwardWarpPass;
     ComputePass::SharedPtr mpMergeLayerPass;
     ComputePass::SharedPtr mpAdditionalGbufferCopyPass;
@@ -86,6 +87,8 @@ private:
         Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
         Texture::SharedPtr mpDepth;
+        Texture::SharedPtr mpInstanceID;
+        Texture::SharedPtr mpPosL;
     } mFirstLayerGbuffer, mSecondLayerGbuffer;
 
     Texture::SharedPtr mpCenterRender;
@@ -113,6 +116,8 @@ private:
         Texture::SharedPtr mpDiffOpacity;
         Texture::SharedPtr mpProjDepth;
         Texture::SharedPtr mpDepth;
+        Texture::SharedPtr mpInstanceID;
+        Texture::SharedPtr mpPosL;
     } mAdditionalGbuffer;
 
     // Texture::SharedPtr mpPosWSBuffer;
