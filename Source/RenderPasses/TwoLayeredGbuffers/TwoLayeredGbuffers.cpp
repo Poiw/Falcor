@@ -188,6 +188,7 @@ void TwoLayeredGbuffers::ClearVariables()
     mFreshNum = 8;
     mMaxDepthContraint = 0;
     mNormalConstraint = 0;
+    mCenterRenderScale = 1.;
 
     mEnableSubPixel = false;
     mEnableAdatpiveRadius = false;
@@ -578,11 +579,15 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
         if (mFrameCount % mFreshNum == 0) {
 
+            auto curDim = renderData.getDefaultTextureDims();
+
             {
                 mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["gEps"] = mEps;
                 mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["gNormalThreshold"] = mNormalThreshold;
                 mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["maxConstraint"] = mMaxDepthContraint;
                 mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["normalConstraint"] = mNormalConstraint;
+                mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["curDim"] = curDim;
+                mTwoLayerGbufferGenPass.pVars["PerFrameCB"]["renderScale"] = mCenterRenderScale;
                 // mCurEps = mEps;
             }
 
@@ -599,7 +604,6 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                                 + Falcor::to_string(mpScene->getCamera()->getPosition() - mpScene->getCamera()->getTarget()));
             mPrevPos = mpScene->getCamera()->getPosition();
 
-            auto curDim = renderData.getDefaultTextureDims();
 
             // if (!mpPosWSBuffer || mpPosWSBuffer->getWidth() != curDim.x || mpPosWSBuffer->getHeight() != curDim.y) {
 
@@ -795,6 +799,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     {
                         mpAdditionalGbufferCopyDepthPass["PerFrameCB"]["gFrameDim"] = curDim;
                         mpAdditionalGbufferCopyDepthPass["PerFrameCB"]["gCenterViewProjMat"] = mCenterMatrix;
+                        mpAdditionalGbufferCopyDepthPass["PerFrameCB"]["renderScale"] = mCenterRenderScale;
                     }
 
                     {
@@ -830,6 +835,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     {
                         mpAdditionalGbufferCopyPass["PerFrameCB"]["gFrameDim"] = curDim;
                         mpAdditionalGbufferCopyPass["PerFrameCB"]["gCenterViewProjMat"] = mCenterMatrix;
+                        mpAdditionalGbufferCopyPass["PerFrameCB"]["renderScale"] = mCenterRenderScale;
                     }
 
                     {
@@ -1385,6 +1391,7 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
     widget.var<uint>("Forward Warping Mip Level", mForwardMipLevel, 0, 3);
     widget.var<float>("Additional Camera Radius", mAdditionalCamRadius, 0, 10);
     widget.var<float>("Additional Camera Target Distance", mAdditionalCamTarDist, 0, 10);
+    widget.var<float>("Render Scale Factor", mCenterRenderScale, 1);
 
     widget.checkbox("Max Depth Constraint", mMaxDepthContraint);
     widget.checkbox("Normal Constraint", mNormalConstraint);

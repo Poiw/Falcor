@@ -15,6 +15,8 @@ cbuffer PerFrameCB {
     float gNormalThreshold;
     bool maxConstraint;
     bool normalConstraint;
+    uint2 curDim;
+    float renderScale;
 };
 
 struct MyVSOut
@@ -54,6 +56,7 @@ MyVSOut vsMain(VSIn vIn) {
     float3 posW = mul(worldMat, float4(vIn.pos, 1.f)).xyz;
     vOut.posW = posW;
     vOut.posH = mul(gScene.camera.getViewProj(), float4(posW, 1.f));
+    vOut.posH.xy /= renderScale;
 
     vOut.instanceID = instanceID;
     vOut.materialID = gScene.getMaterialID(instanceID);
@@ -111,7 +114,8 @@ struct PSOut {
 
 PSOut psMain(MyVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) : SV_TARGET {
 
-    int2 ipos = int2(vsOut.posH.xy);
+    int2 ipos = int2(vsOut.posH.xy) - (int2)curDim / 2;
+    ipos = int2(ipos * renderScale) + (int2)curDim / 2;
 
     VSOut rawVSOut = CopyToVSOut(vsOut);
 
@@ -130,7 +134,7 @@ PSOut psMain(MyVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycent
 
     gLinearZThresholdBuffer[ipos][0] = (threshold + gFirstLinearZBuffer[ipos][0]) * 0.5;
 
-    if (linearZ < threshold) // pecision err
+    if (ipos.x >= 0 && ipos.x <= curDim.x && ipos.y >= 0 && ipos.y <= curDim.y && linearZ < threshold) // pecision err
         discard;
 
     PSOut psOut = {};

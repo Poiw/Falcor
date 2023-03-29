@@ -135,6 +135,7 @@ private:
     uint mForwardMipLevel;
     float mAdditionalCamRadius;
     float mAdditionalCamTarDist;
+    float mCenterRenderScale;
 
     uint32_t mMode; // Current mode
 

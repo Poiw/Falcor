@@ -1,6 +1,7 @@
 cbuffer PerFrameCB {
     uint2 gFrameDim;
     float4x4 gCenterViewProjMat;
+    float renderScale;
 };
 
 Texture2D<float4> gPosWS;
@@ -25,11 +26,16 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 #else
     tarCrd *= float2(0.5, -0.5);
 #endif
+
+    float2 rawTarCrd = tarCrd + 0.5;
+    tarCrd /= renderScale;
+
     tarCrd += 0.5;
 
     uint2 tarIpos = uint2(tarCrd * gFrameDim);
+    uint2 rawTarIpos = uint2(rawTarCrd * gFrameDim);
 
-    if (tarPosH.w > gProjFirstLinearZ[tarIpos][0] + 1e-2) {
+    if (tarPosH.w > gProjFirstLinearZ[rawTarIpos][0] + 1e-2) {
         InterlockedMax(gProjDepthBuf[tarIpos], asuint(z));
         // InterlockedMax(gProjDepthBuf[tarIpos], asuint(z), gProjDepthBuf[tarIpos]);
         // gProjDepthBuf[tarIpos] = asuint(z);
