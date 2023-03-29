@@ -90,8 +90,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         cur.albedo = gCurDiffOpacity[pixelCoord].xyz;
         cur.posW = gCurPosWS[pixelCoord].xyz;
 
-        int stepList[] = { 1, 5, 9 };
-        int stepNumList[] = { 4, 3, 2 };
+        int stepList[] = { 1, 9, 19 };
+        int stepNumList[] = { 5, 4, 3 };
 
         float weight[] = {0., 0., 0., 0.};
         float3 shadingList[4];
@@ -130,6 +130,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                             if (nearSim > weight[k]) {
                                 weight[k] = nearSim;
                                 shadingList[k] = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
+                                // shadingList[k] = gCenterDiffOpacity[nearCoord].xyz;
                                 break;
                             }
                         }
