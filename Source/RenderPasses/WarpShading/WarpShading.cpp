@@ -59,6 +59,13 @@ void WarpShading::initVariables()
     mNormSigma = 0.5;
     mPosWSigma = 1.f;
     mCoordSigma = 20.f;
+
+    mFrameCount = 0;
+
+    mDumpData = false;
+
+    mSavingDir = "C:/Users/songyin/Desktop/TwoLayered/Test";
+
 }
 
 void WarpShading::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -142,11 +149,18 @@ RenderPassReflection WarpShading::reflect(const CompileData& compileData)
     return reflector;
 }
 
+void WarpShading::DumpDataFunc(const RenderData &renderData, uint frameIdx, const std::string dirPath)
+{
+    renderData.getTexture("tl_FirstPreTonemap")->captureToFile(0, 0, dirPath + "/Render_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+}
+
 void WarpShading::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
 
 
     if (mpScene == nullptr) return;
+
+    Falcor::Logger::log(Falcor::Logger::Level::Info, "Shading: " + std::to_string(mFrameCount));
 
     auto curDim = renderData.getDefaultTextureDims();
     // ---------------------------------- Warp Shading ---------------------------------------
@@ -203,6 +217,13 @@ void WarpShading::execute(RenderContext* pRenderContext, const RenderData& rende
         }
 
     }
+
+    if (mDumpData)
+    {
+        DumpDataFunc(renderData, mFrameCount, mSavingDir);
+    }
+
+    mFrameCount += 1;
 }
 
 void WarpShading::renderUI(Gui::Widgets& widget)
@@ -211,4 +232,7 @@ void WarpShading::renderUI(Gui::Widgets& widget)
     widget.var<float>("PosW Sigma", mPosWSigma, 0);
     widget.var<float>("Normal Sigma", mNormSigma, 0);
     widget.var<float>("Coord Sigma", mCoordSigma, 0);
+
+    widget.checkbox("Dump Data", mDumpData);
+    widget.textbox("Saving Dir", mSavingDir);
 }

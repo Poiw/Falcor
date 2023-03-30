@@ -63,6 +63,8 @@ private:
 
     void ClearVariables();
 
+    void DumpDataFunc(const RenderData &renderData, uint frameIdx, const std::string dirPath);
+
     Scene::SharedPtr mpScene;
     // SampleGenerator::SharedPtr mpSampleGenerator;
 
@@ -151,6 +153,11 @@ private:
     bool mNormalConstraint;
     bool mEnableSubPixel;
     bool mEnableAdatpiveRadius;
+    bool mDumpData;
+
+    std::string mSavingDir;
+
+    bool mCenterValid; // Check whether center gbuffers are created
 
     // Variables
     float3 mPrevPos;

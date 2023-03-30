@@ -199,6 +199,11 @@ void TwoLayeredGbuffers::ClearVariables()
     mAdditionalCamTarDist = 1.0f;
     mForwardMipLevel = 0;
 
+    mCenterValid = false;
+    mDumpData = false;
+
+    mSavingDir = "C:/Users/songyin/Desktop/TwoLayered/Test";
+
     mRandomGen = std::uniform_real_distribution<float>(0, 1);
 }
 
@@ -522,10 +527,26 @@ void TwoLayeredGbuffers::createNewTexture(Texture::SharedPtr &pTex,
 
 }
 
+void TwoLayeredGbuffers::DumpDataFunc(const RenderData &renderData, uint frameIdx, const std::string dirPath)
+{
+    renderData.getTexture("tl_Mask")->captureToFile(0, 0, dirPath + "/Mask_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("tl_FirstNormWS")->captureToFile(0, 0, dirPath + "/Normal_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("tl_FirstDiffOpacity")->captureToFile(0, 0, dirPath + "/Albedo_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("tl_FirstPosWS")->captureToFile(0, 0, dirPath + "/PosWS_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+
+    renderData.getTexture("gPosWS")->captureToFile(0, 0, dirPath + "/PosWS-GT_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("gNormalWS")->captureToFile(0, 0, dirPath + "/Normal-GT_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("gDiffOpacity")->captureToFile(0, 0, dirPath + "/Albedo-GT_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+
+    renderData.getTexture("rPreTonemapped")->captureToFile(0, 0, dirPath + "/Render-GT_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+}
+
 void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
 
     if (mpScene == nullptr) return;
+
+    Falcor::Logger::log(Falcor::Logger::Level::Info, "Gbuffer: " + std::to_string(mFrameCount));
 
     // const uint mostDetailedMip = 0;
 
@@ -578,6 +599,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
         pRenderContext->blit(Temp->getSRV(), renderData.getTexture("tl_FrameCount")->getRTV());
 
         if (mFrameCount % mFreshNum == 0) {
+
+            mCenterValid = true;
 
             auto curDim = renderData.getDefaultTextureDims();
 
@@ -910,6 +933,11 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
         }
 
         else {
+
+            if (!mCenterValid) {
+                mFrameCount++;
+                return;
+            }
 
             if(mMode == 1) {
 
@@ -1366,9 +1394,13 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
         }
 
-        mFrameCount += 1;
+        if (mDumpData) {
+            DumpDataFunc(renderData, mFrameCount, mSavingDir);
+        }
 
     }
+
+    mFrameCount += 1;
 
 }
 
@@ -1397,4 +1429,8 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
     widget.checkbox("Normal Constraint", mNormalConstraint);
     widget.checkbox("Enable Subpixel Sampling in Forward Warping", mEnableSubPixel);
     widget.checkbox("Enable Adatptive Radius", mEnableAdatpiveRadius);
+
+    widget.checkbox("Dump Data", mDumpData);
+    widget.textbox("Saving Dir", mSavingDir);
+
 }

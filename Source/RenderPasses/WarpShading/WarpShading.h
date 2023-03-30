@@ -56,6 +56,8 @@ public:
 private:
     WarpShading() : RenderPass(kInfo) {}
 
+    void DumpDataFunc(const RenderData &renderData, uint frameIdx, const std::string dirPath);
+
     void initVariables();
 
     Scene::SharedPtr mpScene;
@@ -66,5 +68,11 @@ private:
     float mNormSigma;
     float mPosWSigma;
     float mCoordSigma;
+
+    uint mFrameCount;
+
+    bool mDumpData;
+
+    std::string mSavingDir;
 
 };
