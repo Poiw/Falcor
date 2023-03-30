@@ -176,18 +176,18 @@ void TwoLayeredGbuffers::ClearVariables()
 
     mpCenterRender = nullptr;
 
-    mEps = 1e-3;
+    mEps = 0.001f;
 
     mMode = 0;
     mNearestThreshold = 1;
     mSubPixelSample = 1;
 
-    mNormalThreshold = 0.1;
+    mNormalThreshold = 0.1f;
     mFrameCount = 0;
     mFreshNum = 8;
     mMaxDepthContraint = 0;
     mNormalConstraint = 1;
-    mCenterRenderScale = 1.2;
+    mCenterRenderScale = 1.2f;
 
     mEnableSubPixel = false;
     mEnableAdatpiveRadius = true;
