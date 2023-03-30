@@ -160,7 +160,7 @@ void WarpShading::execute(RenderContext* pRenderContext, const RenderData& rende
 
     if (mpScene == nullptr) return;
 
-    Falcor::Logger::log(Falcor::Logger::Level::Info, "Shading: " + std::to_string(mFrameCount));
+    // Falcor::Logger::log(Falcor::Logger::Level::Info, "Shading: " + std::to_string(mFrameCount));
 
     auto curDim = renderData.getDefaultTextureDims();
     // ---------------------------------- Warp Shading ---------------------------------------

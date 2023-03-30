@@ -122,12 +122,6 @@ TwoLayeredGbuffers::TwoLayeredGbuffers() : RenderPass(kInfo) {
         mAddtionalGbufferPass.pFbo = Fbo::create();
     }
 
-    mEps = 0.0f;
-    mFrameCount = 0;
-    mFreshNum = 8;
-    mMode = 0;
-    mNearestThreshold = 1;
-    mSubPixelSample = 1;
 
     // // Create sample generator
     // mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
@@ -182,22 +176,27 @@ void TwoLayeredGbuffers::ClearVariables()
 
     mpCenterRender = nullptr;
 
+    mEps = 1e-3;
+
     mMode = 0;
-    mNormalThreshold = 1.0;
+    mNearestThreshold = 1;
+    mSubPixelSample = 1;
+
+    mNormalThreshold = 0.1;
     mFrameCount = 0;
     mFreshNum = 8;
     mMaxDepthContraint = 0;
-    mNormalConstraint = 0;
-    mCenterRenderScale = 1.;
+    mNormalConstraint = 1;
+    mCenterRenderScale = 1.2;
 
     mEnableSubPixel = false;
-    mEnableAdatpiveRadius = false;
-    mAdditionalCamNum = 0;
+    mEnableAdatpiveRadius = true;
+    mAdditionalCamNum = 5;
 
     mPrevPos = float3(0.0f, 0.0f, 0.0f);
-    mAdditionalCamRadius = 0.1f;
+    mAdditionalCamRadius = 1.0f;
     mAdditionalCamTarDist = 1.0f;
-    mForwardMipLevel = 0;
+    mForwardMipLevel = 1;
 
     mCenterValid = false;
     mDumpData = false;
@@ -546,7 +545,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
     if (mpScene == nullptr) return;
 
-    Falcor::Logger::log(Falcor::Logger::Level::Info, "Gbuffer: " + std::to_string(mFrameCount));
+    // Falcor::Logger::log(Falcor::Logger::Level::Info, "Gbuffer: " + std::to_string(mFrameCount));
 
     // const uint mostDetailedMip = 0;
 
@@ -625,6 +624,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                                 + Falcor::to_string((float16_t)glm::length(mpScene->getCamera()->getPosition() - mPrevPos)));
             Falcor::Logger::log(Falcor::Logger::Level::Info, "Target - CamPos: "
                                 + Falcor::to_string(mpScene->getCamera()->getPosition() - mpScene->getCamera()->getTarget()));
+            Falcor::Logger::log(Falcor::Logger::Level::Info, "Camera Speed: "
+                                + std::to_string(mpScene->getCameraSpeed()));
             mPrevPos = mpScene->getCamera()->getPosition();
 
 
@@ -1406,8 +1407,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
 void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
 {
-    widget.slider("Eps", mEps, -1.0f, 5.0f);
-    widget.slider("Back Face Culling Threshold", mNormalThreshold, -1.0f, 1.0f);
+    widget.var<float>("Eps", mEps, -1.0f, 5.0f);
+    widget.var<float>("Back Face Culling Threshold", mNormalThreshold, -1.0f, 1.0f);
 
     Gui::DropdownList modeList;
     modeList.push_back(Gui::DropdownValue{0, "default"});
