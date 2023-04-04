@@ -55,11 +55,12 @@ float similarity(const Prop cur, const Prop near)
     // // return albedo_dif.x + albedo_dif.y + albedo_dif.z;
 
     float coord_w = gaussian2(cur.coord - near.coord, gCoordSigma);
-    float pos_w = gaussian3(cur.posW - near.posW, gPosWSigma);
-    float norm_w = gaussian3(cur.norm - near.norm, gNormSigma);
+    // float pos_w = gaussian3(cur.posW - near.posW, gPosWSigma);
+    // float norm_w = gaussian3(cur.norm - near.norm, gNormSigma);
+    float norm_w = gaussian(1 - dot(cur.norm, near.norm), gNormSigma);
     float albedo_w = gaussian3(cur.albedo - near.albedo, gAlbedoSigma);
 
-    return coord_w * pos_w * norm_w * albedo_w;
+    return coord_w  * norm_w * albedo_w;
 
 }
 
@@ -85,13 +86,13 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         uint2 prevCoord = gCurPrevCoord[pixelCoord].xy;
 
         Prop cur, near;
-        cur.coord = float2(prevCoord);
+        cur.coord = float2(prevCoord) / float2(gFrameDim);
         cur.norm = gCurNormWS[pixelCoord].xyz;
         cur.albedo = gCurDiffOpacity[pixelCoord].xyz;
         cur.posW = gCurPosWS[pixelCoord].xyz;
 
-        int stepList[] = { 1, 9, 19 };
-        int stepNumList[] = { 5, 4, 3 };
+        int2 stepList[] = { int2(1, 1), int2(0.05 * gFrameDim), int2(0.1 * gFrameDim) };
+        int stepNumList[] = { 1, 1, 1 };
 
         float weight[] = {0., 0., 0., 0.};
         float3 shadingList[4];
@@ -101,17 +102,17 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         shadingList[3] = float3(0., 0., 0.);
 
         for (int idx = 0; idx < 3; ++idx) {
-            int step = stepList[idx];
+            int2 step = stepList[idx];
             int begin = -stepNumList[idx];
             int end = stepNumList[idx];
 
             for (int i = begin; i <= end; ++i) {
                 for (int j = begin; j <= end; ++j) {
 
-                    int2 nearCoord = (int2)prevCoord + int2(i * step, j * step);
+                    int2 nearCoord = (int2)prevCoord + int2(i, j) * step;
                     if (nearCoord.x >= 0 && nearCoord.x < gFrameDim.x && nearCoord.y >= 0 && nearCoord.y < gFrameDim.y) {
 
-                        near.coord = float2(nearCoord);
+                        near.coord = float2(nearCoord) / float2(gFrameDim);
                         near.norm = gCenterNormWS[nearCoord].xyz;
                         near.albedo = gCenterDiffOpacity[nearCoord].xyz;
                         near.posW = gCenterPosWS[nearCoord].xyz;
