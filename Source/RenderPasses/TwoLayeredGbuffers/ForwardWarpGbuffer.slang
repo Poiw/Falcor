@@ -5,6 +5,7 @@ cbuffer PerFrameCB {
     float4x4 gCurViewProjMat;
     uint subSampleNum;
     bool gEnableSubPixel;
+    float renderScale;
 };
 
 
@@ -153,14 +154,17 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     normWS = gSecondLayerNormWS[pixelCoord];
     diffOpacity = gSecondLayerDiffOpacity[pixelCoord];
     posWS_t = gSecondLayerPosWS[pixelCoord];
-    prevCoord = uint2(pixelCoord);
+    int2 prevCoord2 = int2(pixelCoord);
+
+    prevCoord2 = prevCoord2 - (int2)gFrameDim / 2;
+    prevCoord2 = int2(prevCoord2 * renderScale + (int2)gFrameDim / 2);
 
     tarIpos0 = uint2(tarCrd * gFrameDim);
     if (asuint(z) == gProjSecondLayerDepthTest0[tarIpos0]) {
         gProjSecondLayerNormWS0[tarIpos0] = normWS;
         gProjSecondLayerDiffOpacity0[tarIpos0] = diffOpacity;
         gProjSecondLayerPosWS0[tarIpos0] = posWS_t;
-        gProjSecondLayerPrevCoord0[tarIpos0] = prevCoord;
+        gProjSecondLayerPrevCoord0[tarIpos0] = prevCoord2;
     }
 
     tarIpos1 = uint2(tarCrd * gFrameDim) / 2;
@@ -168,7 +172,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjSecondLayerNormWS1[tarIpos1] = normWS;
         gProjSecondLayerDiffOpacity1[tarIpos1] = diffOpacity;
         gProjSecondLayerPosWS1[tarIpos1] = posWS_t;
-        gProjSecondLayerPrevCoord1[tarIpos1] = prevCoord;
+        gProjSecondLayerPrevCoord1[tarIpos1] = prevCoord2;
     }
 
     tarIpos2 = uint2(tarCrd * gFrameDim) / 4;
@@ -176,7 +180,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjSecondLayerNormWS2[tarIpos2] = normWS;
         gProjSecondLayerDiffOpacity2[tarIpos2] = diffOpacity;
         gProjSecondLayerPosWS2[tarIpos2] = posWS_t;
-        gProjSecondLayerPrevCoord2[tarIpos2] = prevCoord;
+        gProjSecondLayerPrevCoord2[tarIpos2] = prevCoord2;
     }
 
     tarIpos3 = uint2(tarCrd * gFrameDim) / 16;
@@ -184,7 +188,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjSecondLayerNormWS3[tarIpos3] = normWS;
         gProjSecondLayerDiffOpacity3[tarIpos3] = diffOpacity;
         gProjSecondLayerPosWS3[tarIpos3] = posWS_t;
-        gProjSecondLayerPrevCoord3[tarIpos3] = prevCoord;
+        gProjSecondLayerPrevCoord3[tarIpos3] = prevCoord2;
     }
 
     return;

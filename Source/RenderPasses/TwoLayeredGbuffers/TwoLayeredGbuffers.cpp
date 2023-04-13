@@ -204,6 +204,9 @@ void TwoLayeredGbuffers::ClearVariables()
     mSavingDir = "C:/Users/songyin/Desktop/TwoLayered/Test";
 
     mRandomGen = std::uniform_real_distribution<float>(0, 1);
+
+    mUseGTGbuffer = false;
+
 }
 
 float TwoLayeredGbuffers::mGetRandom(float min, float max)
@@ -1138,6 +1141,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         mpForwardWarpPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
                         mpForwardWarpPass["PerFrameCB"]["subSampleNum"] = mSubPixelSample;
                         mpForwardWarpPass["PerFrameCB"]["gEnableSubPixel"] = mEnableSubPixel;
+                        mpForwardWarpPass["PerFrameCB"]["renderScale"] = mCenterRenderScale;
+
                     }
 
                     // Input Textures
@@ -1337,6 +1342,11 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
                 }
 
+                if (mUseGTGbuffer) {
+                    pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
+                    pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
+                    pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), renderData.getTexture("tl_FirstPosWS")->getRTV());
+                }
 
                 // // ---------------------------------- Warp Shading ---------------------------------------
                 // {
@@ -1430,6 +1440,8 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
     widget.checkbox("Normal Constraint", mNormalConstraint);
     widget.checkbox("Enable Subpixel Sampling in Forward Warping", mEnableSubPixel);
     widget.checkbox("Enable Adatptive Radius", mEnableAdatpiveRadius);
+
+    widget.checkbox("Enable GT Gbuffers", mUseGTGbuffer);
 
     widget.checkbox("Dump Data", mDumpData);
     widget.textbox("Saving Dir", mSavingDir);

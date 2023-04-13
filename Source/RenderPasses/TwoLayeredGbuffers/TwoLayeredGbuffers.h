@@ -158,6 +158,7 @@ private:
     std::string mSavingDir;
 
     bool mCenterValid; // Check whether center gbuffers are created
+    bool mUseGTGbuffer;
 
     // Variables
     float3 mPrevPos;

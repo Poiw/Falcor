@@ -56,9 +56,9 @@ WarpShading::SharedPtr WarpShading::create(RenderContext* pRenderContext, const 
 void WarpShading::initVariables()
 {
     mAlbedoSigma = 0.1f;
-    mNormSigma = 0.1;
-    mPosWSigma = 1.f;
-    mCoordSigma = 0.05f;
+    mNormSigma = 0.1f;
+    mPosWSigma = 0.1f;
+    mCoordSigma = 0.005f;
 
     mFrameCount = 0;
 

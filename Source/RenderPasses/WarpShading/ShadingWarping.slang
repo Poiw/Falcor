@@ -54,14 +54,38 @@ float similarity(const Prop cur, const Prop near)
     // // float3 albedo_dif = abs(cur.albedo - near.albedo);
     // // return albedo_dif.x + albedo_dif.y + albedo_dif.z;
 
-    float coord_w = gaussian2(cur.coord - near.coord, gCoordSigma);
-    // float pos_w = gaussian3(cur.posW - near.posW, gPosWSigma);
+    float coord_w = gaussian(length(cur.coord - near.coord), gCoordSigma);
+    float pos_w = gaussian(length(cur.posW - near.posW), gPosWSigma);
     // float norm_w = gaussian3(cur.norm - near.norm, gNormSigma);
     float norm_w = gaussian(1 - dot(cur.norm, near.norm), gNormSigma);
     float albedo_w = gaussian3(cur.albedo - near.albedo, gAlbedoSigma);
 
-    return coord_w  * norm_w * albedo_w;
+    return max(coord_w * pos_w * norm_w * albedo_w, 1e-10);
+}
 
+float3 similarityW(const Prop cur, const Prop near)
+{
+    // float2 coord_dif = (cur.coord - near.coord);
+    // float3 pos_dif = (cur.posW - near.posW) * 5;
+    // float3 pos_max = max(cur.posW, near.posW);
+    // float3 pos_min = min(cur.posW, near.posW);
+    // // pos_dif = (pos_dif - pos_min) / (pos_max - pos_min);
+    // float3 norm_dif = (cur.norm - near.norm) / 2;
+    // float3 albedo_dif = (cur.albedo - near.albedo);
+
+    // return gaussian3(albedo_dif) * gaussian3(pos_dif) * gaussian3(norm_dif);
+
+    // // float3 albedo_dif = abs(cur.albedo - near.albedo);
+    // // return albedo_dif.x + albedo_dif.y + albedo_dif.z;
+
+    float coord_w = gaussian(length(cur.coord - near.coord), gCoordSigma);
+    float pos_w = gaussian(length(cur.posW - near.posW), gPosWSigma);
+    // float norm_w = gaussian3(cur.norm - near.norm, gNormSigma);
+    float norm_w = gaussian(1 - dot(cur.norm, near.norm), gNormSigma);
+    float albedo_w = gaussian3(cur.albedo - near.albedo, gAlbedoSigma);
+
+    // return float3(length(cur.posW - near.posW), 1 - dot(cur.norm, near.norm), albedo_w);
+    return near.posW;
 }
 
 // float albedoDiff(const Prop cur, const Prop near)
@@ -91,8 +115,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         cur.albedo = gCurDiffOpacity[pixelCoord].xyz;
         cur.posW = gCurPosWS[pixelCoord].xyz;
 
-        int2 stepList[] = { int2(1, 1), int2(0.05 * gFrameDim), int2(0.1 * gFrameDim) };
-        int stepNumList[] = { 1, 1, 1 };
+        int2 stepList[] = { int2(1, 1), int2(0.005 * gFrameDim), int2(0.01 * gFrameDim) };
+        int stepNumList[] = { 3, 2, 1 };
+        // int2 stepList[] = { int2(1, 1)};
+        // int stepNumList[] = { 0};
 
         float weight[] = {0., 0., 0., 0.};
         float3 shadingList[4];
@@ -132,6 +158,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                                 weight[k] = nearSim;
                                 shadingList[k] = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
                                 // shadingList[k] = gCenterDiffOpacity[nearCoord].xyz;
+                                // shadingList[k] = w;
                                 break;
                             }
                         }
