@@ -115,7 +115,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         cur.albedo = gCurDiffOpacity[pixelCoord].xyz;
         cur.posW = gCurPosWS[pixelCoord].xyz;
 
-        int2 stepList[] = { int2(1, 1), int2(0.005 * gFrameDim), int2(0.01 * gFrameDim) };
+        int2 stepList[] = { int2(1, 1), int2(0.005 * gFrameDim), int2(0.05 * gFrameDim) };
         int stepNumList[] = { 3, 2, 1 };
         // int2 stepList[] = { int2(1, 1)};
         // int stepNumList[] = { 0};
