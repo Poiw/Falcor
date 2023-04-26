@@ -64,6 +64,8 @@ void WarpShading::initVariables()
 
     mDumpData = false;
 
+    mCurTargetDim = uint2(960, 540);
+
     mSavingDir = "C:/Users/songyin/Desktop/TwoLayered/Test";
 
 }
@@ -144,7 +146,7 @@ RenderPassReflection WarpShading::reflect(const CompileData& compileData)
     reflector.addOutput("tl_FirstPreTonemap", "Pre Tonemapped Rendering")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mCurTargetDim.x, mCurTargetDim.y);
 
     return reflector;
 }
@@ -163,11 +165,16 @@ void WarpShading::execute(RenderContext* pRenderContext, const RenderData& rende
     // Falcor::Logger::log(Falcor::Logger::Level::Info, "Shading: " + std::to_string(mFrameCount));
 
     auto curDim = renderData.getDefaultTextureDims();
+    uint tarResoW = renderData.getTexture("tl_CurDiffOpacity")->getWidth();
+    uint tarResoH = renderData.getTexture("tl_CurDiffOpacity")->getHeight();
+    auto tarDim = uint2(tarResoW, tarResoH);
+
     // ---------------------------------- Warp Shading ---------------------------------------
     {
         // Input
         {
             mpShadingWarpingPass["PerFrameCB"]["gFrameDim"] = curDim;
+            mpShadingWarpingPass["PerFrameCB"]["gTarFrameDim"] = tarDim;
             mpShadingWarpingPass["PerFrameCB"]["gAlbedoSigma"] = mAlbedoSigma;
             mpShadingWarpingPass["PerFrameCB"]["gNormSigma"] = mNormSigma;
             mpShadingWarpingPass["PerFrameCB"]["gPosWSigma"] = mPosWSigma;
@@ -209,7 +216,7 @@ void WarpShading::execute(RenderContext* pRenderContext, const RenderData& rende
             mpShadingWarpingPass["gRender"].setUav(pRenderUAV);
         }
 
-        mpShadingWarpingPass->execute(pRenderContext, uint3(curDim, 1));
+        mpShadingWarpingPass->execute(pRenderContext, uint3(tarDim, 1));
 
         // Set Barriers
         {
@@ -235,4 +242,8 @@ void WarpShading::renderUI(Gui::Widgets& widget)
 
     widget.checkbox("Dump Data", mDumpData);
     widget.textbox("Saving Dir", mSavingDir);
+
+
+    if (widget.var<uint>("Target Resolution X", mCurTargetDim.x, 32)) requestRecompile();
+    if (widget.var<uint>("Target Resolution Y", mCurTargetDim.y, 32)) requestRecompile();
 }

@@ -14,6 +14,7 @@ RWTexture2D<float4> gRender;
 
 cbuffer PerFrameCB {
     uint2 gFrameDim;
+    uint2 gTarFrameDim;
     float gAlbedoSigma;
     float gPosWSigma;
     float gNormSigma;
@@ -103,91 +104,98 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     uint frameCount = gFrameCount[uint2(0, 0)];
 
-    if (frameCount == 0) {
-        gRender[pixelCoord] = gCenterRender[pixelCoord];
-    }
-    else {
-        uint2 prevCoord = gCurPrevCoord[pixelCoord].xy;
+    // if (frameCount == 0) {
+    //     gRender[pixelCoord] = gCenterRender[pixelCoord];
+    // }
+    // else {
 
-        Prop cur, near;
-        cur.coord = float2(prevCoord) / float2(gFrameDim);
-        cur.norm = gCurNormWS[pixelCoord].xyz;
-        cur.albedo = gCurDiffOpacity[pixelCoord].xyz;
-        cur.posW = gCurPosWS[pixelCoord].xyz;
+    uint2 prevCoord;
+    // if (frameCount == 0) {
+    //     prevCoord = uint2(((float2)pixelCoord) / ((float2)gTarFrameDim) * ((float2)gFrameDim));
+    // }
+    // else {
+        prevCoord = gCurPrevCoord[pixelCoord].xy;
+    // }
 
-        int2 stepList[] = { int2(1, 1), int2(0.005 * gFrameDim), int2(0.05 * gFrameDim) };
-        int stepNumList[] = { 3, 2, 1 };
-        // int2 stepList[] = { int2(1, 1)};
-        // int stepNumList[] = { 0};
+    Prop cur, near;
+    cur.coord = float2(prevCoord) / float2(gFrameDim);
+    cur.norm = gCurNormWS[pixelCoord].xyz;
+    cur.albedo = gCurDiffOpacity[pixelCoord].xyz;
+    cur.posW = gCurPosWS[pixelCoord].xyz;
 
-        float weight[] = {0., 0., 0., 0.};
-        float3 shadingList[4];
-        shadingList[0] = float3(0., 0., 0.);
-        shadingList[1] = float3(0., 0., 0.);
-        shadingList[2] = float3(0., 0., 0.);
-        shadingList[3] = float3(0., 0., 0.);
+    int2 stepList[] = { int2(1, 1), int2(0.005 * gFrameDim), int2(0.05 * gFrameDim) };
+    int stepNumList[] = { 3, 2, 1 };
+    // int2 stepList[] = { int2(1, 1)};
+    // int stepNumList[] = { 0};
 
-        for (int idx = 0; idx < 3; ++idx) {
-            int2 step = stepList[idx];
-            int begin = -stepNumList[idx];
-            int end = stepNumList[idx];
+    float weight[] = {0., 0., 0., 0.};
+    float3 shadingList[4];
+    shadingList[0] = float3(0., 0., 0.);
+    shadingList[1] = float3(0., 0., 0.);
+    shadingList[2] = float3(0., 0., 0.);
+    shadingList[3] = float3(0., 0., 0.);
 
-            for (int i = begin; i <= end; ++i) {
-                for (int j = begin; j <= end; ++j) {
+    for (int idx = 0; idx < 3; ++idx) {
+        int2 step = stepList[idx];
+        int begin = -stepNumList[idx];
+        int end = stepNumList[idx];
 
-                    int2 nearCoord = (int2)prevCoord + int2(i, j) * step;
-                    if (nearCoord.x >= 0 && nearCoord.x < gFrameDim.x && nearCoord.y >= 0 && nearCoord.y < gFrameDim.y) {
+        for (int i = begin; i <= end; ++i) {
+            for (int j = begin; j <= end; ++j) {
 
-                        near.coord = float2(nearCoord) / float2(gFrameDim);
-                        near.norm = gCenterNormWS[nearCoord].xyz;
-                        near.albedo = gCenterDiffOpacity[nearCoord].xyz;
-                        near.posW = gCenterPosWS[nearCoord].xyz;
+                int2 nearCoord = (int2)prevCoord + int2(i, j) * step;
+                if (nearCoord.x >= 0 && nearCoord.x < gFrameDim.x && nearCoord.y >= 0 && nearCoord.y < gFrameDim.y) {
 
-                        float nearSim = similarity(cur, near);
+                    near.coord = float2(nearCoord) / float2(gFrameDim);
+                    near.norm = gCenterNormWS[nearCoord].xyz;
+                    near.albedo = gCenterDiffOpacity[nearCoord].xyz;
+                    near.posW = gCenterPosWS[nearCoord].xyz;
 
-                        // if (nearSim > curSim) {
-                        //     curSim = nearSim;
-                        //     // gRender[pixelCoord] = nearSim;
-                        //     shading = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
-                        //     // shading = gCenterRender[nearCoord].xyz;
-                        // }
+                    float nearSim = similarity(cur, near);
+
+                    // if (nearSim > curSim) {
+                    //     curSim = nearSim;
+                    //     // gRender[pixelCoord] = nearSim;
+                    //     shading = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
+                    //     // shading = gCenterRender[nearCoord].xyz;
+                    // }
 
 
-                        for (int k = 0; k < 4; ++k) {
-                            if (nearSim > weight[k]) {
-                                weight[k] = nearSim;
-                                shadingList[k] = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
-                                // shadingList[k] = gCenterDiffOpacity[nearCoord].xyz;
-                                // shadingList[k] = w;
-                                break;
-                            }
+                    for (int k = 0; k < 4; ++k) {
+                        if (nearSim > weight[k]) {
+                            weight[k] = nearSim;
+                            shadingList[k] = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
+                            // shadingList[k] = gCenterDiffOpacity[nearCoord].xyz;
+                            // shadingList[k] = w;
+                            break;
                         }
-
                     }
+
                 }
             }
         }
-
-
-        float3 shading = 0;
-        for (int k = 0; k < 4; ++k) {
-            shading += shadingList[k] * weight[k];
-        }
-        float weightSum = weight[0] + weight[1] + weight[2] + weight[3];
-        if (weightSum > 0) {
-            shading /= weightSum;
-        }
-
-        gRender[pixelCoord] = float4(shading * max(gCurDiffOpacity[pixelCoord].xyz, float3(1e-2, 1e-2, 1e-2)), 1.);
-        // gRender[pixelCoord] = float4(shading, 1.);
-
-        // if (prevCoord.x >= 0 && prevCoord.x < gFrameDim.x && prevCoord.y >= 0 && prevCoord.y < gFrameDim.y) {
-
-        //     float3 prevShading = gCenterRender[prevCoord].xyz / max(gCenterDiffOpacity[prevCoord].xyz, float3(1e-2, 1e-2, 1e-2));
-        //     float3 curShading = max(gCurDiffOpacity[pixelCoord].xyz, float3(1e-2, 1e-2, 1e-2)) * prevShading;
-        //     gRender[pixelCoord] = float4(curShading, 1.);
-        // }
     }
+
+
+    float3 shading = 0;
+    for (int k = 0; k < 4; ++k) {
+        shading += shadingList[k] * weight[k];
+    }
+    float weightSum = weight[0] + weight[1] + weight[2] + weight[3];
+    if (weightSum > 0) {
+        shading /= weightSum;
+    }
+
+    gRender[pixelCoord] = float4(shading * max(gCurDiffOpacity[pixelCoord].xyz, float3(1e-2, 1e-2, 1e-2)), 1.);
+    // gRender[pixelCoord] = float4(shading, 1.);
+
+    // if (prevCoord.x >= 0 && prevCoord.x < gFrameDim.x && prevCoord.y >= 0 && prevCoord.y < gFrameDim.y) {
+
+    //     float3 prevShading = gCenterRender[prevCoord].xyz / max(gCenterDiffOpacity[prevCoord].xyz, float3(1e-2, 1e-2, 1e-2));
+    //     float3 curShading = max(gCurDiffOpacity[pixelCoord].xyz, float3(1e-2, 1e-2, 1e-2)) * prevShading;
+    //     gRender[pixelCoord] = float4(curShading, 1.);
+    // }
+    // }
 
     return;
 }

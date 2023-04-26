@@ -55,7 +55,7 @@ RWTexture2D<uint2>  gPrevCoord;
 RWTexture2D<float4> gMask;
 
 cbuffer PerFrameCB {
-    uint2 gFrameDim;
+    // uint2 gFrameDim;
     int gNearestFilter;
     uint gUsedMipLevel;
 };

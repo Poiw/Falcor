@@ -1,5 +1,6 @@
 cbuffer PerFrameCB {
     uint2 gFrameDim;
+    uint2 gTarFrameDim;
     float4x4 gCenterViewProjMat;
     float4x4 gCenterViewProjMatInv;
     float4x4 gCurViewProjMat;
@@ -63,10 +64,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                 #endif
                     tarCrd += 0.5;
 
-                uint2 tarIpos0 = uint2(tarCrd * gFrameDim);
-                uint2 tarIpos1 = uint2(tarCrd * gFrameDim) / 2;
-                uint2 tarIpos2 = uint2(tarCrd * gFrameDim) / 4;
-                uint2 tarIpos3 = uint2(tarCrd * gFrameDim) / 8;
+                uint2 tarIpos0 = uint2(tarCrd * gTarFrameDim);
+                uint2 tarIpos1 = uint2(tarCrd * gTarFrameDim) / 2;
+                uint2 tarIpos2 = uint2(tarCrd * gTarFrameDim) / 4;
+                uint2 tarIpos3 = uint2(tarCrd * gTarFrameDim) / 8;
 
                 InterlockedMin(gProjFirstLayerDepthTest0[tarIpos0], asuint(z));
                 InterlockedMin(gProjFirstLayerDepthTest1[tarIpos1], asuint(z));
@@ -102,10 +103,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                 #endif
                     tarCrd += 0.5;
 
-                uint2 tarIpos0 = uint2(tarCrd * gFrameDim);
-                uint2 tarIpos1 = uint2(tarCrd * gFrameDim) / 2;
-                uint2 tarIpos2 = uint2(tarCrd * gFrameDim) / 4;
-                uint2 tarIpos3 = uint2(tarCrd * gFrameDim) / 8;
+                uint2 tarIpos0 = uint2(tarCrd * gTarFrameDim);
+                uint2 tarIpos1 = uint2(tarCrd * gTarFrameDim) / 2;
+                uint2 tarIpos2 = uint2(tarCrd * gTarFrameDim) / 4;
+                uint2 tarIpos3 = uint2(tarCrd * gTarFrameDim) / 8;
 
                 InterlockedMin(gProjSecondLayerDepthTest0[tarIpos0], asuint(z));
                 InterlockedMin(gProjSecondLayerDepthTest1[tarIpos1], asuint(z));
@@ -133,10 +134,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         // uint2 tarIpos = uint2(tarCrd * gFrameDim);
 
         // InterlockedMin(gProjFirstLayerDepthTest[tarIpos], asuint(z));
-        uint2 tarIpos0 = uint2(tarCrd * gFrameDim);
-        uint2 tarIpos1 = uint2(tarCrd * gFrameDim) / 2;
-        uint2 tarIpos2 = uint2(tarCrd * gFrameDim) / 4;
-        uint2 tarIpos3 = uint2(tarCrd * gFrameDim) / 8;
+        uint2 tarIpos0 = uint2(tarCrd * gTarFrameDim);
+        uint2 tarIpos1 = uint2(tarCrd * gTarFrameDim) / 2;
+        uint2 tarIpos2 = uint2(tarCrd * gTarFrameDim) / 4;
+        uint2 tarIpos3 = uint2(tarCrd * gTarFrameDim) / 8;
 
         InterlockedMin(gProjFirstLayerDepthTest0[tarIpos0], asuint(z));
         InterlockedMin(gProjFirstLayerDepthTest1[tarIpos1], asuint(z));
@@ -161,10 +162,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         // tarIpos = uint2(tarCrd * gFrameDim);
 
         // InterlockedMin(gProjSecondLayerDepthTest[tarIpos], asuint(z));
-        tarIpos0 = uint2(tarCrd * gFrameDim);
-        tarIpos1 = uint2(tarCrd * gFrameDim) / 2;
-        tarIpos2 = uint2(tarCrd * gFrameDim) / 4;
-        tarIpos3 = uint2(tarCrd * gFrameDim) / 8;
+        tarIpos0 = uint2(tarCrd * gTarFrameDim);
+        tarIpos1 = uint2(tarCrd * gTarFrameDim) / 2;
+        tarIpos2 = uint2(tarCrd * gTarFrameDim) / 4;
+        tarIpos3 = uint2(tarCrd * gTarFrameDim) / 8;
 
         InterlockedMin(gProjSecondLayerDepthTest0[tarIpos0], asuint(z));
         InterlockedMin(gProjSecondLayerDepthTest1[tarIpos1], asuint(z));

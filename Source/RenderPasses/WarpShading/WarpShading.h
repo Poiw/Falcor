@@ -71,6 +71,8 @@ private:
 
     uint mFrameCount;
 
+    uint2 mCurTargetDim;
+
     bool mDumpData;
 
     std::string mSavingDir;

@@ -86,7 +86,7 @@ PSOut psMain(MyVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycent
     VertexData v = prepareVertexData(rawVSOut, faceNormal);
     let lod = ImplicitLodTextureSampler();
 
-    if (gScene.materials.alphaTest(v, vsOut.materialID, lod)) discard;
+    // if (gScene.materials.alphaTest(v, vsOut.materialID, lod)) discard;
 
     const float3 viewDir = normalize(gCamPos - v.posW);
     ShadingData sd = gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir, lod);

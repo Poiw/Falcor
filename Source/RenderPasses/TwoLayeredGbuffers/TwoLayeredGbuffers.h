@@ -135,6 +135,7 @@ private:
     uint mSubPixelSample;
     uint mAdditionalCamNum;
     uint mForwardMipLevel;
+    uint2 mTargetReso;
     float mAdditionalCamRadius;
     float mAdditionalCamTarDist;
     float mCenterRenderScale;

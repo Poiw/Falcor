@@ -201,6 +201,8 @@ void TwoLayeredGbuffers::ClearVariables()
     mCenterValid = false;
     mDumpData = false;
 
+    mTargetReso = uint2(960, 540);
+
     mSavingDir = "C:/Users/songyin/Desktop/TwoLayered/Test";
 
     mRandomGen = std::uniform_real_distribution<float>(0, 1);
@@ -436,57 +438,57 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
     reflector.addOutput("tl_Depth", "Depth buffer")
         .format(ResourceFormat::D32Float)
         .bindFlags(Resource::BindFlags::DepthStencil)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
 
     reflector.addOutput("tl_Debug", "Debug Info")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
 
     reflector.addOutput("tl_Mask", "Mask Info")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
 
     // First Layer
     reflector.addOutput("tl_FirstNormWS", "World Normal")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
     reflector.addOutput("tl_FirstDiffOpacity", "Albedo and Opacity")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
     reflector.addOutput("tl_FirstPosWS", "World Space Position")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
     reflector.addOutput("tl_FirstPrevCoord", "Coord for center images")
         .format(ResourceFormat::RG32Uint)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
     reflector.addOutput("tl_FirstPreTonemap", "Pre Tonemapped Rendering")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
 
     // Second Layer
     reflector.addOutput("tl_SecondNormWS", "World Normal")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
     reflector.addOutput("tl_SecondDiffOpacity", "Albedo and Opacity")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
     reflector.addOutput("tl_SecondPosWS", "World Space Position")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
     reflector.addOutput("tl_SecondPrevCoord", "Coord for center images")
         .format(ResourceFormat::RG32Uint)
         .bindFlags(Resource::BindFlags::RenderTarget)
-        .texture2D();
+        .texture2D(mTargetReso.x, mTargetReso.y);
 
     reflector.addOutput("tl_FrameCount", "Current Frame Count")
         .format(ResourceFormat::R32Uint)
@@ -629,6 +631,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                                 + Falcor::to_string(mpScene->getCamera()->getPosition() - mpScene->getCamera()->getTarget()));
             Falcor::Logger::log(Falcor::Logger::Level::Info, "Camera Speed: "
                                 + std::to_string(mpScene->getCameraSpeed()));
+
+            int texH = renderData.getTexture("gNormalWS")->getHeight();
+            int texW = renderData.getTexture("gNormalWS")->getWidth();
+
+            Falcor::Logger::log(Falcor::Logger::Level::Info, "Resolution "
+                                + std::to_string(texH) + " " + std::to_string(texW));
             mPrevPos = mpScene->getCamera()->getPosition();
 
 
@@ -936,8 +944,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
         }
 
-        else {
-
+        // else {
+        {
             if (!mCenterValid) {
                 mFrameCount++;
                 return;
@@ -999,7 +1007,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 {
                     for (int level = 0; level < maxTexLevel; ++level) {
 
-                        auto texDim = curDim / (1u << (level));
+                        auto texDim = mTargetReso / (1u << (level));
 
                         createNewTexture(mProjFirstLayer[level].mpDepthTest, texDim, ResourceFormat::R32Uint);
                         createNewTexture(mProjFirstLayer[level].mpNormWS, texDim, ResourceFormat::RGBA32Float);
@@ -1015,12 +1023,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         createNewTexture(mProjSecondLayer[level].mpPrevCoord, texDim, ResourceFormat::RG32Uint);
                     }
 
-                    createNewTexture(mMergedLayer.mpMask, curDim, ResourceFormat::RGBA32Float);
-                    createNewTexture(mMergedLayer.mpNormWS, curDim, ResourceFormat::RGBA32Float);
-                    createNewTexture(mMergedLayer.mpDiffOpacity, curDim, ResourceFormat::RGBA32Float);
-                    createNewTexture(mMergedLayer.mpPosWS, curDim, ResourceFormat::RGBA32Float);
-                    createNewTexture(mMergedLayer.mpPrevCoord, curDim, ResourceFormat::RG32Uint);
-                    createNewTexture(mMergedLayer.mpRender, curDim, ResourceFormat::RGBA32Float);
+                    createNewTexture(mMergedLayer.mpMask, mTargetReso, ResourceFormat::RGBA32Float);
+                    createNewTexture(mMergedLayer.mpNormWS, mTargetReso, ResourceFormat::RGBA32Float);
+                    createNewTexture(mMergedLayer.mpDiffOpacity, mTargetReso, ResourceFormat::RGBA32Float);
+                    createNewTexture(mMergedLayer.mpPosWS, mTargetReso, ResourceFormat::RGBA32Float);
+                    createNewTexture(mMergedLayer.mpPrevCoord, mTargetReso, ResourceFormat::RG32Uint);
+                    createNewTexture(mMergedLayer.mpRender, mTargetReso, ResourceFormat::RGBA32Float);
                 }
 
 
@@ -1057,6 +1065,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     mpCalculateCurrentPosWSPass->execute(pRenderContext, uint3(curDim.x, curDim.y, 1));
 
                     {
+                        pRenderContext->uavBarrier(mFirstLayerGbuffer.mpPosWS.get());
                         pRenderContext->uavBarrier(mSecondLayerGbuffer.mpPosWS.get());
                     }
 
@@ -1072,6 +1081,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     // Varibales
                     {
                         mpProjectionDepthTestPass["PerFrameCB"]["gFrameDim"] = curDim;
+                        mpProjectionDepthTestPass["PerFrameCB"]["gTarFrameDim"] = mTargetReso;
                         mpProjectionDepthTestPass["PerFrameCB"]["gCenterViewProjMat"] = mCenterMatrix;
                         mpProjectionDepthTestPass["PerFrameCB"]["gCenterViewProjMatInv"] = mCenterMatrixInv;
                         mpProjectionDepthTestPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
@@ -1136,6 +1146,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     // Varibales
                     {
                         mpForwardWarpPass["PerFrameCB"]["gFrameDim"] = curDim;
+                        mpForwardWarpPass["PerFrameCB"]["gTarFrameDim"] = mTargetReso;
                         mpForwardWarpPass["PerFrameCB"]["gCenterViewProjMat"] = mCenterMatrix;
                         mpForwardWarpPass["PerFrameCB"]["gCenterViewProjMatInv"] = mCenterMatrixInv;
                         mpForwardWarpPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
@@ -1255,7 +1266,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     {
 
                         mpMergeLayerPass["PerFrameCB"]["gNearestFilter"] = mNearestThreshold;
-                        mpMergeLayerPass["PerFrameCB"]["gFrameDim"] = curDim;
+                        // mpMergeLayerPass["PerFrameCB"]["gFrameDim"] = curDim;
                         mpMergeLayerPass["PerFrameCB"]["gUsedMipLevel"] = mForwardMipLevel;
 
 
@@ -1321,7 +1332,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
                     }
 
-                    mpMergeLayerPass->execute(pRenderContext, uint3(curDim, 1));
+                    mpMergeLayerPass->execute(pRenderContext, uint3(mTargetReso, 1));
 
                     // Set Barriers
                     {
@@ -1432,6 +1443,10 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
     widget.var<uint>("Sub Pixel Sample", mSubPixelSample, 1);
     widget.var<uint>("Additional Camera Number", mAdditionalCamNum, 0);
     widget.var<uint>("Forward Warping Mip Level", mForwardMipLevel, 0, 3);
+
+    if (widget.var<uint>("Target Resolution X", mTargetReso.x, 32)) requestRecompile();
+    if (widget.var<uint>("Target Resolution Y", mTargetReso.y, 32)) requestRecompile();
+
     widget.var<float>("Additional Camera Radius", mAdditionalCamRadius, 0, 10);
     widget.var<float>("Additional Camera Target Distance", mAdditionalCamTarDist, 0, 10);
     widget.var<float>("Render Scale Factor", mCenterRenderScale, 1);

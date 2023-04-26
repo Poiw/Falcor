@@ -1,5 +1,6 @@
 cbuffer PerFrameCB {
     uint2 gFrameDim;
+    uint2 gTarFrameDim;
     float4x4 gCenterViewProjMat;
     float4x4 gCenterViewProjMatInv;
     float4x4 gCurViewProjMat;
@@ -97,7 +98,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     float4 posWS_t = gFirstLayerPosWS[pixelCoord];
     uint2 prevCoord = uint2(pixelCoord);
 
-    uint2 tarIpos0 = uint2(tarCrd * gFrameDim);
+    uint2 tarIpos0 = uint2(tarCrd * gTarFrameDim);
     if (asuint(z) == gProjFirstLayerDepthTest0[tarIpos0]) {
         gProjFirstLayerNormWS0[tarIpos0] = normWS;
         gProjFirstLayerDiffOpacity0[tarIpos0] = diffOpacity;
@@ -105,7 +106,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjFirstLayerPrevCoord0[tarIpos0] = prevCoord;
     }
 
-    uint2 tarIpos1 = uint2(tarCrd * gFrameDim) / 2;
+    uint2 tarIpos1 = uint2(tarCrd * gTarFrameDim) / 2;
     if (asuint(z) == gProjFirstLayerDepthTest1[tarIpos1]) {
         gProjFirstLayerNormWS1[tarIpos1] = normWS;
         gProjFirstLayerDiffOpacity1[tarIpos1] = diffOpacity;
@@ -113,7 +114,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjFirstLayerPrevCoord1[tarIpos1] = prevCoord;
     }
 
-    uint2 tarIpos2 = uint2(tarCrd * gFrameDim) / 4;
+    uint2 tarIpos2 = uint2(tarCrd * gTarFrameDim) / 4;
     if (asuint(z) == gProjFirstLayerDepthTest2[tarIpos2]) {
         gProjFirstLayerNormWS2[tarIpos2] = normWS;
         gProjFirstLayerDiffOpacity2[tarIpos2] = diffOpacity;
@@ -121,7 +122,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjFirstLayerPrevCoord2[tarIpos2] = prevCoord;
     }
 
-    uint2 tarIpos3 = uint2(tarCrd * gFrameDim) / 8;
+    uint2 tarIpos3 = uint2(tarCrd * gTarFrameDim) / 8;
     if (asuint(z) == gProjFirstLayerDepthTest3[tarIpos3]) {
         gProjFirstLayerNormWS3[tarIpos3] = normWS;
         gProjFirstLayerDiffOpacity3[tarIpos3] = diffOpacity;
@@ -159,7 +160,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     prevCoord2 = prevCoord2 - (int2)gFrameDim / 2;
     prevCoord2 = int2(prevCoord2 * renderScale + (int2)gFrameDim / 2);
 
-    tarIpos0 = uint2(tarCrd * gFrameDim);
+    tarIpos0 = uint2(tarCrd * gTarFrameDim);
     if (asuint(z) == gProjSecondLayerDepthTest0[tarIpos0]) {
         gProjSecondLayerNormWS0[tarIpos0] = normWS;
         gProjSecondLayerDiffOpacity0[tarIpos0] = diffOpacity;
@@ -167,7 +168,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjSecondLayerPrevCoord0[tarIpos0] = prevCoord2;
     }
 
-    tarIpos1 = uint2(tarCrd * gFrameDim) / 2;
+    tarIpos1 = uint2(tarCrd * gTarFrameDim) / 2;
     if (asuint(z) == gProjSecondLayerDepthTest1[tarIpos1]) {
         gProjSecondLayerNormWS1[tarIpos1] = normWS;
         gProjSecondLayerDiffOpacity1[tarIpos1] = diffOpacity;
@@ -175,7 +176,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjSecondLayerPrevCoord1[tarIpos1] = prevCoord2;
     }
 
-    tarIpos2 = uint2(tarCrd * gFrameDim) / 4;
+    tarIpos2 = uint2(tarCrd * gTarFrameDim) / 4;
     if (asuint(z) == gProjSecondLayerDepthTest2[tarIpos2]) {
         gProjSecondLayerNormWS2[tarIpos2] = normWS;
         gProjSecondLayerDiffOpacity2[tarIpos2] = diffOpacity;
@@ -183,7 +184,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjSecondLayerPrevCoord2[tarIpos2] = prevCoord2;
     }
 
-    tarIpos3 = uint2(tarCrd * gFrameDim) / 16;
+    tarIpos3 = uint2(tarCrd * gTarFrameDim) / 8;
     if (asuint(z) == gProjSecondLayerDepthTest3[tarIpos3]) {
         gProjSecondLayerNormWS3[tarIpos3] = normWS;
         gProjSecondLayerDiffOpacity3[tarIpos3] = diffOpacity;
