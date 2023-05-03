@@ -65,6 +65,7 @@ private:
 
     bool mStartLoading;
     int mStartFrame, mEndFrame, mCurFrame;
+    uint2 mCurReso;
     std::string mDataDir;
 
 };

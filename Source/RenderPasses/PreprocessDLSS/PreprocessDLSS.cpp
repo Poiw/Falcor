@@ -52,6 +52,8 @@ PreprocessDLSS::PreprocessDLSS() : RenderPass(kInfo)
     mCurFrame = -1;
     mDataDir = "E:/Data/Bunker/train/seq1/Seq1";
 
+    mCurReso = uint2(960, 540);
+
     {
         Program::Desc desc;
         desc.addShaderLibrary(preprocessShaderFilePath).csEntry("csMain");
@@ -115,21 +117,21 @@ RenderPassReflection PreprocessDLSS::reflect(const CompileData& compileData)
     //reflector.addOutput("dst");
 
     reflector.addOutput("depth", "depth")
-        .format(ResourceFormat::R32Float)
+        .format(ResourceFormat::RG32Float)
         .bindFlags(Resource::BindFlags::AllColorViews)
-        .texture2D();
+        .texture2D(mCurReso.x, mCurReso.y);
 
 
     reflector.addOutput("color", "color")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::AllColorViews)
-        .texture2D();
+        .texture2D(mCurReso.x, mCurReso.y);
 
 
     reflector.addOutput("mvec", "motion vector")
         .format(ResourceFormat::RG32Float)
         .bindFlags(Resource::BindFlags::AllColorViews)
-        .texture2D();
+        .texture2D(mCurReso.x, mCurReso.y);
 
     return reflector;
 }
@@ -151,6 +153,11 @@ void PreprocessDLSS::execute(RenderContext* pRenderContext, const RenderData& re
             Texture::SharedPtr mpDepthTex = Texture::createFromFile(getDepthPath(mDataDir, mCurFrame), false, true);
 
             auto mCurDim = uint2(mpMVTex->getWidth(), mpMVTex->getHeight());
+
+            if (mCurDim.x != mCurReso.x || mCurDim.y != mCurReso.y) {
+                mCurReso = mCurDim;
+                requestRecompile();
+            }
 
             {
                 mpPreprocessPass["PerFrameCB"]["gFrameDim"] = mCurDim;

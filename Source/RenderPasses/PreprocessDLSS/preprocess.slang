@@ -4,7 +4,7 @@ Texture2D<float4> gDepth;
 
 RWTexture2D<float2> gMotionVectorOut;
 RWTexture2D<float4> gColorOut;
-RWTexture2D<float> gDepthOut;
+RWTexture2D<float2> gDepthOut;
 
 cbuffer PerFrameCB {
     uint2 gFrameDim;
@@ -18,7 +18,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     gMotionVectorOut[posI] = gMotionVector[posI].xy;
     gColorOut[posI] = gColor[posI];
-    gDepthOut[posI] = gDepth[posI].x;
+    gDepthOut[posI] = float2(gDepth[posI].x, 1.0 / max(1e-3, gDepth[posI].y));
 
     return;
 }
