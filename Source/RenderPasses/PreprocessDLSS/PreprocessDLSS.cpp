@@ -32,7 +32,7 @@ const RenderPass::Info PreprocessDLSS::kInfo { "PreprocessDLSS", "Prepare data f
 
 namespace {
 const std::string preprocessShaderFilePath =
-    "RenderPasses/Preprocess/preprocess.slang";
+    "RenderPasses/PreprocessDLSS/preprocess.slang";
 }
 
 // Don't remove this. it's required for hot-reload to function properly
@@ -53,12 +53,12 @@ PreprocessDLSS::PreprocessDLSS() : RenderPass(kInfo)
     mDataDir = "E:/Data/Bunker/train/seq1/Seq1";
 
     {
-            Program::Desc desc;
-            desc.addShaderLibrary(preprocessShaderFilePath).csEntry("csMain");
-            Program::DefineList defines;
-            mpPreprocessPass = ComputePass::create(desc, defines, false);
-            // Bind the scene.
-            mpPreprocessPass->setVars(nullptr);  // Trigger vars creation
+        Program::Desc desc;
+        desc.addShaderLibrary(preprocessShaderFilePath).csEntry("csMain");
+        Program::DefineList defines;
+        mpPreprocessPass = ComputePass::create(desc, defines, false);
+        // Bind the scene.
+        mpPreprocessPass->setVars(nullptr);  // Trigger vars creation
     }
 
 }
@@ -115,20 +115,20 @@ RenderPassReflection PreprocessDLSS::reflect(const CompileData& compileData)
     //reflector.addOutput("dst");
 
     reflector.addOutput("depth", "depth")
-        .format(ResourceFormat::D32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget)
+        .format(ResourceFormat::R32Float)
+        .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D();
 
 
     reflector.addOutput("color", "color")
         .format(ResourceFormat::RGBA32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget)
+        .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D();
 
 
     reflector.addOutput("mvec", "motion vector")
         .format(ResourceFormat::RG32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget)
+        .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D();
 
     return reflector;
@@ -188,6 +188,8 @@ void PreprocessDLSS::execute(RenderContext* pRenderContext, const RenderData& re
                 pRenderContext->uavBarrier(renderData.getTexture("color").get());
                 pRenderContext->uavBarrier(renderData.getTexture("depth").get());
             }
+
+            // pRenderContext->blit(mpColorTex->getSRV(), renderData.getTexture("color")->getRTV());
         }
 
         mCurFrame++;
