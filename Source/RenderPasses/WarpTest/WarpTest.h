@@ -54,5 +54,21 @@ public:
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
 private:
-    WarpTest() : RenderPass(kInfo) {}
+    WarpTest();
+
+    void createNewTexture(Texture::SharedPtr &pTex,
+                                        const Falcor::uint2 &curDim,
+                                        enum Falcor::ResourceFormat dataFormat,
+                                        Falcor::Resource::BindFlags bindFlags);
+
+    Texture::SharedPtr mpPrevBaseColor;
+    Texture::SharedPtr mpPrevWorldNormal;
+    Texture::SharedPtr mpPrevRender;
+
+    ComputePass::SharedPtr mpWarpPass;
+
+    float mCoordSigma;
+    float mFeatureSigma;
+
+    bool mStartWarp;
 };
