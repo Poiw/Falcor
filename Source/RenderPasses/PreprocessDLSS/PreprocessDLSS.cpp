@@ -52,6 +52,10 @@ PreprocessDLSS::PreprocessDLSS() : RenderPass(kInfo)
     mCurFrame = -1;
     mDataDir = "E:/Data/Bunker/train/seq1/Seq1";
 
+    // mLoadDepth = true;
+    mLoadBaseColor = false;
+    mLoadNormal = false;
+
     mCurReso = uint2(960, 540);
 
     {
@@ -109,6 +113,28 @@ std::string PreprocessDLSS::getColorPath(const std::string& dataDir, int frame)
     return path;
 }
 
+std::string PreprocessDLSS::getBaseColorPath(const std::string& dataDir, int frame)
+{
+    std::string frameString = std::to_string(frame);
+    int precision = 4 - std::min((size_t)4, frameString.length());
+
+    frameString.insert(0, precision, '0');
+
+    std::string path = dataDir + "/BaseColor." + frameString + ".exr";
+    return path;
+}
+
+std::string PreprocessDLSS::getNormalPath(const std::string& dataDir, int frame)
+{
+    std::string frameString = std::to_string(frame);
+    int precision = 4 - std::min((size_t)4, frameString.length());
+
+    frameString.insert(0, precision, '0');
+
+    std::string path = dataDir + "/WorldNormal." + frameString + ".exr";
+    return path;
+}
+
 RenderPassReflection PreprocessDLSS::reflect(const CompileData& compileData)
 {
     // Define the required resources here
@@ -130,6 +156,16 @@ RenderPassReflection PreprocessDLSS::reflect(const CompileData& compileData)
 
     reflector.addOutput("mvec", "motion vector")
         .format(ResourceFormat::RG32Float)
+        .bindFlags(Resource::BindFlags::AllColorViews)
+        .texture2D(mCurReso.x, mCurReso.y);
+
+    reflector.addOutput("normal", "normal")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::AllColorViews)
+        .texture2D(mCurReso.x, mCurReso.y);
+
+    reflector.addOutput("basecolor", "basecolor")
+        .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D(mCurReso.x, mCurReso.y);
 
@@ -199,6 +235,15 @@ void PreprocessDLSS::execute(RenderContext* pRenderContext, const RenderData& re
             // pRenderContext->blit(mpColorTex->getSRV(), renderData.getTexture("color")->getRTV());
         }
 
+        if (mLoadBaseColor) {
+            Texture::SharedPtr mpBaseColorTex = Texture::createFromFile(getBaseColorPath(mDataDir, mCurFrame), false, true);
+            pRenderContext->blit(mpBaseColorTex->getSRV(), renderData.getTexture("basecolor")->getRTV());
+        }
+        if (mLoadNormal) {
+            Texture::SharedPtr mpNormalTex = Texture::createFromFile(getNormalPath(mDataDir, mCurFrame), false, true);
+            pRenderContext->blit(mpNormalTex->getSRV(), renderData.getTexture("normal")->getRTV());
+        }
+
         mCurFrame++;
 
         if (mCurFrame > mEndFrame) {
@@ -214,6 +259,11 @@ void PreprocessDLSS::renderUI(Gui::Widgets& widget)
 {
 
     widget.checkbox("Enable Load Imgs", mStartLoading);
+
+
+    // widget.checkbox("Load Base Color", mLoadBaseColor);
+    widget.checkbox("Load Depth", mLoadDepth);
+    widget.checkbox("Load Normal", mLoadNormal);
 
     widget.var<int>("Start Frame", mStartFrame, 0);
     widget.var<int>("End Frame", mEndFrame, 0);

@@ -30,10 +30,10 @@
 
 using namespace Falcor;
 
-class PreprocessDLSS : public RenderPass
+class WarpTest : public RenderPass
 {
 public:
-    using SharedPtr = std::shared_ptr<PreprocessDLSS>;
+    using SharedPtr = std::shared_ptr<WarpTest>;
 
     static const Info kInfo;
 
@@ -54,24 +54,5 @@ public:
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
 private:
-    PreprocessDLSS();
-
-    std::string getMVPath(const std::string& dataDir, int frame);
-    std::string getDepthPath(const std::string& dataDir, int frame);
-    std::string getColorPath(const std::string& dataDir, int frame);
-    std::string getBaseColorPath(const std::string& dataDir, int frame);
-    std::string getNormalPath(const std::string& dataDir, int frame);
-
-
-    ComputePass::SharedPtr mpPreprocessPass;
-
-    bool mStartLoading;
-    int mStartFrame, mEndFrame, mCurFrame;
-    uint2 mCurReso;
-    std::string mDataDir;
-
-    bool mLoadDepth;
-    bool mLoadBaseColor;
-    bool mLoadNormal;
-
+    WarpTest() : RenderPass(kInfo) {}
 };
