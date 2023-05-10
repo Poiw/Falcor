@@ -65,7 +65,7 @@ float similarity(const Prop cur, const Prop near)
 //     return albedo_dif.x + albedo_dif.y + albedo_dif.z;
 // }
 
-[numthreads(16, 16, 1)]
+[numthreads(1, 1, 1)]
 void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     // First Layer
@@ -128,7 +128,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
                     if (nearSim > weight[minIdx]) {
                         weight[minIdx] = nearSim;
-                        shadingList[minIdx] = gCurRender[nearCoord].xyz / max(gCurBaseColor[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
+                        shadingList[minIdx] = gPrevRender[nearCoord].xyz / max(gPrevBaseColor[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
+                        // shadingList[minIdx] = gPrevRender[nearCoord].xyz;
                     }
                 }
             }
@@ -145,7 +146,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         shading /= weightSum;
     }
 
-    gRender[pixelCoord] = float4(shading * max(gCurBaseColor[pixelCoord].xyz, float3(1e-2, 1e-2, 1e-2)), 1.);
+    gWarped[pixelCoord] = float4(shading * max(gCurBaseColor[pixelCoord].xyz, float3(1e-2, 1e-2, 1e-2)), 1.);
+    // gWarped[pixelCoord] = float4(shading, 1.);
 
     return;
 }

@@ -261,8 +261,8 @@ void PreprocessDLSS::renderUI(Gui::Widgets& widget)
     widget.checkbox("Enable Load Imgs", mStartLoading);
 
 
-    // widget.checkbox("Load Base Color", mLoadBaseColor);
-    widget.checkbox("Load Depth", mLoadDepth);
+    widget.checkbox("Load Base Color", mLoadBaseColor);
+    // widget.checkbox("Load Depth", mLoadDepth);
     widget.checkbox("Load Normal", mLoadNormal);
 
     widget.var<int>("Start Frame", mStartFrame, 0);

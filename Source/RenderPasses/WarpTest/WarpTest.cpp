@@ -111,7 +111,7 @@ RenderPassReflection WarpTest::reflect(const CompileData& compileData)
 
     reflector.addOutput("warped", "warped frame")
         .format(ResourceFormat::RGBA32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget)
+        .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D();
 
 
