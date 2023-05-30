@@ -56,6 +56,9 @@ PreprocessDLSS::PreprocessDLSS() : RenderPass(kInfo)
     mLoadBaseColor = false;
     mLoadNormal = false;
 
+    mpBaseColorTex = NULL;
+    mpNormalTex = NULL;
+
     mCurReso = uint2(960, 540);
 
     {
@@ -184,9 +187,21 @@ void PreprocessDLSS::execute(RenderContext* pRenderContext, const RenderData& re
         }
 
         {
-            Texture::SharedPtr mpMVTex = Texture::createFromFile(getMVPath(mDataDir, mCurFrame), false, true);
-            Texture::SharedPtr mpColorTex = Texture::createFromFile(getColorPath(mDataDir, mCurFrame), false, true);
-            Texture::SharedPtr mpDepthTex = Texture::createFromFile(getDepthPath(mDataDir, mCurFrame), false, true);
+            mpMVTex = Texture::createFromFile(getMVPath(mDataDir, mCurFrame), false, true);
+            mpColorTex = Texture::createFromFile(getColorPath(mDataDir, mCurFrame), false, true);
+            mpDepthTex = Texture::createFromFile(getDepthPath(mDataDir, mCurFrame), false, true);
+
+            if (mLoadBaseColor) {
+                mpBaseColorTex = Texture::createFromFile(getBaseColorPath(mDataDir, mCurFrame), false, true);
+            }
+            if (mLoadNormal) {
+                mpNormalTex = Texture::createFromFile(getNormalPath(mDataDir, mCurFrame), false, true);
+            }
+
+            {
+                if (mpBaseColorTex) pRenderContext->blit(mpBaseColorTex->getSRV(), renderData.getTexture("basecolor")->getRTV());
+                if (mpNormalTex) pRenderContext->blit(mpNormalTex->getSRV(), renderData.getTexture("normal")->getRTV());
+            }
 
             auto mCurDim = uint2(mpMVTex->getWidth(), mpMVTex->getHeight());
 
@@ -235,14 +250,6 @@ void PreprocessDLSS::execute(RenderContext* pRenderContext, const RenderData& re
             // pRenderContext->blit(mpColorTex->getSRV(), renderData.getTexture("color")->getRTV());
         }
 
-        if (mLoadBaseColor) {
-            Texture::SharedPtr mpBaseColorTex = Texture::createFromFile(getBaseColorPath(mDataDir, mCurFrame), false, true);
-            pRenderContext->blit(mpBaseColorTex->getSRV(), renderData.getTexture("basecolor")->getRTV());
-        }
-        if (mLoadNormal) {
-            Texture::SharedPtr mpNormalTex = Texture::createFromFile(getNormalPath(mDataDir, mCurFrame), false, true);
-            pRenderContext->blit(mpNormalTex->getSRV(), renderData.getTexture("normal")->getRTV());
-        }
 
         mCurFrame++;
 

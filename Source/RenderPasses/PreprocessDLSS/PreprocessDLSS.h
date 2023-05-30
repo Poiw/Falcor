@@ -62,6 +62,11 @@ private:
     std::string getBaseColorPath(const std::string& dataDir, int frame);
     std::string getNormalPath(const std::string& dataDir, int frame);
 
+    Texture::SharedPtr mpMVTex;
+    Texture::SharedPtr mpColorTex;
+    Texture::SharedPtr mpDepthTex;
+    Texture::SharedPtr mpBaseColorTex;
+    Texture::SharedPtr mpNormalTex;
 
     ComputePass::SharedPtr mpPreprocessPass;
 
