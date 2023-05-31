@@ -49,8 +49,8 @@ def render_graph_TwoLayeredShadingRT_noAA():
     g.addPass(ModulateIllumination, "ModulateIllumination")
     DLSS = createPass("DLSSPass", {'enabled': True, 'profile': DLSSProfile.Balanced, 'motionVectorScale': DLSSMotionVectorScale.Relative, 'isHDR': True, 'sharpness': 0.0, 'exposure': 0.0})
     g.addPass(DLSS, "DLSS")
-    # DLSS_ours = createPass("DLSSPass")
-    # g.addPass(DLSS_ours, "DLSS_ours")
+    DLSS_ours = createPass("DLSSPass")
+    g.addPass(DLSS_ours, "DLSS_ours")
     ToneMapperNRD = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})
     g.addPass(ToneMapperNRD, "ToneMapperNRD")
     ToneMapperTwoLayered = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})
@@ -108,7 +108,7 @@ def render_graph_TwoLayeredShadingRT_noAA():
 
     g.addEdge("DLSS.output",                                            "ToneMapperNRD.src")
 
-    g.addEdge("DLSS.output",                                "TwoLayeredGbuffers.rPreTonemapped")
+    g.addEdge("ModulateIllumination.output",                                "TwoLayeredGbuffers.rPreTonemapped")
 
 
 
@@ -130,6 +130,29 @@ def render_graph_TwoLayeredShadingRT_noAA():
     g.addEdge("TwoLayeredGbuffers.tl_CenterNormWS", "WarpShading.tl_CenterNormWS")
     g.addEdge("TwoLayeredGbuffers.tl_CenterPosWS", "WarpShading.tl_CenterPosWS")
     g.addEdge("TwoLayeredGbuffers.tl_CenterRender", "WarpShading.tl_CenterRender")
+
+    g.addEdge("GBufferRT.mvec",                                         "DLSS_ours.mvec")
+    g.addEdge("GBufferRT.linearZ",                                      "DLSS_ours.depth")
+    g.addEdge("WarpShading.tl_FirstPreTonemap",                            "DLSS_ours.color")
+
+    g.addEdge("DLSS_ours.output", "ToneMapperTwoLayered.src")
+
+    # g.addEdge("WarpShading.tl_FirstPreTonemap", "ToneMapperTwoLayered.src")
+
+    # g.markOutput('TwoLayeredGbuffers.tl_Debug')
+    # g.markOutput('TwoLayeredGbuffers.tl_Mask')
+    # g.markOutput('TwoLayeredGbuffers.tl_FirstNormWS')
+    # g.markOutput('TwoLayeredGbuffers.tl_FirstDiffOpacity')
+    # g.markOutput('TwoLayeredGbuffers.tl_FirstPosWS')
+    # g.markOutput('TwoLayeredGbuffers.tl_FirstPrevCoord')
+    # g.markOutput('TwoLayeredGbuffers.tl_FirstPreTonemap')
+    # g.markOutput('TwoLayeredGbuffers.tl_SecondNormWS')
+    # g.markOutput('TwoLayeredGbuffers.tl_SecondDiffOpacity')
+    # g.markOutput('TwoLayeredGbuffers.tl_SecondPosWS')
+    # g.markOutput('TwoLayeredGbuffers.tl_SecondPrevCoord')
+    g.markOutput("ToneMapperNRD.dst")
+    g.markOutput("ToneMapperReference.dst")
+    g.markOutput("ToneMapperTwoLayered.dst")
 
     # g.addEdge("GBufferRT.mvec",                                         "DLSS_ours.mvec")
     # g.addEdge("GBufferRT.linearZ",                                      "DLSS_ours.depth")
@@ -153,7 +176,7 @@ def render_graph_TwoLayeredShadingRT_noAA():
     # g.markOutput("ToneMapperTwoLayered.dst")
 
 
-    g.markOutput("ToneMapperReference.dst")
+    # g.markOutput("ToneMapperReference.dst")
 
     return g
 

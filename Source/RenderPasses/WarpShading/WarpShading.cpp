@@ -145,7 +145,7 @@ RenderPassReflection WarpShading::reflect(const CompileData& compileData)
 
     reflector.addOutput("tl_FirstPreTonemap", "Pre Tonemapped Rendering")
         .format(ResourceFormat::RGBA32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget)
+        .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D(mCurTargetDim.x, mCurTargetDim.y);
 
     return reflector;

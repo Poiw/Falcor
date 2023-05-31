@@ -59,9 +59,9 @@ float similarity(const Prop cur, const Prop near)
     float pos_w = gaussian(length(cur.posW - near.posW), gPosWSigma);
     // float norm_w = gaussian3(cur.norm - near.norm, gNormSigma);
     float norm_w = gaussian(1 - dot(cur.norm, near.norm), gNormSigma);
-    float albedo_w = gaussian3(cur.albedo - near.albedo, gAlbedoSigma);
+    float albedo_w = gaussian(length(cur.albedo - near.albedo), gAlbedoSigma);
 
-    return max(coord_w * pos_w * norm_w * albedo_w, 1e-10);
+    return max(coord_w * norm_w * albedo_w, 1e-10);
 }
 
 float3 similarityW(const Prop cur, const Prop near)
@@ -160,16 +160,31 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                     //     // shading = gCenterRender[nearCoord].xyz;
                     // }
 
-
-                    for (int k = 0; k < 4; ++k) {
-                        if (nearSim > weight[k]) {
-                            weight[k] = nearSim;
-                            shadingList[k] = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
-                            // shadingList[k] = gCenterDiffOpacity[nearCoord].xyz;
-                            // shadingList[k] = w;
-                            break;
+                    float minw = weight[0];
+                    int minidx = 0;
+                    for (int k = 1; k < 4; ++k) {
+                        if (weight[k] < minw) {
+                            minw = weight[k];
+                            minidx = k;
                         }
                     }
+
+                    if (nearSim > minw) {
+                        weight[minidx] = nearSim;
+                        shadingList[minidx] = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
+                        // shadingList[minidx] = gCenterDiffOpacity[nearCoord].xyz;
+                        // shadingList[minidx] = w;
+                    }
+
+                    // for (int k = 0; k < 4; ++k) {
+                    //     if (nearSim > weight[k]) {
+                    //         weight[k] = nearSim;
+                    //         shadingList[k] = gCenterRender[nearCoord].xyz / max(gCenterDiffOpacity[nearCoord].xyz, float3(1e-2, 1e-2, 1e-2));
+                    //         // shadingList[k] = gCenterDiffOpacity[nearCoord].xyz;
+                    //         // shadingList[k] = w;
+                    //         break;
+                    //     }
+                    // }
 
                 }
             }
@@ -186,8 +201,11 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         shading /= weightSum;
     }
 
+    // if (weightSum > 0) weightSum = 1.;
+
     gRender[pixelCoord] = float4(shading * max(gCurDiffOpacity[pixelCoord].xyz, float3(1e-2, 1e-2, 1e-2)), 1.);
     // gRender[pixelCoord] = float4(shading, 1.);
+    // gRender[pixelCoord] = float4(weightSum, 0, 0, 1);
 
     // if (prevCoord.x >= 0 && prevCoord.x < gFrameDim.x && prevCoord.y >= 0 && prevCoord.y < gFrameDim.y) {
 
