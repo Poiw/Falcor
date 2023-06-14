@@ -65,13 +65,11 @@ float similarity(const Prop cur, const Prop near)
 //     return albedo_dif.x + albedo_dif.y + albedo_dif.z;
 // }
 
-[numthreads(1, 1, 1)]
+[numthreads(32, 32, 1)]
 void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     // First Layer
     uint2 pixelCoord = dispatchThreadId.xy;
-
-
 
     float2 prevCoord = (float2)pixelCoord - gCurMotionVector[pixelCoord].xy;
 
@@ -81,7 +79,6 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     cur.albedo = gCurBaseColor[pixelCoord].xyz;
 
     int2 stepList[] = { int2(1, 1), int2(3, 3), int2(5, 5) , int2(9, 9)};
-    int stepNumList[] = { 1, 1, 1, 1 };
     // int2 stepList[] = { int2(1, 1)};
     // int stepNumList[] = { 0};
 
@@ -94,11 +91,9 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     for (int idx = 0; idx < 4; ++idx) {
         int2 step = stepList[idx];
-        int begin = -stepNumList[idx];
-        int end = stepNumList[idx];
 
-        for (int i = begin; i <= end; ++i) {
-            for (int j = begin; j <= end; ++j) {
+        for (int i = -1; i <= 1; ++i) {
+            for (int j = -1; j <= 1; ++j) {
 
                 int2 nearCoord = (int2)(prevCoord + float2(0.5, 0.5)) + int2(i, j) * step;
                 if (nearCoord.x >= 0 && nearCoord.x < gFrameDim.x && nearCoord.y >= 0 && nearCoord.y < gFrameDim.y) {
