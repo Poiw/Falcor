@@ -101,7 +101,8 @@ VSOut CopyToVSOut(MyVSOut vsOut) {
 
 struct PSOut {
     float4 gDebug : SV_TARGET0;
-    float4 gMask : SV_TARGET1;
+    float2 gLinearZ : SV_TARGET1;
+    // float4 gMask : SV_TARGET1;
     float4 gNormWS : SV_TARGET2;
     float4 gDiffOpacity : SV_TARGET3;
     float4 gPosWS : SV_TARGET4;
@@ -156,11 +157,12 @@ PSOut psMain(MyVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycent
     psOut.gDebug = float4(vsOut.posH.z * vsOut.posH.w, 0, 0, 0);
     psOut.gNormWS = gbuf.normW;
     psOut.gDiffOpacity = gbuf.diffuseOpacity;
-    psOut.gMask = float4(1., 0., 0., 0.);
+    // psOut.gMask = float4(1., 0., 0., 0.);
     psOut.gPosWS = gbuf.posW;
     psOut.gDepth = vsOut.posH.z;
     psOut.gInstanceID = vsOut.rawInstanceID;
     psOut.gPosL = vsOut.posL;
+    psOut.gLinearZ = float2(linearZ, max(abs(ddx(linearZ)), abs(ddy(linearZ))));
 
     if (normalConstraint) {
         if (dot(gbuf.normW.xyz, normalize(gbuf.posW.xyz - gScene.camera.getPosition())) > gNormalThreshold)

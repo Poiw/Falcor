@@ -463,6 +463,14 @@ RenderPassReflection TwoLayeredGbuffers::reflect(const CompileData& compileData)
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D(mTargetReso.x, mTargetReso.y);
+    reflector.addOutput("tl_FirstMvec", "Motion Vector")
+        .format(ResourceFormat::RG32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D(mTargetReso.x, mTargetReso.y);
+    reflector.addOutput("tl_FirstLinearZ", "Linear Z")
+        .format(ResourceFormat::RG32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D(mTargetReso.x, mTargetReso.y);
     reflector.addOutput("tl_FirstPrevCoord", "Coord for center images")
         .format(ResourceFormat::RG32Uint)
         .bindFlags(Resource::BindFlags::RenderTarget)
@@ -668,6 +676,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 createNewTexture(mFirstLayerGbuffer.mpInstanceID, curDim, ResourceFormat::R32Uint);
                 createNewTexture(mFirstLayerGbuffer.mpPosL, curDim);
                 createNewTexture(mFirstLayerGbuffer.mpDepth, curDim, ResourceFormat::R32Float);
+                createNewTexture(mFirstLayerGbuffer.mpMvec, curDim, ResourceFormat::RG32Float);
+                createNewTexture(mFirstLayerGbuffer.mpLinearZ, curDim, ResourceFormat::RG32Float);
 
                 createNewTexture(mpCenterRender, curDim);
 
@@ -677,6 +687,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 createNewTexture(mSecondLayerGbuffer.mpInstanceID, curDim, ResourceFormat::R32Uint);
                 createNewTexture(mSecondLayerGbuffer.mpPosL, curDim);
                 createNewTexture(mSecondLayerGbuffer.mpDepth, curDim, ResourceFormat::R32Float);
+                createNewTexture(mSecondLayerGbuffer.mpMvec, curDim, ResourceFormat::RG32Float);
+                createNewTexture(mSecondLayerGbuffer.mpLinearZ, curDim, ResourceFormat::RG32Float);
 
                 createNewTexture(mAdditionalGbuffer.mpProjDepth, curDim, ResourceFormat::R32Float);
                 createNewTexture(mAdditionalGbuffer.mpPosWS, curDim);
@@ -684,6 +696,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                 createNewTexture(mAdditionalGbuffer.mpDiffOpacity, curDim);
                 createNewTexture(mAdditionalGbuffer.mpInstanceID, curDim, ResourceFormat::R32Uint);
                 createNewTexture(mAdditionalGbuffer.mpPosL, curDim);
+                createNewTexture(mAdditionalGbuffer.mpLinearZ, curDim, ResourceFormat::RG32Float);
                 createNewTexture(mAdditionalGbuffer.mpDepth, curDim, ResourceFormat::D32Float, Resource::BindFlags::DepthStencil);
             }
 
@@ -713,7 +726,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
 
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_Debug"), 0);
-            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_Mask"), 1);
+            mTwoLayerGbufferGenPass.pFbo->attachColorTarget(mSecondLayerGbuffer.mpLinearZ, 1);
+            // mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_Mask"), 1);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondNormWS"), 2);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondDiffOpacity"), 3);
             mTwoLayerGbufferGenPass.pFbo->attachColorTarget(renderData.getTexture("tl_SecondPosWS"), 4);
@@ -732,10 +746,10 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                             RasterizerState::CullMode::None);
 
             // Copy to render target
-            pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
-            pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
-            pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), renderData.getTexture("tl_FirstPosWS")->getRTV());
-            pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), renderData.getTexture("tl_FirstPreTonemap")->getRTV());
+            // pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), renderData.getTexture("tl_FirstNormWS")->getRTV());
+            // pRenderContext->blit(renderData.getTexture("gDiffOpacity")->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
+            // pRenderContext->blit(renderData.getTexture("gPosWS")->getSRV(), renderData.getTexture("tl_FirstPosWS")->getRTV());
+            // pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), renderData.getTexture("tl_FirstPreTonemap")->getRTV());
 
             // Copy to texture
             pRenderContext->blit(renderData.getTexture("gNormalWS")->getSRV(), mFirstLayerGbuffer.mpNormWS->getRTV());
@@ -744,6 +758,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
             pRenderContext->blit(renderData.getTexture("gDepth")->getSRV(), mFirstLayerGbuffer.mpDepth->getRTV());
             pRenderContext->blit(renderData.getTexture("gRawInstanceID")->getSRV(), mFirstLayerGbuffer.mpInstanceID->getRTV());
             pRenderContext->blit(renderData.getTexture("gPosL")->getSRV(), mFirstLayerGbuffer.mpPosL->getRTV());
+            pRenderContext->blit(renderData.getTexture("gLinearZ")->getSRV(), mFirstLayerGbuffer.mpLinearZ->getRTV());
 
             pRenderContext->blit(renderData.getTexture("rPreTonemapped")->getSRV(), mpCenterRender->getRTV());
 
@@ -815,6 +830,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpPosWS, 2);
                         mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpInstanceID, 3);
                         mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpPosL, 4);
+                        mAddtionalGbufferPass.pFbo->attachColorTarget(mAdditionalGbuffer.mpLinearZ, 5);
                         mAddtionalGbufferPass.pFbo->attachDepthStencilTarget(mAdditionalGbuffer.mpDepth);
                     }
 
@@ -890,6 +906,9 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         auto pPosLSRV = mAdditionalGbuffer.mpPosL->getSRV();
                         mpAdditionalGbufferCopyPass["gPosL"].setSrv(pPosLSRV);
 
+                        auto pLinearZSRV = mAdditionalGbuffer.mpLinearZ->getSRV();
+                        mpAdditionalGbufferCopyPass["gLinearZ"].setSrv(pLinearZSRV);
+
                         auto pProjDepthSRV = mAdditionalGbuffer.mpProjDepth->getSRV();
                         mpAdditionalGbufferCopyPass["gProjDepthBuf"].setSrv(pProjDepthSRV);
                     }
@@ -912,6 +931,9 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         auto pProjPosLUAV = mSecondLayerGbuffer.mpPosL->getUAV();
                         mpAdditionalGbufferCopyPass["gProjPosL"].setUav(pProjPosLUAV);
 
+                        auto pProjLinearZUAV = mSecondLayerGbuffer.mpLinearZ->getUAV();
+                        mpAdditionalGbufferCopyPass["gProjLinearZ"].setUav(pProjLinearZUAV);
+
                     }
 
                     mpAdditionalGbufferCopyPass->execute(pRenderContext, uint3(curDim, 1));
@@ -922,6 +944,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         pRenderContext->uavBarrier(mSecondLayerGbuffer.mpDiffOpacity.get());
                         pRenderContext->uavBarrier(mSecondLayerGbuffer.mpInstanceID.get());
                         pRenderContext->uavBarrier(mSecondLayerGbuffer.mpPosL.get());
+                        pRenderContext->uavBarrier(mSecondLayerGbuffer.mpLinearZ.get());
                     }
 
 
@@ -1014,6 +1037,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         createNewTexture(mProjFirstLayer[level].mpDiffOpacity, texDim, ResourceFormat::RGBA32Float);
                         createNewTexture(mProjFirstLayer[level].mpPosWS, texDim, ResourceFormat::RGBA32Float);
                         createNewTexture(mProjFirstLayer[level].mpPrevCoord, texDim, ResourceFormat::RG32Uint);
+                        createNewTexture(mProjFirstLayer[level].mpMvec, texDim, ResourceFormat::RG32Float);
+                        createNewTexture(mProjFirstLayer[level].mpLinearZ, texDim, ResourceFormat::RG32Float);
 
 
                         createNewTexture(mProjSecondLayer[level].mpDepthTest, texDim, ResourceFormat::R32Uint);
@@ -1021,6 +1046,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         createNewTexture(mProjSecondLayer[level].mpDiffOpacity, texDim, ResourceFormat::RGBA32Float);
                         createNewTexture(mProjSecondLayer[level].mpPosWS, texDim, ResourceFormat::RGBA32Float);
                         createNewTexture(mProjSecondLayer[level].mpPrevCoord, texDim, ResourceFormat::RG32Uint);
+                        createNewTexture(mProjSecondLayer[level].mpMvec, texDim, ResourceFormat::RG32Float);
+                        createNewTexture(mProjSecondLayer[level].mpLinearZ, texDim, ResourceFormat::RG32Float);
                     }
 
                     createNewTexture(mMergedLayer.mpMask, mTargetReso, ResourceFormat::RGBA32Float);
@@ -1028,6 +1055,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     createNewTexture(mMergedLayer.mpDiffOpacity, mTargetReso, ResourceFormat::RGBA32Float);
                     createNewTexture(mMergedLayer.mpPosWS, mTargetReso, ResourceFormat::RGBA32Float);
                     createNewTexture(mMergedLayer.mpPrevCoord, mTargetReso, ResourceFormat::RG32Uint);
+                    createNewTexture(mMergedLayer.mpMvec, mTargetReso, ResourceFormat::RG32Float);
+                    createNewTexture(mMergedLayer.mpLinearZ, mTargetReso, ResourceFormat::RG32Float);
                     createNewTexture(mMergedLayer.mpRender, mTargetReso, ResourceFormat::RGBA32Float);
                 }
 
@@ -1058,8 +1087,15 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         auto pFirstPosWSUAV = mFirstLayerGbuffer.mpPosWS->getUAV();
                         mpCalculateCurrentPosWSPass["gFirstLayerPosWS"].setUav(pFirstPosWSUAV);
 
+                        auto pFirstMvecUAV = mFirstLayerGbuffer.mpMvec->getUAV();
+                        mpCalculateCurrentPosWSPass["gFirstLayerMvec"].setUav(pFirstMvecUAV);
+
                         auto pSecondPosWSUAV = mSecondLayerGbuffer.mpPosWS->getUAV();
                         mpCalculateCurrentPosWSPass["gSecondLayerPosWS"].setUav(pSecondPosWSUAV);
+
+                        auto pSecondMvecUAV = mSecondLayerGbuffer.mpMvec->getUAV();
+                        mpCalculateCurrentPosWSPass["gSecondLayerMvec"].setUav(pSecondMvecUAV);
+
                     }
 
                     mpCalculateCurrentPosWSPass->execute(pRenderContext, uint3(curDim.x, curDim.y, 1));
@@ -1067,6 +1103,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     {
                         pRenderContext->uavBarrier(mFirstLayerGbuffer.mpPosWS.get());
                         pRenderContext->uavBarrier(mSecondLayerGbuffer.mpPosWS.get());
+                        pRenderContext->uavBarrier(mFirstLayerGbuffer.mpMvec.get());
+                        pRenderContext->uavBarrier(mSecondLayerGbuffer.mpMvec.get());
                     }
 
                 }
@@ -1169,6 +1207,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         auto pFirstPosWSMip = mFirstLayerGbuffer.mpPosWS->getSRV();
                         mpForwardWarpPass["gFirstLayerPosWS"].setSrv(pFirstPosWSMip);
 
+                        auto pFirstMvecMip = mFirstLayerGbuffer.mpMvec->getSRV();
+                        mpForwardWarpPass["gFirstLayerMvec"].setSrv(pFirstMvecMip);
+
+                        auto pFirstLinearZMip = mFirstLayerGbuffer.mpLinearZ->getSRV();
+                        mpForwardWarpPass["gFirstLayerLinearZ"].setSrv(pFirstLinearZMip);
+
                         auto pSecondNormWSMip = mSecondLayerGbuffer.mpNormWS->getSRV();
                         mpForwardWarpPass["gSecondLayerNormWS"].setSrv(pSecondNormWSMip);
 
@@ -1177,6 +1221,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
                         auto pSecondPosWSMip = mSecondLayerGbuffer.mpPosWS->getSRV();
                         mpForwardWarpPass["gSecondLayerPosWS"].setSrv(pSecondPosWSMip);
+
+                        auto pSecondMvecMip = mSecondLayerGbuffer.mpMvec->getSRV();
+                        mpForwardWarpPass["gSecondLayerMvec"].setSrv(pSecondMvecMip);
+
+                        auto pSecondLinearZMip = mSecondLayerGbuffer.mpLinearZ->getSRV();
+                        mpForwardWarpPass["gSecondLayerLinearZ"].setSrv(pSecondLinearZMip);
 
                         auto pFirstDepthMip = mFirstLayerGbuffer.mpDepth->getSRV();
                         mpForwardWarpPass["gFirstDepth"].setSrv(pFirstDepthMip);
@@ -1217,6 +1267,14 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                             pRenderContext->clearUAV(pFirstPrevCoordUAV.get(), uint4(100000));
                             mpForwardWarpPass["gProjFirstLayerPrevCoord" + std::to_string(level)].setUav(pFirstPrevCoordUAV);
 
+                            auto pFirstMvecUAV = mProjFirstLayer[level].mpMvec->getUAV();
+                            pRenderContext->clearUAV(pFirstMvecUAV.get(), float4(0.f));
+                            mpForwardWarpPass["gProjFirstLayerMvec" + std::to_string(level)].setUav(pFirstMvecUAV);
+
+                            auto pFirstLinearZUAV = mProjFirstLayer[level].mpLinearZ->getUAV();
+                            pRenderContext->clearUAV(pFirstLinearZUAV.get(), float4(0.f));
+                            mpForwardWarpPass["gProjFirstLayerLinearZ" + std::to_string(level)].setUav(pFirstLinearZUAV);
+
                             auto pSecondNormWSUAV = mProjSecondLayer[level].mpNormWS->getUAV();
                             pRenderContext->clearUAV(pSecondNormWSUAV.get(), float4(0.f));
                             mpForwardWarpPass["gProjSecondLayerNormWS" + std::to_string(level)].setUav(pSecondNormWSUAV);
@@ -1233,6 +1291,14 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                             pRenderContext->clearUAV(pSecondPrevCoordUAV.get(), uint4(100000));
                             mpForwardWarpPass["gProjSecondLayerPrevCoord" + std::to_string(level)].setUav(pSecondPrevCoordUAV);
 
+                            auto pSecondMvecUAV = mProjSecondLayer[level].mpMvec->getUAV();
+                            pRenderContext->clearUAV(pSecondMvecUAV.get(), float4(0.f));
+                            mpForwardWarpPass["gProjSecondLayerMvec" + std::to_string(level)].setUav(pSecondMvecUAV);
+
+                            auto pSecondLinearZUAV = mProjSecondLayer[level].mpLinearZ->getUAV();
+                            pRenderContext->clearUAV(pSecondLinearZUAV.get(), float4(0.f));
+                            mpForwardWarpPass["gProjSecondLayerLinearZ" + std::to_string(level)].setUav(pSecondLinearZUAV);
+
                         }
 
                     }
@@ -1248,11 +1314,15 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                             pRenderContext->uavBarrier(mProjFirstLayer[level].mpDiffOpacity.get());
                             pRenderContext->uavBarrier(mProjFirstLayer[level].mpPosWS.get());
                             pRenderContext->uavBarrier(mProjFirstLayer[level].mpPrevCoord.get());
+                            pRenderContext->uavBarrier(mProjFirstLayer[level].mpMvec.get());
+                            pRenderContext->uavBarrier(mProjFirstLayer[level].mpLinearZ.get());
 
                             pRenderContext->uavBarrier(mProjSecondLayer[level].mpNormWS.get());
                             pRenderContext->uavBarrier(mProjSecondLayer[level].mpDiffOpacity.get());
                             pRenderContext->uavBarrier(mProjSecondLayer[level].mpPosWS.get());
                             pRenderContext->uavBarrier(mProjSecondLayer[level].mpPrevCoord.get());
+                            pRenderContext->uavBarrier(mProjSecondLayer[level].mpMvec.get());
+                            pRenderContext->uavBarrier(mProjSecondLayer[level].mpLinearZ.get());
                         }
 
                     }
@@ -1287,6 +1357,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                             auto pFirstPrevCoordSRV = mProjFirstLayer[level].mpPrevCoord->getSRV();
                             mpMergeLayerPass["gFirstLayerPrevCoord" + std::to_string(level)].setSrv(pFirstPrevCoordSRV);
 
+                            auto pFirstMvecSRV = mProjFirstLayer[level].mpMvec->getSRV();
+                            mpMergeLayerPass["gFirstLayerMvec" + std::to_string(level)].setSrv(pFirstMvecSRV);
+
+                            auto pFirstLinearZSRV = mProjFirstLayer[level].mpLinearZ->getSRV();
+                            mpMergeLayerPass["gFirstLayerLinearZ" + std::to_string(level)].setSrv(pFirstLinearZSRV);
+
 
                             auto pSecondDepthTestSRV = mProjSecondLayer[level].mpDepthTest->getSRV();
                             mpMergeLayerPass["gSecondLayerDepthTest" + std::to_string(level)].setSrv(pSecondDepthTestSRV);
@@ -1302,6 +1378,12 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
                             auto pSecondPrevCoordSRV = mProjSecondLayer[level].mpPrevCoord->getSRV();
                             mpMergeLayerPass["gSecondLayerPrevCoord" + std::to_string(level)].setSrv(pSecondPrevCoordSRV);
+
+                            auto pSecondMvecSRV = mProjSecondLayer[level].mpMvec->getSRV();
+                            mpMergeLayerPass["gSecondLayerMvec" + std::to_string(level)].setSrv(pSecondMvecSRV);
+
+                            auto pSecondLinearZSRV = mProjSecondLayer[level].mpLinearZ->getSRV();
+                            mpMergeLayerPass["gSecondLayerLinearZ" + std::to_string(level)].setSrv(pSecondLinearZSRV);
 
                         }
 
@@ -1326,6 +1408,14 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         pRenderContext->clearUAV(pPrevCoordUAV.get(), uint4(100000));
                         mpMergeLayerPass["gPrevCoord"].setUav(pPrevCoordUAV);
 
+                        auto pMvecUAV = mMergedLayer.mpMvec->getUAV();
+                        pRenderContext->clearUAV(pMvecUAV.get(), float4(0.f));
+                        mpMergeLayerPass["gMvec"].setUav(pMvecUAV);
+
+                        auto pLinearZUAV = mMergedLayer.mpLinearZ->getUAV();
+                        pRenderContext->clearUAV(pLinearZUAV.get(), float4(0.f));
+                        mpMergeLayerPass["gLinearZ"].setUav(pLinearZUAV);
+
                         auto pMaskUAV = mMergedLayer.mpMask->getUAV();
                         pRenderContext->clearUAV(pMaskUAV.get(), float4(0.f));
                         mpMergeLayerPass["gMask"].setUav(pMaskUAV);
@@ -1341,6 +1431,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         pRenderContext->uavBarrier(mMergedLayer.mpPosWS.get());
                         pRenderContext->uavBarrier(mMergedLayer.mpPrevCoord.get());
                         pRenderContext->uavBarrier(mMergedLayer.mpMask.get());
+                        pRenderContext->uavBarrier(mMergedLayer.mpMvec.get());
+                        pRenderContext->uavBarrier(mMergedLayer.mpLinearZ.get());
                     }
 
                     // Copy Data
@@ -1349,6 +1441,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     pRenderContext->blit(mMergedLayer.mpDiffOpacity->getSRV(), renderData.getTexture("tl_FirstDiffOpacity")->getRTV());
                     pRenderContext->blit(mMergedLayer.mpPosWS->getSRV(), renderData.getTexture("tl_FirstPosWS")->getRTV());
                     pRenderContext->blit(mMergedLayer.mpPrevCoord->getSRV(), renderData.getTexture("tl_FirstPrevCoord")->getRTV());
+                    pRenderContext->blit(mMergedLayer.mpMvec->getSRV(), renderData.getTexture("tl_FirstMvec")->getRTV());
+                    pRenderContext->blit(mMergedLayer.mpLinearZ->getSRV(), renderData.getTexture("tl_FirstLinearZ")->getRTV());
                     pRenderContext->blit(mMergedLayer.mpMask->getSRV(), renderData.getTexture("tl_Mask")->getRTV());
 
                 }

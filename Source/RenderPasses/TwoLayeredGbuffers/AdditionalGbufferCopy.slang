@@ -9,6 +9,7 @@ Texture2D<float4> gNormWS;
 Texture2D<float4> gDiffOpacity;
 Texture2D<uint> gInstanceID;
 Texture2D<float4> gPosL;
+Texture2D<float2> gLinearZ;
 
 Texture2D<uint> gProjDepthBuf;
 
@@ -17,6 +18,7 @@ RWTexture2D<float4> gProjNormWS;
 RWTexture2D<float4> gProjDiffOpacity;
 RWTexture2D<uint> gProjInstanceID;
 RWTexture2D<float4> gProjPosL;
+RWTexture2D<float2> gProjLinearZ;
 
 [numthreads(1, 1, 1)]
 void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
@@ -48,6 +50,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjPosWS[tarIpos] = float4(posWS, 1.0f);
         gProjInstanceID[tarIpos] = gInstanceID[pixelCoord];
         gProjPosL[tarIpos] = gPosL[pixelCoord];
+        gProjLinearZ[tarIpos] = gLinearZ[pixelCoord];
     }
 
     return;

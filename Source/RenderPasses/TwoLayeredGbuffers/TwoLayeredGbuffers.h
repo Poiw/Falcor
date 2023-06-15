@@ -86,11 +86,13 @@ private:
 
     struct {
         Texture::SharedPtr mpPosWS;
+        Texture::SharedPtr mpMvec;
         Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
         Texture::SharedPtr mpDepth;
         Texture::SharedPtr mpInstanceID;
         Texture::SharedPtr mpPosL;
+        Texture::SharedPtr mpLinearZ;
     } mFirstLayerGbuffer, mSecondLayerGbuffer;
 
     Texture::SharedPtr mpCenterRender;
@@ -100,7 +102,9 @@ private:
         Texture::SharedPtr mpNormWS;
         Texture::SharedPtr mpDiffOpacity;
         Texture::SharedPtr mpPosWS;
+        Texture::SharedPtr mpMvec;
         Texture::SharedPtr mpPrevCoord;
+        Texture::SharedPtr mpLinearZ;
     } mProjFirstLayer[maxTexLevel], mProjSecondLayer[maxTexLevel];
 
     struct {
@@ -109,7 +113,9 @@ private:
         Texture::SharedPtr mpDiffOpacity;
         Texture::SharedPtr mpPosWS;
         Texture::SharedPtr mpPrevCoord;
+        Texture::SharedPtr mpMvec;
         Texture::SharedPtr mpRender;
+        Texture::SharedPtr mpLinearZ;
     } mMergedLayer;
 
     struct{
@@ -120,6 +126,7 @@ private:
         Texture::SharedPtr mpDepth;
         Texture::SharedPtr mpInstanceID;
         Texture::SharedPtr mpPosL;
+        Texture::SharedPtr mpLinearZ;
     } mAdditionalGbuffer;
 
     // Texture::SharedPtr mpPosWSBuffer;

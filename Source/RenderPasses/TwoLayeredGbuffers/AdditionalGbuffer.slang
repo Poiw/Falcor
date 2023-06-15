@@ -72,6 +72,7 @@ struct PSOut {
     float4 gPosWS : SV_TARGET2;
     uint   gInstanceID : SV_TARGET3;
     float4 gPosL : SV_TARGET4;
+    float2 gLinearZ : SV_TARGET5;
 };
 
 PSOut psMain(MyVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) : SV_TARGET {
@@ -96,11 +97,14 @@ PSOut psMain(MyVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycent
 
     const GBufferData gbuf = prepareGBufferData(sd, bsdf);
 
+    const float linearZ = vsOut.posH.z * vsOut.posH.w;
+
     psOut.gNormWS = gbuf.normW;
     psOut.gDiffOpacity = gbuf.diffuseOpacity;
     psOut.gPosWS = gbuf.posW;
     psOut.gInstanceID = vsOut.rawInstanceID;
     psOut.gPosL = vsOut.posL;
+    psOut.gLinearZ = float2(linearZ, max(abs(ddx(linearZ)), abs(ddy(linearZ))));
 
     return psOut;
 }

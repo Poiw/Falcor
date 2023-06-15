@@ -131,8 +131,9 @@ def render_graph_TwoLayeredShadingRT_noAA():
     g.addEdge("TwoLayeredGbuffers.tl_CenterPosWS", "WarpShading.tl_CenterPosWS")
     g.addEdge("TwoLayeredGbuffers.tl_CenterRender", "WarpShading.tl_CenterRender")
 
-    g.addEdge("GBufferRT.mvec",                                         "DLSS_ours.mvec")
-    g.addEdge("GBufferRT.linearZ",                                      "DLSS_ours.depth")
+    g.addEdge("TwoLayeredGbuffers.tl_FirstMvec",                                         "DLSS_ours.mvec")
+    # g.addEdge("GBufferRaster.mvec",                                         "DLSS_ours.mvec")
+    g.addEdge("TwoLayeredGbuffers.tl_FirstLinearZ",                                      "DLSS_ours.depth")
     g.addEdge("WarpShading.tl_FirstPreTonemap",                            "DLSS_ours.color")
 
     g.addEdge("DLSS_ours.output", "ToneMapperTwoLayered.src")

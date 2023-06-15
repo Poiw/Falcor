@@ -13,9 +13,13 @@ cbuffer PerFrameCB {
 Texture2D<float4> gFirstLayerNormWS;
 Texture2D<float4> gFirstLayerPosWS;
 Texture2D<float4> gFirstLayerDiffOpacity;
+Texture2D<float2> gFirstLayerMvec;
+Texture2D<float2> gFirstLayerLinearZ;
 Texture2D<float4> gSecondLayerNormWS;
 Texture2D<float4> gSecondLayerPosWS;
 Texture2D<float4> gSecondLayerDiffOpacity;
+Texture2D<float2> gSecondLayerMvec;
+Texture2D<float2> gSecondLayerLinearZ;
 
 Texture2D<float> gFirstDepth;
 Texture2D<float> gSecondDepth;
@@ -33,35 +37,51 @@ RWTexture2D<float4> gProjFirstLayerNormWS0;
 RWTexture2D<float4> gProjFirstLayerDiffOpacity0;
 RWTexture2D<float4> gProjFirstLayerPosWS0;
 RWTexture2D<uint2>  gProjFirstLayerPrevCoord0;
+RWTexture2D<float2> gProjFirstLayerMvec0;
+RWTexture2D<float2> gProjFirstLayerLinearZ0;
 RWTexture2D<float4> gProjFirstLayerNormWS1;
 RWTexture2D<float4> gProjFirstLayerDiffOpacity1;
 RWTexture2D<float4> gProjFirstLayerPosWS1;
 RWTexture2D<uint2>  gProjFirstLayerPrevCoord1;
+RWTexture2D<float2> gProjFirstLayerMvec1;
+RWTexture2D<float2> gProjFirstLayerLinearZ1;
 RWTexture2D<float4> gProjFirstLayerNormWS2;
 RWTexture2D<float4> gProjFirstLayerDiffOpacity2;
 RWTexture2D<float4> gProjFirstLayerPosWS2;
 RWTexture2D<uint2>  gProjFirstLayerPrevCoord2;
+RWTexture2D<float2> gProjFirstLayerMvec2;
+RWTexture2D<float2> gProjFirstLayerLinearZ2;
 RWTexture2D<float4> gProjFirstLayerNormWS3;
 RWTexture2D<float4> gProjFirstLayerDiffOpacity3;
 RWTexture2D<float4> gProjFirstLayerPosWS3;
 RWTexture2D<uint2>  gProjFirstLayerPrevCoord3;
+RWTexture2D<float2> gProjFirstLayerMvec3;
+RWTexture2D<float2> gProjFirstLayerLinearZ3;
 
 RWTexture2D<float4> gProjSecondLayerNormWS0;
 RWTexture2D<float4> gProjSecondLayerDiffOpacity0;
 RWTexture2D<float4> gProjSecondLayerPosWS0;
 RWTexture2D<uint2>  gProjSecondLayerPrevCoord0;
+RWTexture2D<float2> gProjSecondLayerMvec0;
+RWTexture2D<float2> gProjSecondLayerLinearZ0;
 RWTexture2D<float4> gProjSecondLayerNormWS1;
 RWTexture2D<float4> gProjSecondLayerDiffOpacity1;
 RWTexture2D<float4> gProjSecondLayerPosWS1;
 RWTexture2D<uint2>  gProjSecondLayerPrevCoord1;
+RWTexture2D<float2> gProjSecondLayerMvec1;
+RWTexture2D<float2> gProjSecondLayerLinearZ1;
 RWTexture2D<float4> gProjSecondLayerNormWS2;
 RWTexture2D<float4> gProjSecondLayerDiffOpacity2;
 RWTexture2D<float4> gProjSecondLayerPosWS2;
 RWTexture2D<uint2>  gProjSecondLayerPrevCoord2;
+RWTexture2D<float2> gProjSecondLayerMvec2;
+RWTexture2D<float2> gProjSecondLayerLinearZ2;
 RWTexture2D<float4> gProjSecondLayerNormWS3;
 RWTexture2D<float4> gProjSecondLayerDiffOpacity3;
 RWTexture2D<float4> gProjSecondLayerPosWS3;
 RWTexture2D<uint2>  gProjSecondLayerPrevCoord3;
+RWTexture2D<float2> gProjSecondLayerMvec3;
+RWTexture2D<float2> gProjSecondLayerLinearZ3;
 
 
 
@@ -96,6 +116,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     float4 normWS = gFirstLayerNormWS[pixelCoord];
     float4 diffOpacity = gFirstLayerDiffOpacity[pixelCoord];
     float4 posWS_t = gFirstLayerPosWS[pixelCoord];
+    float2 mvec = gFirstLayerMvec[pixelCoord];
+    float2 linearZ = gFirstLayerLinearZ[pixelCoord];
     uint2 prevCoord = uint2(pixelCoord);
 
     uint2 tarIpos0 = uint2(tarCrd * gTarFrameDim);
@@ -104,6 +126,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjFirstLayerDiffOpacity0[tarIpos0] = diffOpacity;
         gProjFirstLayerPosWS0[tarIpos0] = posWS_t;
         gProjFirstLayerPrevCoord0[tarIpos0] = prevCoord;
+        gProjFirstLayerMvec0[tarIpos0] = mvec;
+        gProjFirstLayerLinearZ0[tarIpos0] = linearZ;
     }
 
     uint2 tarIpos1 = uint2(tarCrd * gTarFrameDim) / 2;
@@ -112,6 +136,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjFirstLayerDiffOpacity1[tarIpos1] = diffOpacity;
         gProjFirstLayerPosWS1[tarIpos1] = posWS_t;
         gProjFirstLayerPrevCoord1[tarIpos1] = prevCoord;
+        gProjFirstLayerMvec1[tarIpos1] = mvec;
+        gProjFirstLayerLinearZ1[tarIpos1] = linearZ;
     }
 
     uint2 tarIpos2 = uint2(tarCrd * gTarFrameDim) / 4;
@@ -120,6 +146,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjFirstLayerDiffOpacity2[tarIpos2] = diffOpacity;
         gProjFirstLayerPosWS2[tarIpos2] = posWS_t;
         gProjFirstLayerPrevCoord2[tarIpos2] = prevCoord;
+        gProjFirstLayerMvec2[tarIpos2] = mvec;
+        gProjFirstLayerLinearZ2[tarIpos2] = linearZ;
     }
 
     uint2 tarIpos3 = uint2(tarCrd * gTarFrameDim) / 8;
@@ -128,6 +156,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjFirstLayerDiffOpacity3[tarIpos3] = diffOpacity;
         gProjFirstLayerPosWS3[tarIpos3] = posWS_t;
         gProjFirstLayerPrevCoord3[tarIpos3] = prevCoord;
+        gProjFirstLayerMvec3[tarIpos3] = mvec;
+        gProjFirstLayerLinearZ3[tarIpos3] = linearZ;
     }
 
 
@@ -155,6 +185,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     normWS = gSecondLayerNormWS[pixelCoord];
     diffOpacity = gSecondLayerDiffOpacity[pixelCoord];
     posWS_t = gSecondLayerPosWS[pixelCoord];
+    mvec = gSecondLayerMvec[pixelCoord];
+    linearZ = gSecondLayerLinearZ[pixelCoord];
     int2 prevCoord2 = int2(pixelCoord);
 
     prevCoord2 = prevCoord2 - (int2)gFrameDim / 2;
@@ -166,6 +198,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjSecondLayerDiffOpacity0[tarIpos0] = diffOpacity;
         gProjSecondLayerPosWS0[tarIpos0] = posWS_t;
         gProjSecondLayerPrevCoord0[tarIpos0] = prevCoord2;
+        gProjSecondLayerMvec0[tarIpos0] = mvec;
+        gProjSecondLayerLinearZ0[tarIpos0] = linearZ;
     }
 
     tarIpos1 = uint2(tarCrd * gTarFrameDim) / 2;
@@ -174,6 +208,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjSecondLayerDiffOpacity1[tarIpos1] = diffOpacity;
         gProjSecondLayerPosWS1[tarIpos1] = posWS_t;
         gProjSecondLayerPrevCoord1[tarIpos1] = prevCoord2;
+        gProjSecondLayerMvec1[tarIpos1] = mvec;
+        gProjSecondLayerLinearZ1[tarIpos1] = linearZ;
     }
 
     tarIpos2 = uint2(tarCrd * gTarFrameDim) / 4;
@@ -182,6 +218,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjSecondLayerDiffOpacity2[tarIpos2] = diffOpacity;
         gProjSecondLayerPosWS2[tarIpos2] = posWS_t;
         gProjSecondLayerPrevCoord2[tarIpos2] = prevCoord2;
+        gProjSecondLayerMvec2[tarIpos2] = mvec;
+        gProjSecondLayerLinearZ2[tarIpos2] = linearZ;
     }
 
     tarIpos3 = uint2(tarCrd * gTarFrameDim) / 8;
@@ -190,6 +228,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gProjSecondLayerDiffOpacity3[tarIpos3] = diffOpacity;
         gProjSecondLayerPosWS3[tarIpos3] = posWS_t;
         gProjSecondLayerPrevCoord3[tarIpos3] = prevCoord2;
+        gProjSecondLayerMvec3[tarIpos3] = mvec;
+        gProjSecondLayerLinearZ3[tarIpos3] = linearZ;
     }
 
     return;
