@@ -56,11 +56,27 @@ public:
 
     void DumpData(const RenderData &renderdata, const Camera::SharedPtr &camera, uint frameIdx, const std::string dirPath);
 
+    void LoadCamera();
+
     Scene::SharedPtr mpScene;
     int mFrameCount;
     uint mFrameIdx;
     bool mDump;
+    bool mDumpProbes;
+
+    float mCurIndex;
+
+    std::vector<float3> mPositions;
+    std::vector<float3> mTargets;
+    std::vector<float3> mUps;
+
+    bool mLoadCams;
+
+    int mProbeDirIndex;
+    std::vector<float3> mProbeDirs;
+
     std::string mSavingDir;
+    std::string mCameraTrajPath;
 
 private:
     DataCapture();

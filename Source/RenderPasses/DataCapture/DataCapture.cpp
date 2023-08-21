@@ -57,10 +57,23 @@ void DataCapture::setScene(RenderContext* pRenderContext, const Scene::SharedPtr
 
 DataCapture::DataCapture() : RenderPass(kInfo) {
     mDump = false;
+    mDumpProbes = false;
     mFrameCount = -1;
     mFrameIdx = 0;
     mpScene = NULL;
+    mLoadCams = false;
+    mProbeDirIndex = 0;
     mSavingDir = "D:\\songyinwu\\Codes\\Data\\TestData";
+    mCameraTrajPath = "D:\\songyinwu\\Codes\\Falcor\\media\\Arcade\\camera_path.txt";
+
+
+    mProbeDirs.push_back(float3(0, 0, 1));
+    mProbeDirs.push_back(float3(0, 0, -1));
+    mProbeDirs.push_back(float3(1, 0, 0));
+    mProbeDirs.push_back(float3(-1, 0, 0));
+    mProbeDirs.push_back(float3(0, 1, 0));
+    mProbeDirs.push_back(float3(0, -1, 0));
+
 }
 
 Dictionary DataCapture::getScriptingDictionary()
@@ -100,6 +113,33 @@ RenderPassReflection DataCapture::reflect(const CompileData& compileData)
     return reflector;
 }
 
+
+void DataCapture::LoadCamera()
+{
+    std::ifstream fin(mCameraTrajPath);
+
+    mPositions.clear();
+    mTargets.clear();
+    mUps.clear();
+
+    int num;
+    fin >> num;
+    float3 pos, tar, up;
+    while (num--) {
+        fin >> pos.x >> pos.y >> pos.z;
+        fin >> tar.x >> tar.y >> tar.z;
+        fin >> up.x >> up.y >> up.z;
+
+        mPositions.push_back(pos);
+        mTargets.push_back(tar);
+        mUps.push_back(up);
+
+    }
+
+    fin.close();
+
+}
+
 void DataCapture::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // renderData holds the requested resources
@@ -108,15 +148,16 @@ void DataCapture::execute(RenderContext* pRenderContext, const RenderData& rende
     if (mpScene) {
 
         int accCount = 1024;
-
-
-        float3 position(-1.14331, 1.84309, 2.44233);
-        float3 target(-0.701423, 1.48637, 1.61924);
-        float3 up(-0.376237, 0.634521, 0.675103);
+        float step = (float)0.1;
 
         Camera::SharedPtr camera = mpScene->getCamera();
 
         if (mDump) {
+
+            if (!mLoadCams) {
+                mLoadCams = true;
+                LoadCamera();
+            }
 
             if (mFrameCount == accCount) {
                 DumpData(renderData, camera, mFrameIdx, mSavingDir);
@@ -125,11 +166,30 @@ void DataCapture::execute(RenderContext* pRenderContext, const RenderData& rende
 
             if (mFrameCount == -1 || mFrameCount == accCount) {
 
+                if (mFrameCount == -1) mCurIndex = 0.;
+
+                int prevIdx = (int)floor(mCurIndex);
+                int nextIdx = prevIdx + 1;
+
+                if (nextIdx > mPositions.size()-1) {
+                    mDump = false;
+                    mFrameCount = -1;
+                    mFrameIdx = 0;
+                    mCurIndex = 0.;
+                    return;
+                }
+
+                float3 position = (mCurIndex - prevIdx) * mPositions[nextIdx] + (nextIdx - mCurIndex) * mPositions[prevIdx];
+                float3 target = (mCurIndex - prevIdx) * mTargets[nextIdx] + (nextIdx - mCurIndex) * mTargets[prevIdx];
+                float3 up = (mCurIndex - prevIdx) * mUps[nextIdx] + (nextIdx - mCurIndex) * mUps[prevIdx];
+
                 camera->setPosition(position);
                 camera->setTarget(target);
                 camera->setUpVector(up);
 
                 mFrameCount = 0;
+
+                mCurIndex += step;
 
                 // camera->setAspectRatio(1);
 
@@ -138,6 +198,49 @@ void DataCapture::execute(RenderContext* pRenderContext, const RenderData& rende
             mFrameCount += 1;
 
         }
+
+        if (mDumpProbes) {
+
+            float3 position(-1.025815, 0.192328, -0.527774);
+
+            if (mFrameCount == accCount) {
+                DumpData(renderData, camera, mFrameIdx, mSavingDir);
+                mFrameIdx += 1;
+            }
+
+            if (mFrameCount == -1 || mFrameCount == accCount) {
+
+
+                if (mProbeDirIndex == 6) {
+                    mDumpProbes = false;
+                    mProbeDirIndex = 0;
+                    return;
+                }
+
+                float3 target = position + mProbeDirs[mProbeDirIndex];
+                float3 up = float3(0, 1, 0);
+
+                if (mProbeDirIndex == 4 || mProbeDirIndex == 5) {
+                    up = float3(0, 0, 1);
+                }
+
+                camera->setPosition(position);
+                camera->setTarget(target);
+                camera->setUpVector(up);
+
+                mFrameCount = 0;
+
+                mProbeDirIndex += 1;
+
+
+                // camera->setAspectRatio(1);
+
+            }
+
+            mFrameCount += 1;
+
+        }
+
     }
 
 }
@@ -165,5 +268,6 @@ void DataCapture::DumpData(const RenderData &renderdata, const Camera::SharedPtr
 void DataCapture::renderUI(Gui::Widgets& widget)
 {
     widget.checkbox("Dump Data", mDump);
+    widget.checkbox("Dump Probe Data", mDumpProbes);
     widget.textbox("Saving Dir", mSavingDir);
 }
