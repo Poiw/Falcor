@@ -54,9 +54,12 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
-    void DumpData(const RenderData &renderdata, const Camera::SharedPtr &camera, uint frameIdx, const std::string dirPath);
+    void DumpData(const RenderData &renderdata, const Camera::SharedPtr &camera, const std::string &name_suffix, const std::string dirPath);
 
     void LoadCamera();
+
+    void InitParams();
+    void SetProbesPosition();
 
     Scene::SharedPtr mpScene;
     int mFrameCount;
@@ -73,7 +76,10 @@ public:
     bool mLoadCams;
 
     int mProbeDirIndex;
+    int mProbePosIndex;
+    uint mProbeNumAxis;
     std::vector<float3> mProbeDirs;
+    std::vector<float3> mProbePositions;
 
     std::string mSavingDir;
     std::string mCameraTrajPath;

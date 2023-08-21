@@ -52,19 +52,53 @@ void DataCapture::setScene(RenderContext* pRenderContext, const Scene::SharedPtr
 {
     if (pScene) {
         mpScene = pScene;
+
+        InitParams();
+        SetProbesPosition();
     }
 }
 
-DataCapture::DataCapture() : RenderPass(kInfo) {
+void DataCapture::SetProbesPosition()
+{
+    auto minPosition = mpScene->getSceneBounds().minPoint;
+    auto maxPosition = mpScene->getSceneBounds().maxPoint;
+
+    mProbePositions.clear();
+
+
+    for (int i = 0; i < mProbeNumAxis; i++) {
+        for (int j = 0; j < mProbeNumAxis; j++) {
+            for (int k = 0; k < mProbeNumAxis; k++) {
+                float3 position = float3(
+                    minPosition.x + (maxPosition.x - minPosition.x) * (i + 0.5) / mProbeNumAxis,
+                    minPosition.y + (maxPosition.y - minPosition.y) * (j + 0.5) / mProbeNumAxis,
+                    minPosition.z + (maxPosition.z - minPosition.z) * (k + 0.5) / mProbeNumAxis
+                );
+
+                mProbePositions.push_back(position);
+            }
+        }
+    }
+
+}
+
+void DataCapture::InitParams()
+{
     mDump = false;
     mDumpProbes = false;
     mFrameCount = -1;
     mFrameIdx = 0;
+    mProbeDirIndex = 0;
+    mProbePosIndex = 0;
+}
+
+DataCapture::DataCapture() : RenderPass(kInfo) {
     mpScene = NULL;
     mLoadCams = false;
-    mProbeDirIndex = 0;
-    mSavingDir = "D:\\songyinwu\\Codes\\Data\\TestData";
-    mCameraTrajPath = "D:\\songyinwu\\Codes\\Falcor\\media\\Arcade\\camera_path.txt";
+    mSavingDir = "";
+    mCameraTrajPath = "";
+
+    mProbeNumAxis = 4;
 
 
     mProbeDirs.push_back(float3(0, 0, 1));
@@ -160,7 +194,7 @@ void DataCapture::execute(RenderContext* pRenderContext, const RenderData& rende
             }
 
             if (mFrameCount == accCount) {
-                DumpData(renderData, camera, mFrameIdx, mSavingDir);
+                DumpData(renderData, camera, std::to_string(mFrameIdx), mSavingDir);
                 mFrameIdx += 1;
             }
 
@@ -201,10 +235,8 @@ void DataCapture::execute(RenderContext* pRenderContext, const RenderData& rende
 
         if (mDumpProbes) {
 
-            float3 position(-1.025815, 0.192328, -0.527774);
-
             if (mFrameCount == accCount) {
-                DumpData(renderData, camera, mFrameIdx, mSavingDir);
+                DumpData(renderData, camera, std::to_string(mProbePosIndex) + "_" + std::to_string(mProbeDirIndex), mSavingDir);
                 mFrameIdx += 1;
             }
 
@@ -212,10 +244,20 @@ void DataCapture::execute(RenderContext* pRenderContext, const RenderData& rende
 
 
                 if (mProbeDirIndex == 6) {
-                    mDumpProbes = false;
                     mProbeDirIndex = 0;
-                    return;
+                    mProbePosIndex += 1;
+
+                    if (mProbePosIndex == mProbePositions.size()) {
+                        mDumpProbes = false;
+                        mFrameCount = -1;
+                        mFrameIdx = 0;
+                        mProbeDirIndex = 0;
+                        mProbePosIndex = 0;
+                        return;
+                    }
                 }
+
+                float3 position = mProbePositions[mProbePosIndex];
 
                 float3 target = position + mProbeDirs[mProbeDirIndex];
                 float3 up = float3(0, 1, 0);
@@ -245,13 +287,13 @@ void DataCapture::execute(RenderContext* pRenderContext, const RenderData& rende
 
 }
 
-void DataCapture::DumpData(const RenderData &renderdata, const Camera::SharedPtr &camera, uint frameIdx, const std::string dirPath)
+void DataCapture::DumpData(const RenderData &renderdata, const Camera::SharedPtr &camera, const std::string &name_suffix, const std::string dirPath)
 {
-    renderdata.getTexture("color")->captureToFile(0, 0, dirPath + "/color_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
-    renderdata.getTexture("albedo")->captureToFile(0, 0, dirPath + "/albedo_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
-    renderdata.getTexture("normal")->captureToFile(0, 0, dirPath + "/normal_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderdata.getTexture("color")->captureToFile(0, 0, dirPath + "/color_" + name_suffix + ".exr", Bitmap::FileFormat::ExrFile);
+    renderdata.getTexture("albedo")->captureToFile(0, 0, dirPath + "/albedo_" + name_suffix + ".exr", Bitmap::FileFormat::ExrFile);
+    renderdata.getTexture("normal")->captureToFile(0, 0, dirPath + "/normal_" + name_suffix + ".exr", Bitmap::FileFormat::ExrFile);
 
-    std::ofstream fout(dirPath + "/camera_" + std::to_string(frameIdx) + ".txt");
+    std::ofstream fout(dirPath + "/camera_" + name_suffix + ".txt");
 
     pybind11::dict d;
     d["position"] = camera->getPosition();
@@ -269,5 +311,11 @@ void DataCapture::renderUI(Gui::Widgets& widget)
 {
     widget.checkbox("Dump Data", mDump);
     widget.checkbox("Dump Probe Data", mDumpProbes);
+    if (widget.button("Clean states")) {
+        InitParams();
+    }
     widget.textbox("Saving Dir", mSavingDir);
+    widget.textbox("Camera Traj Path File", mCameraTrajPath);
+
+    widget.var<uint>("Probe Num Axis", mProbeNumAxis, 1);
 }
