@@ -349,6 +349,9 @@ namespace Falcor
         float focalLength = getFocalLength();
         if (widget.var("Focal Length", focalLength, 0.0f, FLT_MAX, 0.25f)) setFocalLength(focalLength);
 
+        float frameHeight = getFrameHeight();
+        if (widget.var("Frame Height (not the frame resolution)", frameHeight, 0.0f, FLT_MAX, 0.25f)) setFrameHeight(frameHeight);
+
         float aspectRatio = getAspectRatio();
         if (widget.var("Aspect Ratio", aspectRatio, 0.f, FLT_MAX, 0.001f)) setAspectRatio(aspectRatio);
 
