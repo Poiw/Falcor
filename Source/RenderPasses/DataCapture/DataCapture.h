@@ -74,15 +74,18 @@ public:
     std::vector<float3> mUps;
 
     bool mLoadCams;
+    bool mLoadProbes;
 
     int mProbeDirIndex;
     int mProbePosIndex;
     uint mProbeNumAxis;
+    uint mNumPerPosition;
     std::vector<float3> mProbeDirs;
     std::vector<float3> mProbePositions;
 
     std::string mSavingDir;
     std::string mCameraTrajPath;
+    std::string mProbePositionFilePath;
 
 private:
     DataCapture();

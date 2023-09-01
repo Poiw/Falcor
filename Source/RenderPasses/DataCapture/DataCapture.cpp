@@ -54,30 +54,51 @@ void DataCapture::setScene(RenderContext* pRenderContext, const Scene::SharedPtr
         mpScene = pScene;
 
         InitParams();
-        SetProbesPosition();
     }
 }
 
 void DataCapture::SetProbesPosition()
 {
-    auto minPosition = mpScene->getSceneBounds().minPoint;
-    auto maxPosition = mpScene->getSceneBounds().maxPoint;
 
-    mProbePositions.clear();
+    if (mProbePositionFilePath != "") {
+        std::ifstream fin(mProbePositionFilePath);
+
+        mProbePositions.clear();
+
+        int num;
+        fin >> num;
+        float3 pos;
+        while (num--) {
+            fin >> pos.x >> pos.y >> pos.z;
+            mProbePositions.push_back(pos);
+        }
+
+        fin.close();
+
+        return;
+    }
+    else {
+
+        auto minPosition = mpScene->getSceneBounds().minPoint;
+        auto maxPosition = mpScene->getSceneBounds().maxPoint;
+
+        mProbePositions.clear();
 
 
-    for (int i = 0; i < mProbeNumAxis; i++) {
-        for (int j = 0; j < mProbeNumAxis; j++) {
-            for (int k = 0; k < mProbeNumAxis; k++) {
-                float3 position = float3(
-                    minPosition.x + (maxPosition.x - minPosition.x) * (i + 0.5) / mProbeNumAxis,
-                    minPosition.y + (maxPosition.y - minPosition.y) * (j + 0.5) / mProbeNumAxis,
-                    minPosition.z + (maxPosition.z - minPosition.z) * (k + 0.5) / mProbeNumAxis
-                );
+        for (int i = 0; i < mProbeNumAxis; i++) {
+            for (int j = 0; j < mProbeNumAxis; j++) {
+                for (int k = 0; k < mProbeNumAxis; k++) {
+                    float3 position = float3(
+                        minPosition.x + (maxPosition.x - minPosition.x) * (i + 0.5) / mProbeNumAxis,
+                        minPosition.y + (maxPosition.y - minPosition.y) * (j + 0.5) / mProbeNumAxis,
+                        minPosition.z + (maxPosition.z - minPosition.z) * (k + 0.5) / mProbeNumAxis
+                    );
 
-                mProbePositions.push_back(position);
+                    mProbePositions.push_back(position);
+                }
             }
         }
+
     }
 
 }
@@ -86,6 +107,7 @@ void DataCapture::InitParams()
 {
     mDump = false;
     mDumpProbes = false;
+    mLoadProbes = false;
     mFrameCount = -1;
     mFrameIdx = 0;
     mProbeDirIndex = 0;
@@ -95,10 +117,13 @@ void DataCapture::InitParams()
 DataCapture::DataCapture() : RenderPass(kInfo) {
     mpScene = NULL;
     mLoadCams = false;
+    mLoadProbes = false;
     mSavingDir = "";
     mCameraTrajPath = "";
+    mProbePositionFilePath = "";
 
     mProbeNumAxis = 4;
+    mNumPerPosition = 10;
 
 
     mProbeDirs.push_back(float3(0, 0, 1));
@@ -135,6 +160,16 @@ RenderPassReflection DataCapture::reflect(const CompileData& compileData)
         .texture2D();
 
     reflector.addInput("normal", "Normal")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+
+    reflector.addInput("posW", "World Position")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+
+    reflector.addInput("viewW", "view direction in world space")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::ShaderResource)
         .texture2D();
@@ -182,7 +217,7 @@ void DataCapture::execute(RenderContext* pRenderContext, const RenderData& rende
     if (mpScene) {
 
         int accCount = 1024;
-        float step = (float)0.1;
+        float step = (float)1.0 / mNumPerPosition;
 
         Camera::SharedPtr camera = mpScene->getCamera();
 
@@ -234,6 +269,11 @@ void DataCapture::execute(RenderContext* pRenderContext, const RenderData& rende
         }
 
         if (mDumpProbes) {
+
+            if (!mLoadProbes) {
+                mLoadProbes = true;
+                SetProbesPosition();
+            }
 
             if (mFrameCount == accCount) {
                 DumpData(renderData, camera, std::to_string(mProbePosIndex) + "_" + std::to_string(mProbeDirIndex), mSavingDir);
@@ -292,6 +332,8 @@ void DataCapture::DumpData(const RenderData &renderdata, const Camera::SharedPtr
     renderdata.getTexture("color")->captureToFile(0, 0, dirPath + "/color_" + name_suffix + ".exr", Bitmap::FileFormat::ExrFile);
     renderdata.getTexture("albedo")->captureToFile(0, 0, dirPath + "/albedo_" + name_suffix + ".exr", Bitmap::FileFormat::ExrFile);
     renderdata.getTexture("normal")->captureToFile(0, 0, dirPath + "/normal_" + name_suffix + ".exr", Bitmap::FileFormat::ExrFile);
+    renderdata.getTexture("posW")->captureToFile(0, 0, dirPath + "/posW_" + name_suffix + ".exr", Bitmap::FileFormat::ExrFile);
+    renderdata.getTexture("viewW")->captureToFile(0, 0, dirPath + "/viewW_" + name_suffix + ".exr", Bitmap::FileFormat::ExrFile);
 
     std::ofstream fout(dirPath + "/camera_" + name_suffix + ".txt");
 
@@ -305,6 +347,11 @@ void DataCapture::DumpData(const RenderData &renderdata, const Camera::SharedPtr
     fout << pybind11::str(d) << std::endl;
 
     fout.close();
+
+    fout.open(dirPath + "/camera-viewproj_" + name_suffix + ".txt");
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++) fout << camera->getViewProjMatrix()[i][j] << " ";
+
 }
 
 void DataCapture::renderUI(Gui::Widgets& widget)
@@ -316,6 +363,9 @@ void DataCapture::renderUI(Gui::Widgets& widget)
     }
     widget.textbox("Saving Dir", mSavingDir);
     widget.textbox("Camera Traj Path File", mCameraTrajPath);
+    widget.textbox("Probe Position Path File", mProbePositionFilePath);
 
     widget.var<uint>("Probe Num Axis", mProbeNumAxis, 1);
+    widget.var<uint>("Num Per Position", mNumPerPosition, 1);
+
 }
