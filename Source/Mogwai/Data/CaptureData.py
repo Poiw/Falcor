@@ -11,7 +11,7 @@ def render_graph_DataCapture():
     g.addPass(PathTracer, "PathTracer")
     VBufferRT = createPass("VBufferRT", {'samplePattern': SamplePattern.Stratified, 'sampleCount': 16, 'useAlphaTest': True})
     g.addPass(VBufferRT, "VBufferRT")
-    GBufferRT = createPass("GBufferRT")
+    GBufferRT = createPass("GBufferRT", {'samplePattern': SamplePattern.Halton, 'sampleCount': 16, 'useAlphaTest': True})
     g.addPass(GBufferRT, "GBufferRT")
     AccumulatePass = createPass("AccumulatePass", {'enabled': True, 'precisionMode': AccumulatePrecision.Single})
     g.addPass(AccumulatePass, "AccumulatePass")
