@@ -105,6 +105,7 @@ void DataCapture::SetProbesPosition()
 
 void DataCapture::InitParams()
 {
+    mLoadCams = false;
     mDump = false;
     mDumpProbes = false;
     mLoadProbes = false;
