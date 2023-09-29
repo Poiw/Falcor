@@ -7,6 +7,8 @@ cbuffer PerFrameCB {
     uint subSampleNum;
     bool gEnableSubPixel;
     float renderScale;
+    uint2 gOffset;
+    uint2 gScale;
 };
 
 
@@ -85,11 +87,11 @@ RWTexture2D<float2> gProjSecondLayerLinearZ3;
 
 
 
-[numthreads(1, 1, 1)]
+[numthreads(4, 4, 1)]
 void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     // First Layer
-    uint2 pixelCoord = dispatchThreadId.xy;
+    uint2 pixelCoord = dispatchThreadId.xy * gScale + gOffset;
 
 
 
@@ -116,7 +118,12 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     float4 normWS = gFirstLayerNormWS[pixelCoord];
     float4 diffOpacity = gFirstLayerDiffOpacity[pixelCoord];
     float4 posWS_t = gFirstLayerPosWS[pixelCoord];
-    float2 mvec = gFirstLayerMvec[pixelCoord];
+    // float2 mvec = gFirstLayerMvec[pixelCoord];
+    float2 mvec = float2(0.0f, 0.0f);
+    for (int i = 0; i < gScale.x; ++i)
+        for (int j = 0; j < gScale.y; ++j)
+            mvec += gFirstLayerMvec[dispatchThreadId.xy * gScale + uint2(i, j)];
+    mvec /= float2(gScale.x * gScale.y);
     float2 linearZ = gFirstLayerLinearZ[pixelCoord];
     uint2 prevCoord = uint2(pixelCoord);
 
@@ -185,7 +192,12 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     normWS = gSecondLayerNormWS[pixelCoord];
     diffOpacity = gSecondLayerDiffOpacity[pixelCoord];
     posWS_t = gSecondLayerPosWS[pixelCoord];
-    mvec = gSecondLayerMvec[pixelCoord];
+    // mvec = gSecondLayerMvec[pixelCoord];
+    mvec = float2(0.0f, 0.0f);
+    for (int i = 0; i < gScale.x; ++i)
+        for (int j = 0; j < gScale.y; ++j)
+            mvec += gSecondLayerMvec[dispatchThreadId.xy * gScale + uint2(i, j)];
+    mvec /= float2(gScale.x * gScale.y);
     linearZ = gSecondLayerLinearZ[pixelCoord];
     int2 prevCoord2 = int2(pixelCoord);
 

@@ -161,24 +161,24 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
             layer1.mvec = gFirstLayerMvec1[pixelCoord / 2];
             layer1.linearZ = gFirstLayerLinearZ1[pixelCoord / 2];
         }
-        if (gUsedMipLevel >= 2 && gFirstLayerDepthTest2[pixelCoord / 4] + eps * 2 < layer1.z) {
-            layer1.normWS = gFirstLayerNormWS2[pixelCoord / 4];
-            layer1.diffOpacity = gFirstLayerDiffOpacity2[pixelCoord / 4];
-            layer1.posWS = gFirstLayerPosWS2[pixelCoord / 4];
-            layer1.prevCoord = gFirstLayerPrevCoord2[pixelCoord / 4];
-            layer1.z = gFirstLayerDepthTest2[pixelCoord / 4];
-            layer1.mvec = gFirstLayerMvec2[pixelCoord / 4];
-            layer1.linearZ = gFirstLayerLinearZ2[pixelCoord / 4];
-        }
-        if (gUsedMipLevel >= 3 && gFirstLayerDepthTest3[pixelCoord / 8] + eps * 4 < layer1.z) {
-            layer1.normWS = gFirstLayerNormWS3[pixelCoord / 8];
-            layer1.diffOpacity = gFirstLayerDiffOpacity3[pixelCoord / 8];
-            layer1.posWS = gFirstLayerPosWS3[pixelCoord / 8];
-            layer1.prevCoord = gFirstLayerPrevCoord3[pixelCoord / 8];
-            layer1.z = gFirstLayerDepthTest3[pixelCoord / 8];
-            layer1.mvec = gFirstLayerMvec3[pixelCoord / 8];
-            layer1.linearZ = gFirstLayerLinearZ3[pixelCoord / 8];
-        }
+        // if (gUsedMipLevel >= 2 && gFirstLayerDepthTest2[pixelCoord / 4] + eps * 2 < layer1.z) {
+        //     layer1.normWS = gFirstLayerNormWS2[pixelCoord / 4];
+        //     layer1.diffOpacity = gFirstLayerDiffOpacity2[pixelCoord / 4];
+        //     layer1.posWS = gFirstLayerPosWS2[pixelCoord / 4];
+        //     layer1.prevCoord = gFirstLayerPrevCoord2[pixelCoord / 4];
+        //     layer1.z = gFirstLayerDepthTest2[pixelCoord / 4];
+        //     layer1.mvec = gFirstLayerMvec2[pixelCoord / 4];
+        //     layer1.linearZ = gFirstLayerLinearZ2[pixelCoord / 4];
+        // }
+        // if (gUsedMipLevel >= 3 && gFirstLayerDepthTest3[pixelCoord / 8] + eps * 4 < layer1.z) {
+        //     layer1.normWS = gFirstLayerNormWS3[pixelCoord / 8];
+        //     layer1.diffOpacity = gFirstLayerDiffOpacity3[pixelCoord / 8];
+        //     layer1.posWS = gFirstLayerPosWS3[pixelCoord / 8];
+        //     layer1.prevCoord = gFirstLayerPrevCoord3[pixelCoord / 8];
+        //     layer1.z = gFirstLayerDepthTest3[pixelCoord / 8];
+        //     layer1.mvec = gFirstLayerMvec3[pixelCoord / 8];
+        //     layer1.linearZ = gFirstLayerLinearZ3[pixelCoord / 8];
+        // }
 
 
 
@@ -251,24 +251,24 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
             layer2.mvec = gSecondLayerMvec1[pixelCoord / 2];
             layer2.linearZ = gSecondLayerLinearZ1[pixelCoord / 2];
         }
-        if (gUsedMipLevel >= 2 && gSecondLayerDepthTest2[pixelCoord / 4] + eps * 2 < layer2.z) {
-            layer2.normWS = gSecondLayerNormWS2[pixelCoord / 4];
-            layer2.diffOpacity = gSecondLayerDiffOpacity2[pixelCoord / 4];
-            layer2.posWS = gSecondLayerPosWS2[pixelCoord / 4];
-            layer2.prevCoord = gSecondLayerPrevCoord2[pixelCoord / 4];
-            layer2.z = gSecondLayerDepthTest2[pixelCoord / 4];
-            layer2.mvec = gSecondLayerMvec2[pixelCoord / 4];
-            layer2.linearZ = gSecondLayerLinearZ2[pixelCoord / 4];
-        }
-        if (gUsedMipLevel >= 3 && gSecondLayerDepthTest3[pixelCoord / 8] + eps * 4 < layer2.z) {
-            layer2.normWS = gSecondLayerNormWS3[pixelCoord / 8];
-            layer2.diffOpacity = gSecondLayerDiffOpacity3[pixelCoord / 8];
-            layer2.posWS = gSecondLayerPosWS3[pixelCoord / 8];
-            layer2.prevCoord = gSecondLayerPrevCoord3[pixelCoord / 8];
-            layer2.z = gSecondLayerDepthTest3[pixelCoord / 8];
-            layer2.mvec = gSecondLayerMvec3[pixelCoord / 8];
-            layer2.linearZ = gSecondLayerLinearZ3[pixelCoord / 8];
-        }
+        // if (gUsedMipLevel >= 2 && gSecondLayerDepthTest2[pixelCoord / 4] + eps * 2 < layer2.z) {
+        //     layer2.normWS = gSecondLayerNormWS2[pixelCoord / 4];
+        //     layer2.diffOpacity = gSecondLayerDiffOpacity2[pixelCoord / 4];
+        //     layer2.posWS = gSecondLayerPosWS2[pixelCoord / 4];
+        //     layer2.prevCoord = gSecondLayerPrevCoord2[pixelCoord / 4];
+        //     layer2.z = gSecondLayerDepthTest2[pixelCoord / 4];
+        //     layer2.mvec = gSecondLayerMvec2[pixelCoord / 4];
+        //     layer2.linearZ = gSecondLayerLinearZ2[pixelCoord / 4];
+        // }
+        // if (gUsedMipLevel >= 3 && gSecondLayerDepthTest3[pixelCoord / 8] + eps * 4 < layer2.z) {
+        //     layer2.normWS = gSecondLayerNormWS3[pixelCoord / 8];
+        //     layer2.diffOpacity = gSecondLayerDiffOpacity3[pixelCoord / 8];
+        //     layer2.posWS = gSecondLayerPosWS3[pixelCoord / 8];
+        //     layer2.prevCoord = gSecondLayerPrevCoord3[pixelCoord / 8];
+        //     layer2.z = gSecondLayerDepthTest3[pixelCoord / 8];
+        //     layer2.mvec = gSecondLayerMvec3[pixelCoord / 8];
+        //     layer2.linearZ = gSecondLayerLinearZ3[pixelCoord / 8];
+        // }
 
         // if (gSecondLayerDepthTest0[pixelCoord] != uint(-1)) {
         //     layer2.normWS = gSecondLayerNormWS0[pixelCoord];
@@ -295,6 +295,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // gNormWS[pixelCoord] = layer1.normWS;
     // gDiffOpacity[pixelCoord] = layer1.diffOpacity;
     // gMask[pixelCoord] = float4(1.0, 0.0, 0.0, 1.0);
+    // if (true) {
     if (layer1.z < uint(-1)) {
         gNormWS[pixelCoord] = layer1.normWS;
         gDiffOpacity[pixelCoord] = layer1.diffOpacity;

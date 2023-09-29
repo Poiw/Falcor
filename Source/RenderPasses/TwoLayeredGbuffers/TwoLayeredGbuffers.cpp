@@ -182,6 +182,8 @@ void TwoLayeredGbuffers::ClearVariables()
     mNearestThreshold = 1;
     mSubPixelSample = 1;
 
+    mCenterScale = 1;
+
     mNormalThreshold = 0.1f;
     mFrameCount = 0;
     mFreshNum = 8;
@@ -1114,6 +1116,9 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
 
                 // ------------------------------ Depth Test ------------------------------ //
 
+                uint2 scale = uint2(mCenterScale);
+                uint2 offset = uint2(rand() % scale.x, rand() % scale.y);
+
                 {
 
                     // Varibales
@@ -1125,6 +1130,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         mpProjectionDepthTestPass["PerFrameCB"]["gCurViewProjMat"] = curViewProjMat;
                         mpProjectionDepthTestPass["PerFrameCB"]["subSampleNum"] = mSubPixelSample;
                         mpProjectionDepthTestPass["PerFrameCB"]["gEnableSubPixel"] = mEnableSubPixel;
+                        mpProjectionDepthTestPass["PerFrameCB"]["gScale"] = scale;
+                        mpProjectionDepthTestPass["PerFrameCB"]["gOffset"] = offset;
                     }
 
                     // Input Textures
@@ -1163,7 +1170,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     }
 
                     // Run Forward Warping Shader
-                    mpProjectionDepthTestPass->execute(pRenderContext, uint3(curDim, 1));
+                    mpProjectionDepthTestPass->execute(pRenderContext, uint3(curDim / scale, 1));
 
                     // Set barriers
                     {
@@ -1191,6 +1198,8 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                         mpForwardWarpPass["PerFrameCB"]["subSampleNum"] = mSubPixelSample;
                         mpForwardWarpPass["PerFrameCB"]["gEnableSubPixel"] = mEnableSubPixel;
                         mpForwardWarpPass["PerFrameCB"]["renderScale"] = mCenterRenderScale;
+                        mpForwardWarpPass["PerFrameCB"]["gScale"] = scale;
+                        mpForwardWarpPass["PerFrameCB"]["gOffset"] = offset;
 
                     }
 
@@ -1304,7 +1313,7 @@ void TwoLayeredGbuffers::execute(RenderContext* pRenderContext, const RenderData
                     }
 
                     // Run Forward Warping Shader
-                    mpForwardWarpPass->execute(pRenderContext, uint3(curDim, 1));
+                    mpForwardWarpPass->execute(pRenderContext, uint3(curDim / scale, 1));
 
                     // Set barriers
                     {
@@ -1537,6 +1546,7 @@ void TwoLayeredGbuffers::renderUI(Gui::Widgets& widget)
     widget.var<uint>("Sub Pixel Sample", mSubPixelSample, 1);
     widget.var<uint>("Additional Camera Number", mAdditionalCamNum, 0);
     widget.var<uint>("Forward Warping Mip Level", mForwardMipLevel, 0, 3);
+    widget.var<uint>("Center Frame Scale", mCenterScale, 1);
 
     if (widget.var<uint>("Target Resolution X", mTargetReso.x, 32)) requestRecompile();
     if (widget.var<uint>("Target Resolution Y", mTargetReso.y, 32)) requestRecompile();

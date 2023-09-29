@@ -175,6 +175,8 @@ private:
     std::default_random_engine mRng;
     std::uniform_real_distribution<float> mRandomGen;
 
+    uint mCenterScale;
+
     float mGetRandom(float min, float max);
 
 };

@@ -4,6 +4,8 @@ cbuffer PerFrameCB {
     float4x4 gCenterViewProjMat;
     float4x4 gCenterViewProjMatInv;
     float4x4 gCurViewProjMat;
+    uint2 gOffset;
+    uint2 gScale;
     uint subSampleNum;
     bool gEnableSubPixel;
 };
@@ -29,7 +31,7 @@ RWTexture2D<uint> gProjSecondLayerDepthTest3;
 void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     // First Layer
-    uint2 pixelCoord = dispatchThreadId.xy;
+    uint2 pixelCoord = dispatchThreadId.xy * gScale + gOffset;
 
     if (gEnableSubPixel) {
 
