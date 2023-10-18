@@ -219,7 +219,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
         // Input
         {
             mpForwardWarpDepthTestPass["PerFrameCB"]["gFrameDim"] = curDim;
-            mpForwardWarpDepthTestPass["PerFrameCB"]["curViewProjMat"] = nextCamera->getViewProjMatrix();
+            mpForwardWarpDepthTestPass["PerFrameCB"]["curViewProjMat"] = nextCamera->getViewProjMatrixNoJitter();
 
             auto nextPosWSRV = mpNextPosWTex->getSRV();
             mpForwardWarpDepthTestPass["gNextPosWTex"].setSrv(nextPosWSRV);
