@@ -81,7 +81,12 @@ private:
     // Some variables for ForwardExtrapolation
     uint32_t mFrameCount;
     uint32_t mExtrapolationNum;
+
+
+    // Splat
     uint mKernelSize;
+    float mSplatSigma;
+    float gSplatDistSigma;
 
 
     // Camera Info

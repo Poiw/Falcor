@@ -90,6 +90,8 @@ void ForwardExtrapolation::ClearVariables()
     mMode = 0;
 
     mKernelSize = 3;
+    mSplatSigma = 1.;
+    gSplatDistSigma = 8.;
 
 
 
@@ -303,9 +305,14 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
         {
             mpSplatPass["PerFrameCB"]["gFrameDim"] = curDim;
             mpSplatPass["PerFrameCB"]["gKernelSize"] = mKernelSize;
+            mpSplatPass["PerFrameCB"]["gSplatSigma"] = mSplatSigma;
+            mpSplatPass["PerFrameCB"]["gSplatDistSigma"] = gSplatDistSigma;
 
             auto tempWarpTexSRV = mpTempWarpTex->getSRV();
             mpSplatPass["gTempWarpTex"].setSrv(tempWarpTexSRV);
+
+            auto tempDepthTexSRV = mpTempDepthTex->getSRV();
+            mpSplatPass["gTempDepthTex"].setSrv(tempDepthTexSRV);
         }
 
         // Output
@@ -414,5 +421,7 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
     widget.var<uint32_t>("Extrapolation Num", mExtrapolationNum, 1u, 1u);
 
     widget.var<uint32_t>("Kernel Size", mKernelSize, 1u, 32u);
+    widget.var<float>("Splat Sigma", mSplatSigma, 0.1f, 10.f);
+    widget.var<float>("Splat Dist Sigma", gSplatDistSigma, 0.1f, 20.f);
 
 }
