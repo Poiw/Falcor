@@ -111,7 +111,7 @@ ForwardExtrapolation = render_graph_ForwardExtrapolation()
 try: m.addGraph(ForwardExtrapolation)
 except NameError: None
 
-m.resizeSwapChain(960, 540)
+m.resizeSwapChain(1920, 1080)
 m.ui = True
 
 
