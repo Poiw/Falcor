@@ -194,7 +194,7 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
     pRenderContext->blit(renderData.getTexture("Pretonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
 
     createNewTexture(mpRenderTex, curDim);
-    createNewTexture(mpNextPosWTex, curDim, ResourceFormat::RGB32Float);
+    createNewTexture(mpNextPosWTex, curDim, ResourceFormat::RGBA32Float);
 
     pRenderContext->blit(renderData.getTexture("Pretonemapped_in")->getSRV(), mpRenderTex->getRTV());
     pRenderContext->blit(renderData.getTexture("NextPosW_in")->getSRV(), mpNextPosWTex->getRTV());
