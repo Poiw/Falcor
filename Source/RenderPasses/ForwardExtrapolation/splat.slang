@@ -25,17 +25,19 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     int size = (gKernelSize - 1) / 2;
 
     targetRenderTex[pixelCoord] = 0.;
-    for (int ux = -size; ux <= size; ux++) {
-        for (int uy = -size; uy <= size; uy++) {
+    for (int stride = 1; stride <= 9; stride += 4) {
+        for (int ux = -size; ux <= size; ux++) {
+            for (int uy = -size; uy <= size; uy++) {
 
-            int2 neighborCoord = pixelCoord + int2(ux, uy);
+                int2 neighborCoord = pixelCoord + int2(ux, uy) * stride;
 
-            if (neighborCoord.x >= 0 && neighborCoord.x < gFrameDim.x && neighborCoord.y >= 0 && neighborCoord.y < gFrameDim.y && gTempDepthTex[neighborCoord] != uint(-1)) {
-                float depth = (float)gTempDepthTex[neighborCoord] / 262144.0f;
-                // float weight = softmax_exp(depth) * abs(gKernelSize + 1 - ux) * abs(gKernelSize + 1 - uy) / ((gKernelSize+1) * (gKernelSize+1));
-                float weight = softmax_exp(depth) * exp(-abs(gSplatDistSigma * ux)) * exp(-abs(gSplatDistSigma * uy));
-                total_weight += weight;
-                targetRenderTex[pixelCoord] += gTempWarpTex[neighborCoord] * weight;
+                if (neighborCoord.x >= 0 && neighborCoord.x < gFrameDim.x && neighborCoord.y >= 0 && neighborCoord.y < gFrameDim.y && gTempDepthTex[neighborCoord] != uint(-1)) {
+                    float depth = (float)gTempDepthTex[neighborCoord] / 262144.0f;
+                    // float weight = softmax_exp(depth) * abs(gKernelSize + 1 - ux) * abs(gKernelSize + 1 - uy) / ((gKernelSize+1) * (gKernelSize+1));
+                    float weight = softmax_exp(depth) * exp(-abs(gSplatDistSigma * ux)) * exp(-abs(gSplatDistSigma * uy));
+                    total_weight += weight;
+                    targetRenderTex[pixelCoord] += gTempWarpTex[neighborCoord] * weight;
+                }
             }
         }
     }
