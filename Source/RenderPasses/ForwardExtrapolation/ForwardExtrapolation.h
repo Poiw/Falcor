@@ -89,6 +89,7 @@ private:
     uint mKernelSize;
     float mSplatSigma;
     float gSplatDistSigma;
+    uint gSplatStrideNum;
 
     // Dump Data
     bool mDumpData;

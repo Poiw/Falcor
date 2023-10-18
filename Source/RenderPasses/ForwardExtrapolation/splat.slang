@@ -3,6 +3,7 @@ cbuffer PerFrameCB {
     uint gKernelSize;
     float gSplatSigma;
     float gSplatDistSigma;
+    uint gStrideNum;
 };
 
 Texture2D<float4> gTempWarpTex;
@@ -12,6 +13,14 @@ RWTexture2D<float4> targetRenderTex;
 
 float softmax_exp(float x) {
     return exp(x * gSplatSigma);
+}
+
+float4 tonemap(float4 x, float mu) {
+    return log(1 + mu * x) / log(1 + mu);
+}
+
+float4 detonemap(float4 x, float mu) {
+    return (exp(x * log(1 + mu)) - 1) / mu;
 }
 
 [numthreads(8, 8, 1)]
@@ -24,8 +33,11 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     int size = (gKernelSize - 1) / 2;
 
-    targetRenderTex[pixelCoord] = 0.;
-    for (int stride = 1; stride <= 9; stride += 4) {
+    float mu = 8.;
+
+    float4 targetRender = 0.;
+    // targetRenderTex[pixelCoord] = 0.;
+    for (int stride = 1; stride <= gStrideNum * 4 - 3; stride += 4) {
         for (int ux = -size; ux <= size; ux++) {
             for (int uy = -size; uy <= size; uy++) {
 
@@ -36,15 +48,18 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                     // float weight = softmax_exp(depth) * abs(gKernelSize + 1 - ux) * abs(gKernelSize + 1 - uy) / ((gKernelSize+1) * (gKernelSize+1));
                     float weight = softmax_exp(depth) * exp(-abs(gSplatDistSigma * ux)) * exp(-abs(gSplatDistSigma * uy));
                     total_weight += weight;
-                    targetRenderTex[pixelCoord] += gTempWarpTex[neighborCoord] * weight;
+                    targetRender += tonemap(gTempWarpTex[neighborCoord], mu) * weight;
                 }
             }
         }
     }
 
     if (total_weight > 0.0f) {
-        targetRenderTex[pixelCoord] /= total_weight;
+        targetRender /= total_weight;
     }
+
+    targetRender = detonemap(targetRender, mu);
+    targetRenderTex[pixelCoord] = targetRender;
 
     // targetRenderTex[pixelCoord] = 1;
 

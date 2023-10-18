@@ -92,6 +92,7 @@ void ForwardExtrapolation::ClearVariables()
     mKernelSize = 3;
     mSplatSigma = 1.;
     gSplatDistSigma = 8.;
+    gSplatStrideNum = 3;
 
     mDumpData = false;
     mDumpDirPath = "";
@@ -316,6 +317,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             mpSplatPass["PerFrameCB"]["gKernelSize"] = mKernelSize;
             mpSplatPass["PerFrameCB"]["gSplatSigma"] = mSplatSigma;
             mpSplatPass["PerFrameCB"]["gSplatDistSigma"] = gSplatDistSigma;
+            mpSplatPass["PerFrameCB"]["gStrideNum"] = gSplatStrideNum;
 
             auto tempWarpTexSRV = mpTempWarpTex->getSRV();
             mpSplatPass["gTempWarpTex"].setSrv(tempWarpTexSRV);
@@ -434,6 +436,7 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
     widget.var<uint32_t>("Kernel Size", mKernelSize, 1u, 32u);
     widget.var<float>("Splat Sigma", mSplatSigma, 0.1f, 10.f);
     widget.var<float>("Splat Dist Sigma", gSplatDistSigma, 0.1f, 20.f);
+    widget.var<uint>("Splat Stride Num", gSplatStrideNum, 1u, 10u);
 
     widget.checkbox("Dump Data", mDumpData);
     widget.textbox("Dump Dir Path", mDumpDirPath);
