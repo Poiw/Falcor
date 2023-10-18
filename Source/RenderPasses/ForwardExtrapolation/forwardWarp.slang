@@ -3,7 +3,7 @@ cbuffer PerFrameCB {
 };
 
 Texture2D<float4> gRenderTex;
-Texture2D<float> gDepthTex;
+Texture2D<uint> gDepthTex;
 Texture2D<uint> gTempDepthTex;
 Texture2D<float2> gForwardMotionTex;
 
@@ -21,7 +21,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     uint2 nextCoord = uint2(nextCrd * gFrameDim);
 
-    uint depth = uint(gDepthTex[pixelCoord] * 262144.0f);
+    uint depth = gDepthTex[pixelCoord];
 
     if (depth == gTempDepthTex[nextCoord]) {
         gTempWarpTex[nextCoord] = gRenderTex[pixelCoord];

@@ -191,12 +191,12 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
 {
     auto curDim = renderData.getDefaultTextureDims();
 
-    pRenderContext->blit(renderData.getTexture("Pretonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
+    pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
 
     createNewTexture(mpRenderTex, curDim);
-    createNewTexture(mpNextPosWTex, curDim, ResourceFormat::RGBA32Float);
+    createNewTexture(mpNextPosWTex, curDim);
 
-    pRenderContext->blit(renderData.getTexture("Pretonemapped_in")->getSRV(), mpRenderTex->getRTV());
+    pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), mpRenderTex->getRTV());
     pRenderContext->blit(renderData.getTexture("NextPosW_in")->getSRV(), mpNextPosWTex->getRTV());
 
 
@@ -209,7 +209,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
     auto curDim = renderData.getDefaultTextureDims();
 
     createNewTexture(mpForwardMotionTex, curDim, ResourceFormat::RG32Float);
-    createNewTexture(mpDepthTex, curDim, ResourceFormat::D32Float);
+    createNewTexture(mpDepthTex, curDim, ResourceFormat::R32Uint);
     createNewTexture(mpTempWarpTex, curDim, ResourceFormat::RGBA32Float);
     createNewTexture(mpTempDepthTex, curDim, ResourceFormat::R32Uint);
 
@@ -370,7 +370,7 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
         // Do nothing, rendering for every frame
         if (mMode == 0) {
 
-            pRenderContext->blit(renderData.getTexture("Pretonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
+            pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
 
         }
         // Extrapolate frame

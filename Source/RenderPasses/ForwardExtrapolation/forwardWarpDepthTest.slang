@@ -6,7 +6,7 @@ cbuffer PerFrameCB {
 Texture2D<float4> gNextPosWTex;
 
 RWTexture2D<uint> gTempDepthTex;
-RWTexture2D<float> gDepthTex;
+RWTexture2D<uint> gDepthTex;
 RWTexture2D<float2> gForwardMotionTex;
 
 
@@ -22,6 +22,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     float4 nextPosH = mul(curViewProjMat, nextPosW);
     float2 nextCrd = nextPosH.xy / nextPosH.w;
     float nextZ = nextPosH.z / nextPosH.w;
+    uint depth = uint(nextZ * 262144.0f);
+
 
 #ifdef FALCOR_FLIP_Y
     nextCrd *= float2(0.5, 0.5);
@@ -31,12 +33,12 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     nextCrd += 0.5;
 
     gForwardMotionTex[pixelCoord] = nextCrd - curCrd;
-    gDepthTex[pixelCoord] = nextZ;
+    gDepthTex[pixelCoord] = depth;
 
 
     uint2 nextCoord = uint2(nextCrd * gFrameDim);
 
-    uint depth = uint(nextZ * 262144.0f);
+
 
     InterlockedMin(gTempDepthTex[nextCoord], depth);
 

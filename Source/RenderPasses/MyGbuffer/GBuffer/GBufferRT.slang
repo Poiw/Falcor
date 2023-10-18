@@ -260,7 +260,7 @@ struct GBufferRT
         const GBufferData gbuf = prepareGBufferData(sd, bsdf);
 
         // Calculate approximated next position
-        float3 nextPosW = 2 * (gbuf.posW.xyz / gbuf.posW.z) - prevPosW;
+        float3 nextPosW = 2 * (gbuf.posW.xyz / gbuf.posW.w) - prevPosW;
 
         // GBuffer channels
         if (is_valid(gPosW))                gPosW[pixel]                = gbuf.posW;
