@@ -3,7 +3,7 @@ cbuffer PerFrameCB {
     float4x4 curViewProjMat;
 };
 
-Texture2D<float3> gNextPosWTex;
+Texture2D<float4> gNextPosWTex;
 
 RWTexture2D<uint> gTempDepthTex;
 RWTexture2D<float> gDepthTex;
@@ -18,8 +18,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     float2 curCrd = pixelCoord / gFrameDim;
 
-    float3 nextPosW = gNextPosWTex[pixelCoord];
-    float4 nextPosH = mul(curViewProjMat, float4(nextPosW, 1.0f));
+    float4 nextPosW = gNextPosWTex[pixelCoord];
+    float4 nextPosH = mul(curViewProjMat, nextPosW);
     float2 nextCrd = nextPosH.xy / nextPosH.w;
     float nextZ = nextPosH.z / nextPosH.w;
 

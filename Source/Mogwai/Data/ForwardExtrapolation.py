@@ -3,6 +3,7 @@ from falcor import *
 def render_graph_ForwardExtrapolation():
     g = RenderGraph("ForwardExtrapolation")
 
+    loadRenderPassLibrary("AccumulatePass.dll")
     loadRenderPassLibrary("DLSSPass.dll")
     loadRenderPassLibrary("MyGBuffer.dll")
     loadRenderPassLibrary("ModulateIllumination.dll")
@@ -23,6 +24,8 @@ def render_graph_ForwardExtrapolation():
     g.addPass(PathTracer, "PathTracer")
 
     # Reference path passes
+    AccumulatePass = createPass("AccumulatePass", {'enabled': True, 'precisionMode': AccumulatePrecision.Single})
+    g.addPass(AccumulatePass, "AccumulatePass")
     ToneMapperReference = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})
     g.addPass(ToneMapperReference, "ToneMapperReference")
 
@@ -49,6 +52,9 @@ def render_graph_ForwardExtrapolation():
     g.addEdge("GBufferRT.vbuffer",                                      "PathTracer.vbuffer")
     g.addEdge("GBufferRT.viewW",                                        "PathTracer.viewW")
 
+    # Reference path graph
+    g.addEdge("PathTracer.color",                                       "AccumulatePass.input")
+    g.addEdge("AccumulatePass.output",                                  "ToneMapperReference.src")
 
     # NRD path graph
     g.addEdge("PathTracer.nrdDiffuseRadianceHitDist",                   "NRDDiffuseSpecular.diffuseRadianceHitDist")
@@ -93,9 +99,11 @@ def render_graph_ForwardExtrapolation():
     g.addEdge("ModulateIllumination.output",                            "ForwardExtrapolation.PreTonemapped_in")
 
     g.addEdge("ForwardExtrapolation.PreTonemapped_out",                 "ToneMapper.src")
+    # g.addEdge("ModulateIllumination.output",                            "ToneMapper.src")
 
     # Outputs
     g.markOutput("ToneMapper.dst")
+    g.markOutput("ToneMapperReference.dst")
 
     return g
 

@@ -57,7 +57,7 @@ RWTexture2D<float4> gEmissive;
 RWTexture2D<float4> gViewW;
 RWTexture2D<uint>   gTime;
 RWTexture2D<float>  gDisocclusion;
-RWTexture2D<float3> gNextPosW;
+RWTexture2D<float4> gNextPosW;
 
 #define is_valid(name) (is_valid_##name != 0)
 
@@ -271,7 +271,7 @@ struct GBufferRT
         if (is_valid(gTexGrads))            gTexGrads[pixel]            = texGrads;
         if (is_valid(gMotionVector))        gMotionVector[pixel]        = motionVector;
         if (is_valid(gMaterialData))        gMaterialData[pixel]        = gbuf.mtlData;
-        if (is_valid(gNextPosW))            gNextPosW[pixel]            = nextPosW;
+        if (is_valid(gNextPosW))            gNextPosW[pixel]            = float4(nextPosW, 1.0);
 
         // GBufferRT channels
         if (is_valid(gMotionVectorW))       gMotionVectorW[pixel]       = motionVectorW;

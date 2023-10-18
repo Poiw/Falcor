@@ -152,8 +152,8 @@ RenderPassReflection ForwardExtrapolation::reflect(const CompileData& compileDat
     // Define the required resources here
     RenderPassReflection reflector;
     // Inputs
-    reflector.addInput("NextPosW_in", "Forward Motion")
-        .format(ResourceFormat::RG32Float)
+    reflector.addInput("NextPosW_in", "Next PosW")
+        .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::ShaderResource)
         .texture2D();
     reflector.addInput("PreTonemapped_in", "PreTonemapped Image")
