@@ -76,12 +76,13 @@ Dictionary ForwardExtrapolation::getScriptingDictionary()
 void ForwardExtrapolation::ClearVariables()
 {
 
-    mFrameCount = 0;
+    mFrameCount = -1;
     mExtrapolationNum = 1;
 
     mpForwardMotionTex = nullptr;
     mpDepthTex = nullptr;
     mpRenderTex = nullptr;
+    mpNextPosWTex = nullptr;
 
     mpTempWarpTex = nullptr;
     mpTempDepthTex = nullptr;
@@ -89,6 +90,8 @@ void ForwardExtrapolation::ClearVariables()
     mMode = 0;
 
     mKernelSize = 3;
+
+
 
 }
 
@@ -149,12 +152,8 @@ RenderPassReflection ForwardExtrapolation::reflect(const CompileData& compileDat
     // Define the required resources here
     RenderPassReflection reflector;
     // Inputs
-    reflector.addInput("ForwardMotion_in", "Forward Motion")
+    reflector.addInput("NextPosW_in", "Forward Motion")
         .format(ResourceFormat::RG32Float)
-        .bindFlags(Resource::BindFlags::ShaderResource)
-        .texture2D();
-    reflector.addInput("Depth_in", "Depth")
-        .format(ResourceFormat::D32Float)
         .bindFlags(Resource::BindFlags::ShaderResource)
         .texture2D();
     reflector.addInput("PreTonemapped_in", "PreTonemapped Image")
@@ -195,21 +194,22 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
     pRenderContext->blit(renderData.getTexture("Pretonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
 
     createNewTexture(mpRenderTex, curDim);
-    createNewTexture(mpDepthTex, curDim, ResourceFormat::D32Float);
-    createNewTexture(mpForwardMotionTex, curDim, ResourceFormat::RG32Float);
+    createNewTexture(mpNextPosWTex, curDim, ResourceFormat::RGB32Float);
 
     pRenderContext->blit(renderData.getTexture("Pretonemapped_in")->getSRV(), mpRenderTex->getRTV());
-    pRenderContext->blit(renderData.getTexture("Depth_in")->getSRV(), mpDepthTex->getRTV());
-    pRenderContext->blit(renderData.getTexture("ForwardMotion_in")->getSRV(), mpForwardMotionTex->getRTV());
+    pRenderContext->blit(renderData.getTexture("NextPosW_in")->getSRV(), mpNextPosWTex->getRTV());
+
 
 }
 
 
-void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData)
+void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera)
 {
 
     auto curDim = renderData.getDefaultTextureDims();
 
+    createNewTexture(mpForwardMotionTex, curDim, ResourceFormat::RG32Float);
+    createNewTexture(mpDepthTex, curDim, ResourceFormat::D32Float);
     createNewTexture(mpTempWarpTex, curDim, ResourceFormat::RGBA32Float);
     createNewTexture(mpTempDepthTex, curDim, ResourceFormat::R32Uint);
 
@@ -219,12 +219,11 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
         // Input
         {
             mpForwardWarpDepthTestPass["PerFrameCB"]["gFrameDim"] = curDim;
+            mpForwardWarpDepthTestPass["PerFrameCB"]["curViewProjMat"] = nextCamera->getViewProjMatrix();
 
-            auto depthTexSRV = mpDepthTex->getSRV();
-            mpForwardWarpDepthTestPass["gDepthTex"].setSrv(depthTexSRV);
+            auto nextPosWSRV = mpNextPosWTex->getSRV();
+            mpForwardWarpDepthTestPass["gNextPosWTex"].setSrv(nextPosWSRV);
 
-            auto forwardMotionTexSRV = mpForwardMotionTex->getSRV();
-            mpForwardWarpDepthTestPass["gForwardMotionTex"].setSrv(forwardMotionTexSRV);
         }
 
         // Output
@@ -232,6 +231,14 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             auto tempDepthTexUAV = mpTempDepthTex->getUAV();
             pRenderContext->clearUAV(tempDepthTexUAV.get(), uint4(-1));
             mpForwardWarpDepthTestPass["gTempDepthTex"].setUav(tempDepthTexUAV);
+
+            auto forwardMotionTexUAV = mpForwardMotionTex->getUAV();
+            pRenderContext->clearUAV(forwardMotionTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+            mpForwardWarpDepthTestPass["gForwardMotionTex"].setUav(forwardMotionTexUAV);
+
+            auto depthTexUAV = mpDepthTex->getUAV();
+            pRenderContext->clearUAV(depthTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+            mpForwardWarpDepthTestPass["gDepthTex"].setUav(depthTexUAV);
         }
 
         // Execute
@@ -240,6 +247,8 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
         // Barrier
         {
             pRenderContext->uavBarrier(mpTempDepthTex.get());
+            pRenderContext->uavBarrier(mpForwardMotionTex.get());
+            pRenderContext->uavBarrier(mpDepthTex.get());
         }
 
     }
@@ -324,10 +333,35 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
     if (mpScene == nullptr) return;
 
 
+    Falcor::float3 curCameraPos = mpScene->getCamera()->getPosition();
+    Falcor::float3 curCameraLookat = mpScene->getCamera()->getTarget();
+    Falcor::float3 curCameraUp = mpScene->getCamera()->getUpVector();
+
+    if (mFrameCount == -1) {
+
+        mPrevCameraPos = curCameraPos;
+        mPrevCameraLookat = curCameraLookat;
+        mPrevCameraUp = curCameraUp;
+
+        mFrameCount += 1;
+
+        return;
+
+    }
+
+
     // Ground truth rendered frame
     if (mFrameCount % (mExtrapolationNum + 1) == 0) {
 
         renderedFrameProcess(pRenderContext, renderData);
+
+        // Predict Future Camera
+
+        mNextCameraPos = curCameraPos + (curCameraPos - mPrevCameraPos);
+        mNextCameraLookat = curCameraLookat + (curCameraLookat - mPrevCameraLookat);
+        mNextCameraUp = curCameraUp + (curCameraUp - mPrevCameraUp);
+
+
 
     }
     // Extrapolated Frame
@@ -342,12 +376,27 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
         // Extrapolate frame
         else {
 
-            extrapolatedFrameProcess(pRenderContext, renderData);
+            auto nextCamera = Camera::create("nextCamera");
+            *nextCamera = *(mpScene->getCamera());
+
+            nextCamera->setPosition(mNextCameraPos);
+            nextCamera->setTarget(mNextCameraLookat);
+            nextCamera->setUpVector(mNextCameraUp);
+
+            // Extrapolate Frame
+            extrapolatedFrameProcess(pRenderContext, renderData, nextCamera);
 
         }
 
     }
 
+
+    // Update Camera
+    {
+        mPrevCameraPos = curCameraPos;
+        mPrevCameraLookat = curCameraLookat;
+        mPrevCameraUp = curCameraUp;
+    }
 
     mFrameCount += 1;
     if (mFrameCount >= mExtrapolationNum + 1) mFrameCount = 0;

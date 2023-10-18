@@ -89,7 +89,7 @@ def render_graph_ForwardExtrapolation():
     g.addEdge("NRDDeltaTransmission.filteredDiffuseRadianceHitDist",    "ModulateIllumination.deltaTransmissionRadiance")
     g.addEdge("PathTracer.nrdResidualRadianceHitDist",                  "ModulateIllumination.residualRadiance")
 
-    g.addEdge("GBufferRT.linearZ",                                      "ForwardExtrapolation.Depth_in")
+    g.addEdge("GBufferRT.nextPosW",                                     "ForwardExtrapolation.NextPosW_in")
     g.addEdge("ModulateIllumination.output",                            "ForwardExtrapolation.PreTonemapped_in")
 
     g.addEdge("ForwardExtrapolation.PreTonemapped_out",                 "ToneMapper.src")

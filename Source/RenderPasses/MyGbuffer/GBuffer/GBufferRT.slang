@@ -57,6 +57,7 @@ RWTexture2D<float4> gEmissive;
 RWTexture2D<float4> gViewW;
 RWTexture2D<uint>   gTime;
 RWTexture2D<float>  gDisocclusion;
+RWTexture2D<float3> gNextPosW;
 
 #define is_valid(name) (is_valid_##name != 0)
 
@@ -258,6 +259,9 @@ struct GBufferRT
 
         const GBufferData gbuf = prepareGBufferData(sd, bsdf);
 
+        // Calculate approximated next position
+        float3 nextPosW = 2 * (gbuf.posW.xyz / gbuf.posW.z) - prevPosW;
+
         // GBuffer channels
         if (is_valid(gPosW))                gPosW[pixel]                = gbuf.posW;
         if (is_valid(gNormW))               gNormW[pixel]               = gbuf.normW;
@@ -267,6 +271,7 @@ struct GBufferRT
         if (is_valid(gTexGrads))            gTexGrads[pixel]            = texGrads;
         if (is_valid(gMotionVector))        gMotionVector[pixel]        = motionVector;
         if (is_valid(gMaterialData))        gMaterialData[pixel]        = gbuf.mtlData;
+        if (is_valid(gNextPosW))            gNextPosW[pixel]            = nextPosW;
 
         // GBufferRT channels
         if (is_valid(gMotionVectorW))       gMotionVectorW[pixel]       = motionVectorW;
@@ -353,6 +358,7 @@ struct GBufferRT
         if (is_valid(gSpecRough))                   gSpecRough[pixel]                   = {};
         if (is_valid(gEmissive))                    gEmissive[pixel]                    = {};
         if (is_valid(gDisocclusion))                gDisocclusion[pixel]                = 0.f;
+        if (is_valid(gNextPosW))                    gNextPosW[pixel]                    = {};
     }
 
     void writeAux(uint2 pixel, const Ray ray)

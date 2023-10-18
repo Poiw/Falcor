@@ -64,11 +64,12 @@ private:
     void setComputeShaders();
 
     void renderedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData);
-    void extrapolatedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData);
+    void extrapolatedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera);
 
     Scene::SharedPtr mpScene;
 
     Texture::SharedPtr mpForwardMotionTex;
+    Texture::SharedPtr mpNextPosWTex;
     Texture::SharedPtr mpDepthTex;
     Texture::SharedPtr mpRenderTex;
     Texture::SharedPtr mpTempWarpTex;
@@ -81,6 +82,15 @@ private:
     uint32_t mFrameCount;
     uint32_t mExtrapolationNum;
     uint mKernelSize;
+
+
+    // Camera Info
+    Falcor::float3 mPrevCameraPos;
+    Falcor::float3 mPrevCameraLookat;
+    Falcor::float3 mPrevCameraUp;
+    Falcor::float3 mNextCameraPos;
+    Falcor::float3 mNextCameraLookat;
+    Falcor::float3 mNextCameraUp;
 
     // Compute Pass
     ComputePass::SharedPtr mpForwardWarpDepthTestPass;

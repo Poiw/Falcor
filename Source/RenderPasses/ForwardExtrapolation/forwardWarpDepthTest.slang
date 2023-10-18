@@ -1,12 +1,13 @@
 cbuffer PerFrameCB {
     uint2 gFrameDim;
+    float4x4 curViewProjMat;
 };
 
-
-Texture2D<float> gDepthTex;
-Texture2D<float2> gForwardMotionTex;
+Texture2D<float3> gNextPosWTex;
 
 RWTexture2D<uint> gTempDepthTex;
+RWTexture2D<float> gDepthTex;
+RWTexture2D<float2> gForwardMotionTex;
 
 
 [numthreads(8, 8, 1)]
@@ -16,11 +17,26 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     uint2 pixelCoord = dispatchThreadId.xy;
 
     float2 curCrd = pixelCoord / gFrameDim;
-    float2 nextCrd = curCrd + gForwardMotionTex[pixelCoord];
+
+    float3 nextPosW = gNextPosWTex[pixelCoord];
+    float4 nextPosH = mul(curViewProjMat, float4(nextPosW, 1.0f));
+    float2 nextCrd = nextPosH.xy / nextPosH.w;
+    float nextZ = nextPosH.z / nextPosH.w;
+
+#ifdef FALCOR_FLIP_Y
+    nextCrd *= float2(0.5, 0.5);
+#else
+    nextCrd *= float2(0.5, -0.5);
+#endif
+    nextCrd += 0.5;
+
+    gForwardMotionTex[pixelCoord] = nextCrd - curCrd;
+    gDepthTex[pixelCoord] = nextZ;
+
 
     uint2 nextCoord = uint2(nextCrd * gFrameDim);
 
-    uint depth = uint(gDepthTex[pixelCoord] * 262144.0f);
+    uint depth = uint(nextZ * 262144.0f);
 
     InterlockedMin(gTempDepthTex[nextCoord], depth);
 
