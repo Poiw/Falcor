@@ -93,6 +93,9 @@ void ForwardExtrapolation::ClearVariables()
     mSplatSigma = 1.;
     gSplatDistSigma = 8.;
 
+    mDumpData = false;
+    mDumpDirPath = "";
+
 
 
 }
@@ -132,6 +135,12 @@ void ForwardExtrapolation::setComputeShaders()
         // Bind the scene.
         mpSplatPass->setVars(nullptr);  // Trigger vars creation
     }
+}
+
+void ForwardExtrapolation::DumpDataFunc(const RenderData &renderData, uint frameIdx, const std::string dirPath)
+{
+    renderData.getTexture("PreTonemapped_out")->captureToFile(0, 0, dirPath + "/Render_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("PreTonemapped_in")->captureToFile(0, 0, dirPath + "/GT_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
 }
 
 void ForwardExtrapolation::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -406,7 +415,9 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
     }
 
     mFrameCount += 1;
-    if (mFrameCount >= mExtrapolationNum + 1) mFrameCount = 0;
+    // if (mFrameCount >= mExtrapolationNum + 1) mFrameCount = 0;
+
+    if (mDumpData) DumpDataFunc(renderData, mFrameCount, mDumpDirPath);
 
 }
 
@@ -423,5 +434,8 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
     widget.var<uint32_t>("Kernel Size", mKernelSize, 1u, 32u);
     widget.var<float>("Splat Sigma", mSplatSigma, 0.1f, 10.f);
     widget.var<float>("Splat Dist Sigma", gSplatDistSigma, 0.1f, 20.f);
+
+    widget.checkbox("Dump Data", mDumpData);
+    widget.textbox("Dump Dir Path", mDumpDirPath);
 
 }

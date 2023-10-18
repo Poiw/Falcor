@@ -66,6 +66,8 @@ private:
     void renderedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData);
     void extrapolatedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera);
 
+    void DumpDataFunc(const RenderData &renderData, uint frameIdx, const std::string dirPath);
+
     Scene::SharedPtr mpScene;
 
     Texture::SharedPtr mpForwardMotionTex;
@@ -87,6 +89,10 @@ private:
     uint mKernelSize;
     float mSplatSigma;
     float gSplatDistSigma;
+
+    // Dump Data
+    bool mDumpData;
+    std::string mDumpDirPath;
 
 
     // Camera Info
