@@ -52,6 +52,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                 }
             }
         }
+
+        if (total_weight > 0.0f) {
+            break;
+        }
     }
 
     if (total_weight > 0.0f) {
