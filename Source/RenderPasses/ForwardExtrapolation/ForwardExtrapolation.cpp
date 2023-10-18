@@ -58,39 +58,6 @@ ForwardExtrapolation::ForwardExtrapolation() : RenderPass(kInfo)
     mpForwardWarpPass = nullptr;
     mpSplatPass = nullptr;
 
-    // Create Forward Warping Depth Test Shader
-    {
-        Program::Desc desc;
-        desc.addShaderLibrary(FE_forwardWarpDepthTestShaderFilePath).csEntry("csMain");
-        Program::DefineList defines;
-        defines.add(mpScene->getSceneDefines());
-        mpForwardWarpDepthTestPass = ComputePass::create(desc, defines, false);
-        // Bind the scene.
-        mpForwardWarpDepthTestPass->setVars(nullptr);  // Trigger vars creation
-    }
-
-    // Create Forward Warping Shader
-    {
-        Program::Desc desc;
-        desc.addShaderLibrary(FE_forwardWarpShaderFilePath).csEntry("csMain");
-        Program::DefineList defines;
-        defines.add(mpScene->getSceneDefines());
-        mpForwardWarpPass = ComputePass::create(desc, defines, false);
-        // Bind the scene.
-        mpForwardWarpPass->setVars(nullptr);  // Trigger vars creation
-    }
-
-    // Create Splat Shader
-    {
-        Program::Desc desc;
-        desc.addShaderLibrary(FE_splatShaderFilePath).csEntry("csMain");
-        Program::DefineList defines;
-        defines.add(mpScene->getSceneDefines());
-        mpSplatPass = ComputePass::create(desc, defines, false);
-        // Bind the scene.
-        mpSplatPass->setVars(nullptr);  // Trigger vars creation
-    }
-
 }
 
 
@@ -125,6 +92,43 @@ void ForwardExtrapolation::ClearVariables()
 
 }
 
+void ForwardExtrapolation::setComputeShaders()
+{
+
+    // Create Forward Warping Depth Test Shader
+    {
+        Program::Desc desc;
+        desc.addShaderLibrary(FE_forwardWarpDepthTestShaderFilePath).csEntry("csMain");
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+        mpForwardWarpDepthTestPass = ComputePass::create(desc, defines, false);
+        // Bind the scene.
+        mpForwardWarpDepthTestPass->setVars(nullptr);  // Trigger vars creation
+    }
+
+    // Create Forward Warping Shader
+    {
+        Program::Desc desc;
+        desc.addShaderLibrary(FE_forwardWarpShaderFilePath).csEntry("csMain");
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+        mpForwardWarpPass = ComputePass::create(desc, defines, false);
+        // Bind the scene.
+        mpForwardWarpPass->setVars(nullptr);  // Trigger vars creation
+    }
+
+    // Create Splat Shader
+    {
+        Program::Desc desc;
+        desc.addShaderLibrary(FE_splatShaderFilePath).csEntry("csMain");
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+        mpSplatPass = ComputePass::create(desc, defines, false);
+        // Bind the scene.
+        mpSplatPass->setVars(nullptr);  // Trigger vars creation
+    }
+}
+
 void ForwardExtrapolation::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
 
@@ -133,6 +137,9 @@ void ForwardExtrapolation::setScene(RenderContext* pRenderContext, const Scene::
         mpScene = pScene;
 
         ClearVariables();
+
+        setComputeShaders();
+
     }
 }
 

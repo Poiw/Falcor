@@ -61,6 +61,7 @@ private:
     void createNewTexture(Texture::SharedPtr &pTex, const Falcor::uint2 &curDim, enum Falcor::ResourceFormat dataFormat, Falcor::Resource::BindFlags bindFlags);
 
     void ClearVariables();
+    void setComputeShaders();
 
     void renderedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData);
     void extrapolatedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData);
