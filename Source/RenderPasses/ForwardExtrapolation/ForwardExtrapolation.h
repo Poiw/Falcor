@@ -76,6 +76,7 @@ private:
     Texture::SharedPtr mpRenderTex;
     Texture::SharedPtr mpTempWarpTex;
     Texture::SharedPtr mpTempDepthTex;
+    Texture::SharedPtr mpTempOutputTex;
 
     // mode
     uint32_t mMode; // Current mode

@@ -86,6 +86,7 @@ void ForwardExtrapolation::ClearVariables()
 
     mpTempWarpTex = nullptr;
     mpTempDepthTex = nullptr;
+    mpTempOutputTex = nullptr;;
 
     mMode = 0;
 
@@ -224,6 +225,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
     createNewTexture(mpDepthTex, curDim, ResourceFormat::R32Uint);
     createNewTexture(mpTempWarpTex, curDim, ResourceFormat::RGBA32Float);
     createNewTexture(mpTempDepthTex, curDim, ResourceFormat::R32Uint);
+    createNewTexture(mpTempOutputTex, curDim, ResourceFormat::RGBA32Float);
 
     // ########################## Forward Warping Depth Test ####################################
     {
@@ -328,7 +330,8 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
 
         // Output
         {
-            auto targetRenderTexUAV = renderData.getTexture("PreTonemapped_out")->getUAV();
+            auto targetRenderTexUAV = mpTempOutputTex->getUAV();
+            pRenderContext->clearUAV(targetRenderTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
             mpSplatPass["targetRenderTex"].setUav(targetRenderTexUAV);
         }
 
@@ -337,10 +340,14 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
 
         // Barrier
         {
-            pRenderContext->uavBarrier(renderData.getTexture("PreTonemapped_out").get());
+            pRenderContext->uavBarrier(mpTempOutputTex.get());
         }
     }
     // ###################################################################################
+
+    // Copy to output
+    pRenderContext->blit(mpTempOutputTex->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
+
 
 }
 
