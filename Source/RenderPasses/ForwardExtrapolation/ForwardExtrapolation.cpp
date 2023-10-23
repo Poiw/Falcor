@@ -363,6 +363,8 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
 
         mFrameCount += 1;
 
+        pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
+
         return;
 
     }
