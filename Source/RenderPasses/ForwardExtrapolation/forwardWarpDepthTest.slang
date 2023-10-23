@@ -22,7 +22,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     float4 nextPosH = mul(curViewProjMat, nextPosW);
     float2 nextCrd = nextPosH.xy / nextPosH.w;
     float nextZ = nextPosH.z / nextPosH.w;
-    uint depth = uint(nextZ * 262144.0f);
+    uint depth = uint(nextPosH.w * 256.0f);
 
 
 #ifdef FALCOR_FLIP_Y

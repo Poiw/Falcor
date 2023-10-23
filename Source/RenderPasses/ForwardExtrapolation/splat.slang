@@ -12,7 +12,7 @@ Texture2D<uint> gTempDepthTex;
 RWTexture2D<float4> targetRenderTex;
 
 float softmax_exp(float x) {
-    return exp(x * gSplatSigma);
+    return exp(log(1 + x) * gSplatSigma);
 }
 
 float4 tonemap(float4 x, float mu) {
@@ -31,9 +31,16 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     float total_weight = 0.0f;
 
+
     int size = (gKernelSize - 1) / 2;
 
     float mu = 8.;
+
+    // float TopWeights[4];
+    // for (int k = 0; k < 4; ++k) TopWeights[k] = 0;
+    // float4 TopColor[4];
+    int minIdx;
+    float minWeight;
 
     float4 targetRender = 0.;
     // targetRenderTex[pixelCoord] = 0.;
@@ -44,19 +51,39 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                 int2 neighborCoord = pixelCoord + int2(ux, uy) * stride;
 
                 if (neighborCoord.x >= 0 && neighborCoord.x < gFrameDim.x && neighborCoord.y >= 0 && neighborCoord.y < gFrameDim.y && gTempDepthTex[neighborCoord] != uint(-1)) {
-                    float depth = (float)gTempDepthTex[neighborCoord] / 262144.0f;
+                    float depth = (float)gTempDepthTex[neighborCoord] / 256.0f;
                     // float weight = softmax_exp(depth) * abs(gKernelSize + 1 - ux) * abs(gKernelSize + 1 - uy) / ((gKernelSize+1) * (gKernelSize+1));
                     float weight = softmax_exp(depth) * exp(-abs(gSplatDistSigma * ux)) * exp(-abs(gSplatDistSigma * uy));
+
+                    // minWeight = 1.0 / 0.;
+                    // for (int k = 0; k < 4; ++k) {
+                    //     if (TopWeights[k] < minWeight) {
+                    //         minWeight = TopWeights[k];
+                    //         minIdx = k;
+                    //     }
+                    // }
+
+                    // if (weight > minWeight) {
+                    //     TopWeights[minIdx] = weight;
+                    //     TopColor[minIdx] = tonemap(gTempWarpTex[neighborCoord], mu);
+                    // }
+
                     total_weight += weight;
                     targetRender += tonemap(gTempWarpTex[neighborCoord], mu) * weight;
                 }
             }
         }
 
+
         if (total_weight > 0.0f) {
             break;
         }
     }
+
+    // for (int k = 0; k < 4; ++k) {
+    //     targetRender += TopColor[k] * TopWeights[k];
+    //     total_weight += TopWeights[k];
+    // }
 
     if (total_weight > 0.0f) {
         targetRender /= total_weight;
