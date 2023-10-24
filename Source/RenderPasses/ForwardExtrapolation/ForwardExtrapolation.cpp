@@ -244,6 +244,8 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
 
     createNewTexture(mpRenderTex, curDim);
     createNewTexture(mpNextPosWTex, curDim);
+    createNewTexture(mpTempOutputDepthTex, curDim, ResourceFormat::R32Float);
+    createNewTexture(mpTempOutputMVTex, curDim, ResourceFormat::RG32Float);
 
     pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), mpRenderTex->getRTV());
     pRenderContext->blit(renderData.getTexture("NextPosW_in")->getSRV(), mpNextPosWTex->getRTV());
@@ -275,11 +277,11 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
 
             // Output
             {
-                auto motionVectorOutUav = renderData.getTexture("MotionVector_out")->getUAV();
+                auto motionVectorOutUav = mpTempOutputMVTex->getUAV();
                 pRenderContext->clearUAV(motionVectorOutUav.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
                 mpRegularFramePreProcessPass["gMotionVectorOut"].setUav(motionVectorOutUav);
 
-                auto LinearZOutUav = renderData.getTexture("LinearZ_out")->getUAV();
+                auto LinearZOutUav = mpTempOutputDepthTex->getUAV();
                 pRenderContext->clearUAV(LinearZOutUav.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
                 mpRegularFramePreProcessPass["gLinearZOut"].setUav(LinearZOutUav);
             }
@@ -289,9 +291,12 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
 
             // Barrier
             {
-                pRenderContext->uavBarrier(renderData.getTexture("MotionVector_out").get());
-                pRenderContext->uavBarrier(renderData.getTexture("LinearZ_out").get());
+                pRenderContext->uavBarrier(mpTempOutputMVTex.get());
+                pRenderContext->uavBarrier(mpTempOutputDepthTex.get());
             }
+
+            pRenderContext->blit(mpTempOutputMVTex->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
+            pRenderContext->blit(mpTempOutputDepthTex->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
 
         }
         // ###################################################################################
@@ -458,6 +463,8 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
         // Barrier
         {
             pRenderContext->uavBarrier(mpTempOutputTex.get());
+            pRenderContext->uavBarrier(mpTempDepthTex.get());
+            pRenderContext->uavBarrier(mpTempMotionVectorTex.get());
         }
     }
     // ###################################################################################
