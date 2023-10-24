@@ -448,11 +448,11 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             pRenderContext->clearUAV(targetRenderTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
             mpSplatPass["targetRenderTex"].setUav(targetRenderTexUAV);
 
-            auto targetDepthTexUAV = mpTempDepthTex->getUAV();
+            auto targetDepthTexUAV = mpTempOutputDepthTex->getUAV();
             pRenderContext->clearUAV(targetDepthTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
             mpSplatPass["targetDepthTex"].setUav(targetDepthTexUAV);
 
-            auto targetMotionVectorTexUAV = mpTempMotionVectorTex->getUAV();
+            auto targetMotionVectorTexUAV = mpTempOutputMVTex->getUAV();
             pRenderContext->clearUAV(targetMotionVectorTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
             mpSplatPass["targetMotionVectorTex"].setUav(targetMotionVectorTexUAV);
         }
@@ -463,16 +463,16 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
         // Barrier
         {
             pRenderContext->uavBarrier(mpTempOutputTex.get());
-            pRenderContext->uavBarrier(mpTempDepthTex.get());
-            pRenderContext->uavBarrier(mpTempMotionVectorTex.get());
+            pRenderContext->uavBarrier(mpTempOutputDepthTex.get());
+            pRenderContext->uavBarrier(mpTempOutputMVTex.get());
         }
     }
     // ###################################################################################
 
     // Copy to output
     pRenderContext->blit(mpTempOutputTex->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
-    pRenderContext->blit(mpTempDepthTex->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
-    pRenderContext->blit(mpTempMotionVectorTex->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
+    pRenderContext->blit(mpTempOutputDepthTex->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
+    pRenderContext->blit(mpTempOutputMVTex->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
 
 
 }
