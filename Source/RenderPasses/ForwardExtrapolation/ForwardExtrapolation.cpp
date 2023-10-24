@@ -160,11 +160,11 @@ void ForwardExtrapolation::setComputeShaders()
 
 void ForwardExtrapolation::DumpDataFunc(const RenderData &renderData, uint frameIdx, const std::string dirPath)
 {
-    renderData.getTexture("PreTonemapped_out")->captureToFile(0, 0, dirPath + "/Render_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
-    renderData.getTexture("PreTonemapped_in")->captureToFile(0, 0, dirPath + "/GT_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
-    renderData.getTexture("MotionVector_out")->captureToFile(0, 0, dirPath + "/MotionVector_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
-    renderData.getTexture("LinearZ_out")->captureToFile(0, 0, dirPath + "/LinearZ_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
-    renderData.getTexture("PreTonemapped_out_woSplat")->captureToFile(0, 0, dirPath + "/Render_woSplat_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("PreTonemapped_out")->captureToFile(0, 0, dirPath + "/Render." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("PreTonemapped_in")->captureToFile(0, 0, dirPath + "/GT." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("MotionVector_out")->captureToFile(0, 0, dirPath + "/MotionVector." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("LinearZ_out")->captureToFile(0, 0, dirPath + "/LinearZ." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("PreTonemapped_out_woSplat")->captureToFile(0, 0, dirPath + "/Render_woSplat." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
 }
 
 void ForwardExtrapolation::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
