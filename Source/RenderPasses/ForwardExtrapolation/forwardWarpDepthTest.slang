@@ -16,7 +16,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // First Layer
     uint2 pixelCoord = dispatchThreadId.xy;
 
-    float2 curCrd = pixelCoord / gFrameDim;
+    float2 curCrd = (pixelCoord + float2(0.5, 0.5)) / gFrameDim;
 
     float4 nextPosW = gNextPosWTex[pixelCoord];
     float4 nextPosH = mul(curViewProjMat, nextPosW);

@@ -48,6 +48,8 @@ const std::string FE_forwardWarpShaderFilePath =
     "RenderPasses/ForwardExtrapolation/forwardWarp.slang";
 const std::string FE_splatShaderFilePath =
     "RenderPasses/ForwardExtrapolation/splat.slang";
+const std::string FE_regularFramePreProcessShaderFilePath =
+    "RenderPasses/ForwardExtrapolation/regularFramePreProcess.slang";
 }  // namespace
 
 
@@ -57,6 +59,7 @@ ForwardExtrapolation::ForwardExtrapolation() : RenderPass(kInfo)
     mpForwardWarpDepthTestPass = nullptr;
     mpForwardWarpPass = nullptr;
     mpSplatPass = nullptr;
+    mpRegularFramePreProcessPass = nullptr;
 
 }
 
@@ -87,6 +90,11 @@ void ForwardExtrapolation::ClearVariables()
     mpTempWarpTex = nullptr;
     mpTempDepthTex = nullptr;
     mpTempOutputTex = nullptr;;
+    mpTempOutputDepthTex = nullptr;
+    mpTempOutputMVTex = nullptr;
+
+    mpPrevMotionVectorTex = nullptr;
+    mpTempMotionVectorTex = nullptr;
 
     mMode = 0;
 
@@ -137,6 +145,17 @@ void ForwardExtrapolation::setComputeShaders()
         // Bind the scene.
         mpSplatPass->setVars(nullptr);  // Trigger vars creation
     }
+
+    // Preprocess output of regular frames
+    {
+        Program::Desc desc;
+        desc.addShaderLibrary(FE_regularFramePreProcessShaderFilePath).csEntry("csMain");
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+        mpRegularFramePreProcessPass = ComputePass::create(desc, defines, false);
+        // Bind the scene.
+        mpRegularFramePreProcessPass->setVars(nullptr);  // Trigger vars creation
+    }
 }
 
 void ForwardExtrapolation::DumpDataFunc(const RenderData &renderData, uint frameIdx, const std::string dirPath)
@@ -173,12 +192,29 @@ RenderPassReflection ForwardExtrapolation::reflect(const CompileData& compileDat
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::ShaderResource)
         .texture2D();
+    reflector.addInput("MotionVector_in", "Motion Vector")
+        .format(ResourceFormat::RG32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
+    reflector.addInput("LinearZ_in", "LinearZ")
+        .format(ResourceFormat::RG32Float)
+        .bindFlags(Resource::BindFlags::ShaderResource)
+        .texture2D();
 
     // Outputs
     reflector.addOutput("PreTonemapped_out", "Center Render")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
+    reflector.addOutput("MotionVector_out", "Motion Vector")
+        .format(ResourceFormat::RG32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
+    reflector.addOutput("LinearZ_out", "LinearZ")
+        .format(ResourceFormat::RG32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
+
 
     return reflector;
 }
@@ -213,8 +249,69 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
     pRenderContext->blit(renderData.getTexture("NextPosW_in")->getSRV(), mpNextPosWTex->getRTV());
 
 
+    // ########################### Motion Vector #####################################################
+    if (mMode && mpPrevMotionVectorTex && mpForwardMotionTex) {
+
+        // ########################## Calculate Motion Vector ####################################
+        {
+
+            // Input
+            {
+                mpRegularFramePreProcessPass["PerFrameCB"]["gFrameDim"] = curDim;
+
+                auto mpCurMotionVectorSRV = renderData.getTexture("MotionVector_in")->getSRV();
+                mpRegularFramePreProcessPass["gCurMotionVectorTex"].setSrv(mpCurMotionVectorSRV);
+
+                auto mpPrevMotionVectorSRV = mpPrevMotionVectorTex->getSRV();
+                mpRegularFramePreProcessPass["gPrevMotionVectorTex"].setSrv(mpPrevMotionVectorSRV);
+
+                auto mpForwardMotionSRV = mpForwardMotionTex->getSRV();
+                mpRegularFramePreProcessPass["gForwardMotionTex"].setSrv(mpForwardMotionSRV);
+
+                auto mpCurLinearZSRV = renderData.getTexture("LinearZ_in")->getSRV();
+                mpRegularFramePreProcessPass["gCurLinearZTex"].setSrv(mpCurLinearZSRV);
+
+            }
+
+            // Output
+            {
+                auto motionVectorOutUav = renderData.getTexture("MotionVector_out")->getUAV();
+                pRenderContext->clearUAV(motionVectorOutUav.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+                mpRegularFramePreProcessPass["gMotionVectorOut"].setUav(motionVectorOutUav);
+
+                auto LinearZOutUav = renderData.getTexture("LinearZ_out")->getUAV();
+                pRenderContext->clearUAV(LinearZOutUav.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+                mpRegularFramePreProcessPass["gLinearZOut"].setUav(LinearZOutUav);
+            }
+
+            // Execute
+            mpRegularFramePreProcessPass->execute(pRenderContext, curDim.x, curDim.y);
+
+            // Barrier
+            {
+                pRenderContext->uavBarrier(renderData.getTexture("MotionVector_out").get());
+                pRenderContext->uavBarrier(renderData.getTexture("LinearZ_out").get());
+            }
+
+        }
+        // ###################################################################################
+
+    }
+
+    else {
+        pRenderContext->blit(renderData.getTexture("MotionVector_in")->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
+        pRenderContext->blit(renderData.getTexture("LinearZ_in")->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
+    }
+
+
 }
 
+void ForwardExtrapolation::extrapolatedFrameInit(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera)
+{
+    createNewTexture(mpPrevMotionVectorTex, renderData.getDefaultTextureDims(), ResourceFormat::RG32Float);
+
+    pRenderContext->blit(renderData.getTexture("MotionVector_in")->getSRV(), mpPrevMotionVectorTex->getRTV());
+}
 
 void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera)
 {
@@ -225,7 +322,10 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
     createNewTexture(mpDepthTex, curDim, ResourceFormat::R32Uint);
     createNewTexture(mpTempWarpTex, curDim, ResourceFormat::RGBA32Float);
     createNewTexture(mpTempDepthTex, curDim, ResourceFormat::R32Uint);
+    createNewTexture(mpTempMotionVectorTex, curDim, ResourceFormat::RG32Float);
     createNewTexture(mpTempOutputTex, curDim, ResourceFormat::RGBA32Float);
+    createNewTexture(mpTempOutputDepthTex, curDim, ResourceFormat::R32Float);
+    createNewTexture(mpTempOutputMVTex, curDim, ResourceFormat::RG32Float);
 
     // ########################## Forward Warping Depth Test ####################################
     {
@@ -296,6 +396,10 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             pRenderContext->clearUAV(tempWarpTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
             mpForwardWarpPass["gTempWarpTex"].setUav(tempWarpTexUAV);
 
+            auto tempMotionVectorTexUAV = mpTempMotionVectorTex->getUAV();
+            pRenderContext->clearUAV(tempMotionVectorTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+            mpForwardWarpPass["gTempMotionVectorTex"].setUav(tempMotionVectorTexUAV);
+
         }
 
         // Execute
@@ -304,6 +408,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
         // Barrier
         {
             pRenderContext->uavBarrier(mpTempWarpTex.get());
+            pRenderContext->uavBarrier(mpTempMotionVectorTex.get());
         }
 
     }
@@ -326,6 +431,10 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
 
             auto tempDepthTexSRV = mpTempDepthTex->getSRV();
             mpSplatPass["gTempDepthTex"].setSrv(tempDepthTexSRV);
+
+            auto tempMotionVectorTexSRV = mpTempMotionVectorTex->getSRV();
+            mpSplatPass["gTempMotionVectorTex"].setSrv(tempMotionVectorTexSRV);
+
         }
 
         // Output
@@ -333,6 +442,14 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             auto targetRenderTexUAV = mpTempOutputTex->getUAV();
             pRenderContext->clearUAV(targetRenderTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
             mpSplatPass["targetRenderTex"].setUav(targetRenderTexUAV);
+
+            auto targetDepthTexUAV = mpTempDepthTex->getUAV();
+            pRenderContext->clearUAV(targetDepthTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+            mpSplatPass["targetDepthTex"].setUav(targetDepthTexUAV);
+
+            auto targetMotionVectorTexUAV = mpTempMotionVectorTex->getUAV();
+            pRenderContext->clearUAV(targetMotionVectorTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+            mpSplatPass["targetMotionVectorTex"].setUav(targetMotionVectorTexUAV);
         }
 
         // Execute
@@ -347,6 +464,8 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
 
     // Copy to output
     pRenderContext->blit(mpTempOutputTex->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
+    pRenderContext->blit(mpTempDepthTex->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
+    pRenderContext->blit(mpTempMotionVectorTex->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
 
 
 }
@@ -398,6 +517,8 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
         if (mMode == 0) {
 
             pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
+            pRenderContext->blit(renderData.getTexture("MotionVector_in")->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
+            pRenderContext->blit(renderData.getTexture("LinearZ_in")->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
 
         }
         // Extrapolate frame
@@ -409,6 +530,11 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
             nextCamera->setPosition(mNextCameraPos);
             nextCamera->setTarget(mNextCameraLookat);
             nextCamera->setUpVector(mNextCameraUp);
+
+
+            // Some other operations
+            extrapolatedFrameInit(pRenderContext, renderData, nextCamera);
+
 
             // Extrapolate Frame
             extrapolatedFrameProcess(pRenderContext, renderData, nextCamera);

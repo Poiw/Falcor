@@ -8,8 +8,11 @@ cbuffer PerFrameCB {
 
 Texture2D<float4> gTempWarpTex;
 Texture2D<uint> gTempDepthTex;
+Texture2D<float2> gTempMotionVectorTex;
 
 RWTexture2D<float4> targetRenderTex;
+RWTexture2D<float2> targetDepthTex;
+RWTexture2D<float2> targetMotionVectorTex;
 
 float softmax_exp(float x) {
     return exp(log(1 + x) * gSplatSigma);
@@ -43,6 +46,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     float minWeight;
 
     float4 targetRender = 0.;
+    float targetDepth = 0.;
+    float2 targetMotionVector = float2(0., 0.);
     // targetRenderTex[pixelCoord] = 0.;
     for (int stride = 1; stride <= gStrideNum * 4 - 3; stride += 4) {
         for (int ux = -size; ux <= size; ux++) {
@@ -70,6 +75,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
                     total_weight += weight;
                     targetRender += tonemap(gTempWarpTex[neighborCoord], mu) * weight;
+                    targetDepth += depth * weight;
+                    targetMotionVector += gTempMotionVectorTex[neighborCoord] * weight;
                 }
             }
         }
@@ -87,10 +94,14 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     if (total_weight > 0.0f) {
         targetRender /= total_weight;
+        targetDepth /= total_weight;
+        targetMotionVector /= total_weight;
     }
 
     targetRender = detonemap(targetRender, mu);
     targetRenderTex[pixelCoord] = targetRender;
+    targetDepthTex[pixelCoord] = float2(targetDepth, 0.);
+    targetMotionVectorTex[pixelCoord] = targetMotionVector;
 
     // targetRenderTex[pixelCoord] = 1;
 

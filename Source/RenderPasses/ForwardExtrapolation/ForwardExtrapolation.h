@@ -65,6 +65,7 @@ private:
 
     void renderedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData);
     void extrapolatedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera);
+    void extrapolatedFrameInit(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera);
 
     void DumpDataFunc(const RenderData &renderData, uint frameIdx, const std::string dirPath);
 
@@ -76,7 +77,12 @@ private:
     Texture::SharedPtr mpRenderTex;
     Texture::SharedPtr mpTempWarpTex;
     Texture::SharedPtr mpTempDepthTex;
+    Texture::SharedPtr mpTempMotionVectorTex;
     Texture::SharedPtr mpTempOutputTex;
+    Texture::SharedPtr mpTempOutputMVTex;
+    Texture::SharedPtr mpTempOutputDepthTex;
+
+    Texture::SharedPtr mpPrevMotionVectorTex;
 
     // mode
     uint32_t mMode; // Current mode
@@ -109,5 +115,6 @@ private:
     ComputePass::SharedPtr mpForwardWarpDepthTestPass;
     ComputePass::SharedPtr mpForwardWarpPass;
     ComputePass::SharedPtr mpSplatPass;
+    ComputePass::SharedPtr mpRegularFramePreProcessPass;
 
 };

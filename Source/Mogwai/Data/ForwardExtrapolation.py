@@ -95,15 +95,28 @@ def render_graph_ForwardExtrapolation():
     g.addEdge("NRDDeltaTransmission.filteredDiffuseRadianceHitDist",    "ModulateIllumination.deltaTransmissionRadiance")
     g.addEdge("PathTracer.nrdResidualRadianceHitDist",                  "ModulateIllumination.residualRadiance")
 
-    g.addEdge("GBufferRT.mvec",                                         "DLSS.mvec")
-    g.addEdge("GBufferRT.linearZ",                                      "DLSS.depth")
-    g.addEdge("ModulateIllumination.output",                            "DLSS.color")
+    # g.addEdge("GBufferRT.mvec",                                         "DLSS.mvec")
+    # g.addEdge("GBufferRT.linearZ",                                      "DLSS.depth")
+    # g.addEdge("ModulateIllumination.output",                            "DLSS.color")
 
-    g.addEdge("GBufferRT.nextPosW",                                     "ForwardExtrapolation.NextPosW_in")
-    g.addEdge("DLSS.output",                                            "ForwardExtrapolation.PreTonemapped_in")
+    # g.addEdge("GBufferRT.nextPosW",                                     "ForwardExtrapolation.NextPosW_in")
+    # g.addEdge("DLSS.output",                                            "ForwardExtrapolation.PreTonemapped_in")
 
-    g.addEdge("ForwardExtrapolation.PreTonemapped_out",                 "ToneMapper.src")
+    # g.addEdge("ForwardExtrapolation.PreTonemapped_out",                 "ToneMapper.src")
     # g.addEdge("ModulateIllumination.output",                            "ToneMapper.src")
+
+    g.addEdge("ModulateIllumination.output",                            "ForwardExtrapolation.PreTonemapped_in")
+    g.addEdge("GBufferRT.nextPosW",                                     "ForwardExtrapolation.NextPosW_in")
+    g.addEdge("GBufferRT.mvec",                                         "ForwardExtrapolation.MotionVector_in")
+    g.addEdge("GBufferRT.linearZ",                                      "ForwardExtrapolation.LinearZ_in")
+
+    # g.addEdge("DLSS.output",                                            "ForwardExtrapolation.PreTonemapped_in")
+
+    # g.addEdge("ForwardExtrapolation.PreTonemapped_out",                 "ToneMapper.src")
+    g.addEdge("ForwardExtrapolation.MotionVector_out",                  "DLSS.mvec")
+    g.addEdge("ForwardExtrapolation.LinearZ_out",                       "DLSS.depth")
+    g.addEdge("ForwardExtrapolation.PreTonemapped_out",                 "DLSS.color")
+    g.addEdge("DLSS.output",                                            "ToneMapper.src")
 
     # Outputs
     g.markOutput("ToneMapper.dst")
