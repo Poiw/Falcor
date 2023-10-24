@@ -587,7 +587,7 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
     widget.var<uint32_t>("Extrapolation Num", mExtrapolationNum, 1u, 1u);
 
     widget.var<uint32_t>("Kernel Size", mKernelSize, 1u, 32u);
-    widget.var<float>("Splat Sigma", mSplatSigma, 0.1f, 10.f);
+    widget.var<float>("Splat Sigma", mSplatSigma, 0.1f, 20.f);
     widget.var<float>("Splat Dist Sigma", gSplatDistSigma, 0.1f, 20.f);
     widget.var<uint>("Splat Stride Num", gSplatStrideNum, 1u, 10u);
 
