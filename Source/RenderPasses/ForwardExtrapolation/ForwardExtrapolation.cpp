@@ -162,6 +162,9 @@ void ForwardExtrapolation::DumpDataFunc(const RenderData &renderData, uint frame
 {
     renderData.getTexture("PreTonemapped_out")->captureToFile(0, 0, dirPath + "/Render_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
     renderData.getTexture("PreTonemapped_in")->captureToFile(0, 0, dirPath + "/GT_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("MotionVector_out")->captureToFile(0, 0, dirPath + "/MotionVector_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("LinearZ_out")->captureToFile(0, 0, dirPath + "/LinearZ_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    renderData.getTexture("PreTonemapped_out_woSplat")->captureToFile(0, 0, dirPath + "/Render_woSplat_" + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
 }
 
 void ForwardExtrapolation::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -206,6 +209,10 @@ RenderPassReflection ForwardExtrapolation::reflect(const CompileData& compileDat
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
         .texture2D();
+    reflector.addOutput("PreTonemapped_out_woSplat", "Center Render")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::RenderTarget)
+        .texture2D();
     reflector.addOutput("MotionVector_out", "Motion Vector")
         .format(ResourceFormat::RG32Float)
         .bindFlags(Resource::BindFlags::RenderTarget)
@@ -241,6 +248,7 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
     auto curDim = renderData.getDefaultTextureDims();
 
     pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
+    pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out_woSplat")->getRTV());
 
     createNewTexture(mpRenderTex, curDim);
     createNewTexture(mpNextPosWTex, curDim);
@@ -398,7 +406,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
         // Output
         {
             auto tempWarpTexUAV = mpTempWarpTex->getUAV();
-            pRenderContext->clearUAV(tempWarpTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+            pRenderContext->clearUAV(tempWarpTexUAV.get(), float4(-1.f));
             mpForwardWarpPass["gTempWarpTex"].setUav(tempWarpTexUAV);
 
             auto tempMotionVectorTexUAV = mpTempMotionVectorTex->getUAV();
@@ -415,6 +423,8 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             pRenderContext->uavBarrier(mpTempWarpTex.get());
             pRenderContext->uavBarrier(mpTempMotionVectorTex.get());
         }
+
+        pRenderContext->blit(mpTempWarpTex->getSRV(), renderData.getTexture("PreTonemapped_out_woSplat")->getRTV());
 
     }
     // ###################################################################################
@@ -526,6 +536,7 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
             pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
             pRenderContext->blit(renderData.getTexture("MotionVector_in")->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
             pRenderContext->blit(renderData.getTexture("LinearZ_in")->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
+            pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out_woSplat")->getRTV());
 
         }
         // Extrapolate frame
