@@ -147,6 +147,11 @@ void DLSSPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
     executeInternal(pRenderContext, renderData);
 }
 
+void DLSSPass::DumpDataFunc(const RenderData &renderData, uint frameIdx, const std::string dirPath)
+{
+    renderData.getTexture(kOutput)->captureToFile(0, 0, dirPath + "/DLSS_out." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+}
+
 void DLSSPass::renderUI(Gui::Widgets& widget)
 {
     widget.checkbox("Enable", mEnabled);
@@ -173,6 +178,9 @@ void DLSSPass::renderUI(Gui::Widgets& widget)
 
         widget.slider("Sharpness", mSharpness, -1.f, 1.f);
         widget.tooltip("Sharpening value between 0.0 and 1.0.");
+
+        widget.checkbox("Dump Data", mDumpData);
+        widget.textbox("Dump Dir Path", mDataDir);
 
         if (widget.var("Exposure", mExposure, -10.f, 10.f, 0.01f)) mExposureUpdated = true;
 
@@ -282,6 +290,12 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
         if (useInternalBuffer)
         {
             pRenderContext->blit(mpOutput->getSRV(), pOutput->getRTV());
+        }
+
+        if (mDumpData)
+        {
+            DumpDataFunc(renderData, mDumpFrame, mDataDir);
+            mDumpFrame++;
         }
     }
 }
