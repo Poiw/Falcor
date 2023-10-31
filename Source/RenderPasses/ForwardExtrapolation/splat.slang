@@ -32,7 +32,12 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // First Layer
     int2 pixelCoord = dispatchThreadId.xy;
 
-    float total_weight = 0.0f;
+    if (gTempDepthTex[pixelCoord] != -1) {
+        targetRenderTex[pixelCoord] = gTempWarpTex[pixelCoord];
+        targetDepthTex[pixelCoord] = float2((float)gTempDepthTex[pixelCoord] / 256.0f, 0.);
+        targetMotionVectorTex[pixelCoord] = gTempMotionVectorTex[pixelCoord];
+        return;
+    }
 
 
     int size = (gKernelSize - 1) / 2;
@@ -48,6 +53,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     float4 targetRender = 0.;
     float targetDepth = 0.;
     float2 targetMotionVector = float2(0., 0.);
+    float total_weight = 0.0f;
+
     // targetRenderTex[pixelCoord] = 0.;
     for (int stride = 1; stride <= gStrideNum * 4 - 3; stride += 4) {
         for (int ux = -size; ux <= size; ux++) {
