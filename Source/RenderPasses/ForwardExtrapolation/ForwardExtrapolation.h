@@ -65,6 +65,8 @@ private:
 
     void renderedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData);
     void collectBackground(RenderContext* pRenderContext, const RenderData& renderData);
+
+    void warpBackground(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera);
     void extrapolatedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera);
     void extrapolatedFrameInit(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera);
 
@@ -86,6 +88,9 @@ private:
 
     Texture::SharedPtr mpBackgroundColorTex;
     Texture::SharedPtr mpBackgroundPosWTex;
+
+    Texture::SharedPtr mpBackgroundWarpedTex;
+    Texture::SharedPtr mpBackgroundWarpedDepthTex;
 
     Texture::SharedPtr mpPrevMotionVectorTex;
 
@@ -127,5 +132,7 @@ private:
     ComputePass::SharedPtr mpRegularFramePreProcessPass;
     ComputePass::SharedPtr mpBackgroundCollectionDepthTestPass;
     ComputePass::SharedPtr mpBackgroundCollectionPass;
+    ComputePass::SharedPtr mpBackgroundWarpDepthTestPass;
+    ComputePass::SharedPtr mpBackgroundWarpPass;
 
 };
