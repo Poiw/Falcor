@@ -430,24 +430,24 @@ void ForwardExtrapolation::collectBackground(RenderContext* pRenderContext, cons
 
         // Input
         {
-            mpBackgroundCollectionDepthTestPass["PerFrameCB"]["gFrameDim"] = curDim;
-            mpBackgroundCollectionDepthTestPass["PerFrameCB"]["curViewProjMat"] = mpScene->getCamera()->getViewProjMatrix();
-            mpBackgroundCollectionDepthTestPass["PerFrameCB"]["mDepthScale"] = mBackgroundDepthScale;
+            mpBackgroundCollectionPass["PerFrameCB"]["gFrameDim"] = curDim;
+            mpBackgroundCollectionPass["PerFrameCB"]["curViewProjMat"] = mpScene->getCamera()->getViewProjMatrix();
+            mpBackgroundCollectionPass["PerFrameCB"]["mDepthScale"] = mBackgroundDepthScale;
 
             auto backgroundPosWSRV = mpBackgroundPosWTex->getSRV();
-            mpBackgroundCollectionDepthTestPass["gBackgroundPosWTex"].setSrv(backgroundPosWSRV);
+            mpBackgroundCollectionPass["gBackgroundPosWTex"].setSrv(backgroundPosWSRV);
 
             auto curPosWSRV = renderData.getTexture("PosW_in")->getSRV();
-            mpBackgroundCollectionDepthTestPass["gCurPosWTex"].setSrv(curPosWSRV);
+            mpBackgroundCollectionPass["gCurPosWTex"].setSrv(curPosWSRV);
 
             auto backgroundColorSRV = mpBackgroundColorTex->getSRV();
-            mpBackgroundCollectionDepthTestPass["gBackgroundColorTex"].setSrv(backgroundColorSRV);
+            mpBackgroundCollectionPass["gBackgroundColorTex"].setSrv(backgroundColorSRV);
 
             auto curColorSRV = renderData.getTexture("PreTonemapped_in")->getSRV();
-            mpBackgroundCollectionDepthTestPass["gCurColorTex"].setSrv(curColorSRV);
+            mpBackgroundCollectionPass["gCurColorTex"].setSrv(curColorSRV);
 
             auto testedDepthSRV = mpTempDepthTex->getSRV();
-            mpBackgroundCollectionDepthTestPass["gTestedDepthTex"].setSrv(testedDepthSRV);
+            mpBackgroundCollectionPass["gTestedDepthTex"].setSrv(testedDepthSRV);
 
         }
 
@@ -455,11 +455,11 @@ void ForwardExtrapolation::collectBackground(RenderContext* pRenderContext, cons
         {
             auto tempOutputTexUAV = mpTempOutputTex->getUAV();
             pRenderContext->clearUAV(tempOutputTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
-            mpBackgroundCollectionDepthTestPass["gTempOutputTex"].setUav(tempOutputTexUAV);
+            mpBackgroundCollectionPass["gTempOutputTex"].setUav(tempOutputTexUAV);
 
             auto tempOutputPosWTexUAV = mpTempOutputPosWTex->getUAV();
             pRenderContext->clearUAV(tempOutputPosWTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
-            mpBackgroundCollectionDepthTestPass["gTempOutputPosWTex"].setUav(tempOutputPosWTexUAV);
+            mpBackgroundCollectionPass["gTempOutputPosWTex"].setUav(tempOutputPosWTexUAV);
         }
 
         // Execute
@@ -728,7 +728,9 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
             // Extrapolate Frame
             extrapolatedFrameProcess(pRenderContext, renderData, nextCamera);
 
-            pRenderContext->blit(mpBackgroundColorTex->getSRV(), renderData.getTexture("Background_Color")->getRTV());
+            if (!mIsNewBackground) {
+                pRenderContext->blit(mpBackgroundColorTex->getSRV(), renderData.getTexture("Background_Color")->getRTV());
+            }
 
         }
 
@@ -768,5 +770,7 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
 
     widget.checkbox("Dump Data", mDumpData);
     widget.textbox("Dump Dir Path", mDumpDirPath);
+
+    widget.checkbox("Refresh background data", mIsNewBackground);
 
 }

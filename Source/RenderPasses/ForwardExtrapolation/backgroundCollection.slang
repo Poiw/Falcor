@@ -20,8 +20,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // First Layer
     uint2 pixelCoord = dispatchThreadId.xy;
 
-    float4 backgroundPosW = gBackgroundPosWTex[pixelCoord];
-    float4 curPosW = gCurPosWTex[pixelCoord];
+    float4 backgroundPosW = float4(gBackgroundPosWTex[pixelCoord].xyz, 1);
+    float4 curPosW = float4(gCurPosWTex[pixelCoord].xyz, 1);
 
     float4 backgroundPosH = mul(curViewProjMat, backgroundPosW);
     float4 curPosH = mul(curViewProjMat, curPosW);
@@ -32,7 +32,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     uint backgroundDepth = uint(backgroundPosH.w * float(mDepthScale));
     uint curDepth = uint(curPosH.w * float(mDepthScale));
 
-    backgroundCrd = backgroundCrd * 2;
+    backgroundDepth = backgroundDepth * 2;
     curDepth = curDepth * 2 + 1;
 
 
@@ -52,13 +52,13 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     uint2 curCoord = uint2(curCrd * gFrameDim);
 
     if (gTestedDepthTex[backgroundCoord] == backgroundDepth) {
-        gTempOutputTex[backgroundCoord] = gBackgroundColorTex[backgroundCoord];
-        gTempOutputPosWTex[backgroundCoord] = gBackgroundPosWTex[backgroundCoord];
+        gTempOutputTex[backgroundCoord] = gBackgroundColorTex[pixelCoord];
+        gTempOutputPosWTex[backgroundCoord] = backgroundPosW;
     }
 
     if (gTestedDepthTex[curCoord] == curDepth) {
-        gTempOutputTex[curCoord] = gCurColorTex[curCoord];
-        gTempOutputPosWTex[curCoord] = gCurPosWTex[curCoord];
+        gTempOutputTex[curCoord] = gCurColorTex[pixelCoord];
+        gTempOutputPosWTex[curCoord] = curPosW;
     }
 
 

@@ -106,6 +106,7 @@ def render_graph_ForwardExtrapolation():
     # g.addEdge("ModulateIllumination.output",                            "ToneMapper.src")
 
     g.addEdge("ModulateIllumination.output",                            "ForwardExtrapolation.PreTonemapped_in")
+    g.addEdge("GBufferRT.posW",                                         "ForwardExtrapolation.PosW_in")
     g.addEdge("GBufferRT.nextPosW",                                     "ForwardExtrapolation.NextPosW_in")
     g.addEdge("GBufferRT.mvec",                                         "ForwardExtrapolation.MotionVector_in")
     g.addEdge("GBufferRT.linearZ",                                      "ForwardExtrapolation.LinearZ_in")
