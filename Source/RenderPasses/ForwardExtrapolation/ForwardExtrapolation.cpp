@@ -207,19 +207,19 @@ RenderPassReflection ForwardExtrapolation::reflect(const CompileData& compileDat
     // Outputs
     reflector.addOutput("PreTonemapped_out", "Center Render")
         .format(ResourceFormat::RGBA32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget)
+        .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D();
     reflector.addOutput("PreTonemapped_out_woSplat", "Center Render")
         .format(ResourceFormat::RGBA32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget)
+        .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D();
     reflector.addOutput("MotionVector_out", "Motion Vector")
         .format(ResourceFormat::RG32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget)
+        .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D();
     reflector.addOutput("LinearZ_out", "LinearZ")
         .format(ResourceFormat::RG32Float)
-        .bindFlags(Resource::BindFlags::RenderTarget)
+        .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D();
 
 
