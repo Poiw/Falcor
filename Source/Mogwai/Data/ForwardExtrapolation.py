@@ -122,6 +122,7 @@ def render_graph_ForwardExtrapolation():
     g.markOutput("ToneMapper.dst")
     g.markOutput("ToneMapperReference.dst")
     g.markOutput("ForwardExtrapolation.PreTonemapped_out_woSplat")
+    g.markOutput("ForwardExtrapolation.Background_Color")
 
     return g
 

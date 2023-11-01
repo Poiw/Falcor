@@ -64,6 +64,7 @@ private:
     void setComputeShaders();
 
     void renderedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData);
+    void collectBackground(RenderContext* pRenderContext, const RenderData& renderData);
     void extrapolatedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera);
     void extrapolatedFrameInit(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera);
 
@@ -79,8 +80,12 @@ private:
     Texture::SharedPtr mpTempDepthTex;
     Texture::SharedPtr mpTempMotionVectorTex;
     Texture::SharedPtr mpTempOutputTex;
+    Texture::SharedPtr mpTempOutputPosWTex;
     Texture::SharedPtr mpTempOutputMVTex;
     Texture::SharedPtr mpTempOutputDepthTex;
+
+    Texture::SharedPtr mpBackgroundColorTex;
+    Texture::SharedPtr mpBackgroundPosWTex;
 
     Texture::SharedPtr mpPrevMotionVectorTex;
 
@@ -102,6 +107,10 @@ private:
     bool mDumpData;
     std::string mDumpDirPath;
 
+    uint mDepthScale;
+    uint mBackgroundDepthScale;
+    bool mIsNewBackground;
+
 
     // Camera Info
     Falcor::float3 mPrevCameraPos;
@@ -116,5 +125,7 @@ private:
     ComputePass::SharedPtr mpForwardWarpPass;
     ComputePass::SharedPtr mpSplatPass;
     ComputePass::SharedPtr mpRegularFramePreProcessPass;
+    ComputePass::SharedPtr mpBackgroundCollectionDepthTestPass;
+    ComputePass::SharedPtr mpBackgroundCollectionPass;
 
 };

@@ -59,7 +59,7 @@ PreprocessDLSS::PreprocessDLSS() : RenderPass(kInfo)
     mpBaseColorTex = NULL;
     mpNormalTex = NULL;
 
-    mCurReso = uint2(960, 540);
+    mCurReso = uint2(1024, 1024);
 
     {
         Program::Desc desc;
@@ -101,7 +101,7 @@ std::string PreprocessDLSS::getDepthPath(const std::string& dataDir, int frame)
 
     frameString.insert(0, precision, '0');
 
-    std::string path = dataDir + "/SceneDepth." + frameString + ".exr";
+    std::string path = dataDir + "/LinearZ." + frameString + ".exr";
     return path;
 }
 
@@ -112,7 +112,7 @@ std::string PreprocessDLSS::getColorPath(const std::string& dataDir, int frame)
 
     frameString.insert(0, precision, '0');
 
-    std::string path = dataDir + "/PreTonemapHDRColor." + frameString + ".exr";
+    std::string path = dataDir + "/res." + frameString + ".exr";
     return path;
 }
 

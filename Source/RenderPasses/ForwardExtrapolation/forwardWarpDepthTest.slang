@@ -1,6 +1,7 @@
 cbuffer PerFrameCB {
     uint2 gFrameDim;
     float4x4 curViewProjMat;
+    uint mDepthScale;
 };
 
 Texture2D<float4> gNextPosWTex;
@@ -22,7 +23,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     float4 nextPosH = mul(curViewProjMat, nextPosW);
     float2 nextCrd = nextPosH.xy / nextPosH.w;
     float nextZ = nextPosH.z / nextPosH.w;
-    uint depth = uint(nextPosH.w * 256.0f);
+    uint depth = uint(nextPosH.w * float(mDepthScale));
 
 
 #ifdef FALCOR_FLIP_Y

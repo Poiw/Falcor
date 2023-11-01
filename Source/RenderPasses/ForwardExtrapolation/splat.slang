@@ -4,6 +4,7 @@ cbuffer PerFrameCB {
     float gSplatSigma;
     float gSplatDistSigma;
     uint gStrideNum;
+    uint mDepthScale;
 };
 
 Texture2D<float4> gTempWarpTex;
@@ -34,7 +35,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     if (gTempDepthTex[pixelCoord] != -1) {
         targetRenderTex[pixelCoord] = gTempWarpTex[pixelCoord];
-        targetDepthTex[pixelCoord] = float2((float)gTempDepthTex[pixelCoord] / 256.0f, 0.);
+        targetDepthTex[pixelCoord] = float2((float)gTempDepthTex[pixelCoord] / float(mDepthScale), 0.);
         targetMotionVectorTex[pixelCoord] = gTempMotionVectorTex[pixelCoord];
         return;
     }
@@ -63,7 +64,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
                 int2 neighborCoord = pixelCoord + int2(ux, uy) * stride;
 
                 if (neighborCoord.x >= 0 && neighborCoord.x < gFrameDim.x && neighborCoord.y >= 0 && neighborCoord.y < gFrameDim.y && gTempDepthTex[neighborCoord] != uint(-1)) {
-                    float depth = (float)gTempDepthTex[neighborCoord] / 256.0f;
+                    float depth = (float)gTempDepthTex[neighborCoord] / float(mDepthScale);
                     // float weight = softmax_exp(depth) * abs(gKernelSize + 1 - ux) * abs(gKernelSize + 1 - uy) / ((gKernelSize+1) * (gKernelSize+1));
                     float weight = softmax_exp(depth) * exp(-abs(gSplatDistSigma * ux)) * exp(-abs(gSplatDistSigma * uy));
 
