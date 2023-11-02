@@ -123,7 +123,7 @@ void ForwardExtrapolation::ClearVariables()
     mMode = 0;
 
     mKernelSize = 3;
-    mSplatSigma = 1.;
+    mSplatSigma = 12.;
     gSplatDistSigma = 8.;
     gSplatStrideNum = 3;
 
