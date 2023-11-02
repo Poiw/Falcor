@@ -108,10 +108,6 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         }
     }
 
-    // background is not helpful
-    // ---------------------------------------------------
-    // Large splatting
-
     if (total_weight > 0.0f) {
         targetRender /= total_weight;
         targetDepth /= total_weight;
@@ -121,6 +117,11 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         targetMotionVectorTex[pixelCoord] = float2(0., 0.);
         return;
     }
+
+    // background is not helpful
+    // ---------------------------------------------------
+    // Large splatting
+
 
     for (int stride = 5; stride <= gStrideNum * 4 - 3; stride += 4) {
         for (int ux = -size; ux <= size; ux++) {
