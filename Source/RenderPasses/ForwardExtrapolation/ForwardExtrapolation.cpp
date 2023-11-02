@@ -724,6 +724,12 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             auto tempMotionVectorTexSRV = mpTempMotionVectorTex->getSRV();
             mpSplatPass["gTempMotionVectorTex"].setSrv(tempMotionVectorTexSRV);
 
+            auto backgroundWarpedTexSRV = mpBackgroundWarpedTex->getSRV();
+            mpSplatPass["gBackgroundWarpedTex"].setSrv(backgroundWarpedTexSRV);
+
+            auto backgroundWarpedDepthTexSRV = mpBackgroundWarpedDepthTex->getSRV();
+            mpSplatPass["gBackgroundWarpedDepthTex"].setSrv(backgroundWarpedDepthTexSRV);
+
         }
 
         // Output
