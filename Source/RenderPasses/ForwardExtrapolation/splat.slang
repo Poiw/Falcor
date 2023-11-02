@@ -91,6 +91,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // ---------------------------------------------------
     // Look for background warped frame
 
+    targetRender = 0.;
+    targetDepth = 0.;
+    targetMotionVector = float2(0., 0.);
+
     for (int ux = -size; ux <= size; ux++) {
         for (int uy = -size; uy <= size; uy++) {
 
@@ -122,6 +126,9 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // ---------------------------------------------------
     // Large splatting
 
+    targetRender = 0.;
+    targetDepth = 0.;
+    targetMotionVector = float2(0., 0.);
 
     for (int stride = 5; stride <= gStrideNum * 4 - 3; stride += 4) {
         for (int ux = -size; ux <= size; ux++) {
