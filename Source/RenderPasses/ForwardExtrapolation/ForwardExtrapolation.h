@@ -115,6 +115,7 @@ private:
     uint mDepthScale;
     uint mBackgroundDepthScale;
     bool mIsNewBackground;
+    float mBackgroundScreenScale;
 
     uint mDisplayMode;
 

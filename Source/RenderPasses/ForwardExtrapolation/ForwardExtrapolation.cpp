@@ -134,6 +134,8 @@ void ForwardExtrapolation::ClearVariables()
 
     mDisplayMode = 0;
 
+    mBackgroundScreenScale = 1.2f;
+
 
 
 }
@@ -439,6 +441,7 @@ void ForwardExtrapolation::collectBackground(RenderContext* pRenderContext, cons
             mpBackgroundCollectionDepthTestPass["PerFrameCB"]["gFrameDim"] = curDim;
             mpBackgroundCollectionDepthTestPass["PerFrameCB"]["curViewProjMat"] = mpScene->getCamera()->getViewProjMatrix();
             mpBackgroundCollectionDepthTestPass["PerFrameCB"]["mDepthScale"] = mBackgroundDepthScale;
+            mpBackgroundCollectionDepthTestPass["PerFrameCB"]["mBackgroundScreenScaleInv"] = float(1.0 / mBackgroundScreenScale);
 
             auto backgroundPosWSRV = mpBackgroundPosWTex->getSRV();
             mpBackgroundCollectionDepthTestPass["gBackgroundPosWTex"].setSrv(backgroundPosWSRV);
@@ -476,6 +479,7 @@ void ForwardExtrapolation::collectBackground(RenderContext* pRenderContext, cons
             mpBackgroundCollectionPass["PerFrameCB"]["gFrameDim"] = curDim;
             mpBackgroundCollectionPass["PerFrameCB"]["curViewProjMat"] = mpScene->getCamera()->getViewProjMatrix();
             mpBackgroundCollectionPass["PerFrameCB"]["mDepthScale"] = mBackgroundDepthScale;
+            mpBackgroundCollectionPass["PerFrameCB"]["mBackgroundScreenScaleInv"] = float(1.0 / mBackgroundScreenScale);
 
             auto backgroundPosWSRV = mpBackgroundPosWTex->getSRV();
             mpBackgroundCollectionPass["gBackgroundPosWTex"].setSrv(backgroundPosWSRV);
@@ -902,6 +906,8 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
     widget.var<uint>("Splat Stride Num", gSplatStrideNum, 1u, 10u);
 
     widget.var<uint>("Background Depth Scale", mBackgroundDepthScale, 1u, 1024u);
+
+    widget.var<float>("Background screen space scale", mBackgroundScreenScale, 0.1f, 4.f);
 
     widget.checkbox("Dump Data", mDumpData);
     widget.textbox("Dump Dir Path", mDumpDirPath);

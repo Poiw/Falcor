@@ -2,6 +2,7 @@ cbuffer PerFrameCB {
     uint2 gFrameDim;
     float4x4 curViewProjMat;
     uint mDepthScale;
+    float mBackgroundScreenScaleInv;
 };
 
 Texture2D<float4> gBackgroundPosWTex;
@@ -29,6 +30,9 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     float2 backgroundCrd = backgroundPosH.xy / backgroundPosH.w;
     float2 curCrd = curPosH.xy / curPosH.w;
 
+    backgroundCrd *= mBackgroundScreenScaleInv;
+    curCrd *= mBackgroundScreenScaleInv;
+
     uint backgroundDepth = uint(backgroundPosH.w * float(mDepthScale));
     uint curDepth = uint(curPosH.w * float(mDepthScale));
 
@@ -51,12 +55,14 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     uint2 backgroundCoord = uint2(backgroundCrd * gFrameDim);
     uint2 curCoord = uint2(curCrd * gFrameDim);
 
-    if (gTestedDepthTex[backgroundCoord] == backgroundDepth) {
+    if (backgroundCoord.x >= 0 && backgroundCoord.x < gFrameDim.x && backgroundCoord.y >= 0 && backgroundCoord.y < gFrameDim.y &&
+        gTestedDepthTex[backgroundCoord] == backgroundDepth) {
         gTempOutputTex[backgroundCoord] = gBackgroundColorTex[pixelCoord];
         gTempOutputPosWTex[backgroundCoord] = backgroundPosW;
     }
 
-    if (gTestedDepthTex[curCoord] == curDepth) {
+    if (curCoord.x >= 0 && curCoord.x < gFrameDim.x && curCoord.y >= 0 && curCoord.y < gFrameDim.y &&
+        gTestedDepthTex[curCoord] == curDepth) {
         gTempOutputTex[curCoord] = gCurColorTex[pixelCoord];
         gTempOutputPosWTex[curCoord] = curPosW;
     }
