@@ -35,6 +35,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // First Layer
     int2 pixelCoord = dispatchThreadId.xy;
 
+    // Forward warping success
     if (gTempDepthTex[pixelCoord] != -1) {
         targetRenderTex[pixelCoord] = gTempWarpTex[pixelCoord];
         targetDepthTex[pixelCoord] = float2((float)gTempDepthTex[pixelCoord] / float(mDepthScale), 0.);
@@ -42,6 +43,9 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         return;
     }
 
+    // ---------------------------------------------------
+
+    // Init fix forward warp
     int size = (gKernelSize - 1) / 2;
 
     float mu = 8.;
@@ -83,6 +87,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         return;
     }
 
+    // Fix failed
+    // ---------------------------------------------------
+    // Look for background warped frame
+
     for (int ux = -size; ux <= size; ux++) {
         for (int uy = -size; uy <= size; uy++) {
 
@@ -100,6 +108,9 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         }
     }
 
+    // background is not helpful
+    // ---------------------------------------------------
+    // Large splatting
 
     if (total_weight > 0.0f) {
         targetRender /= total_weight;
