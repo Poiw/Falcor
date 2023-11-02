@@ -116,6 +116,8 @@ private:
     uint mBackgroundDepthScale;
     bool mIsNewBackground;
 
+    uint mDisplayMode;
+
 
     // Camera Info
     Falcor::float3 mPrevCameraPos;

@@ -132,6 +132,8 @@ void ForwardExtrapolation::ClearVariables()
 
     mIsNewBackground = true;
 
+    mDisplayMode = 0;
+
 
 
 }
@@ -328,8 +330,11 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
 {
     auto curDim = renderData.getDefaultTextureDims();
 
-    pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
-    pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out_woSplat")->getRTV());
+
+    if (mDisplayMode == 0 || mDisplayMode == 1) {
+        pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
+        pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out_woSplat")->getRTV());
+    }
 
     createNewTexture(mpRenderTex, curDim);
     createNewTexture(mpNextPosWTex, curDim);
@@ -384,8 +389,11 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
                 pRenderContext->uavBarrier(mpTempOutputDepthTex.get());
             }
 
-            pRenderContext->blit(mpTempOutputMVTex->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
-            pRenderContext->blit(mpTempOutputDepthTex->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
+
+            if (mDisplayMode == 0 || mDisplayMode == 1) {
+                pRenderContext->blit(mpTempOutputMVTex->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
+                pRenderContext->blit(mpTempOutputDepthTex->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
+            }
 
         }
         // ###################################################################################
@@ -393,8 +401,11 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
     }
 
     else {
-        pRenderContext->blit(renderData.getTexture("MotionVector_in")->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
-        pRenderContext->blit(renderData.getTexture("LinearZ_in")->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
+
+        if (mDisplayMode == 0 || mDisplayMode == 1) {
+            pRenderContext->blit(renderData.getTexture("MotionVector_in")->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
+            pRenderContext->blit(renderData.getTexture("LinearZ_in")->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
+        }
     }
 
 
@@ -506,7 +517,10 @@ void ForwardExtrapolation::collectBackground(RenderContext* pRenderContext, cons
         pRenderContext->blit(mpTempOutputTex->getSRV(), mpBackgroundColorTex->getRTV());
         pRenderContext->blit(mpTempOutputPosWTex->getSRV(), mpBackgroundPosWTex->getRTV());
 
-        pRenderContext->blit(mpTempOutputTex->getSRV(), renderData.getTexture("Background_Color")->getRTV());
+
+        if (mDisplayMode == 0 || mDisplayMode == 1) {
+            pRenderContext->blit(mpTempOutputTex->getSRV(), renderData.getTexture("Background_Color")->getRTV());
+        }
 
         // ########################################################################################################
 
@@ -587,7 +601,9 @@ void ForwardExtrapolation::warpBackground(RenderContext* pRenderContext, const R
 
     // ##################################################################################
 
-    pRenderContext->blit(mpBackgroundWarpedTex->getSRV(), renderData.getTexture("Background_Color")->getRTV());
+    if (mDisplayMode == 0 || mDisplayMode == 2) {
+        pRenderContext->blit(mpBackgroundWarpedTex->getSRV(), renderData.getTexture("Background_Color")->getRTV());
+    }
 
 }
 
@@ -760,9 +776,11 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
     // ###################################################################################
 
     // Copy to output
-    pRenderContext->blit(mpTempOutputTex->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
-    pRenderContext->blit(mpTempOutputDepthTex->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
-    pRenderContext->blit(mpTempOutputMVTex->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
+    if (mDisplayMode == 0 || mDisplayMode == 2) {
+        pRenderContext->blit(mpTempOutputTex->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
+        pRenderContext->blit(mpTempOutputDepthTex->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
+        pRenderContext->blit(mpTempOutputMVTex->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
+    }
 
 
 }
@@ -868,6 +886,12 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
     modeList.push_back(Gui::DropdownValue{0, "default"});
     modeList.push_back(Gui::DropdownValue{1, "extrapolation"});
     widget.dropdown("Mode", modeList, mMode);
+
+    Gui::DropdownList displayModeList;
+    displayModeList.push_back(Gui::DropdownValue{0, "all"});
+    displayModeList.push_back(Gui::DropdownValue{1, "render only"});
+    displayModeList.push_back(Gui::DropdownValue{2, "extrapolated only"});
+    widget.dropdown("Display Mode", displayModeList, mDisplayMode);
 
 
     widget.var<uint32_t>("Extrapolation Num", mExtrapolationNum, 1u, 1u);
