@@ -104,12 +104,47 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     if (total_weight > 0.0f) {
         targetRender /= total_weight;
         targetDepth /= total_weight;
+        targetRender = detonemap(targetRender, mu);
+        targetRenderTex[pixelCoord] = targetRender;
+        targetDepthTex[pixelCoord] = float2(targetDepth, 0.);
+        targetMotionVectorTex[pixelCoord] = float2(0., 0.);
+        return;
+    }
+
+    for (int stride = 5; stride <= gStrideNum * 4 - 3; stride += 4) {
+        for (int ux = -size; ux <= size; ux++) {
+            for (int uy = -size; uy <= size; uy++) {
+
+                int2 neighborCoord = pixelCoord + int2(ux, uy) * stride;
+
+                if (neighborCoord.x >= 0 && neighborCoord.x < gFrameDim.x && neighborCoord.y >= 0 && neighborCoord.y < gFrameDim.y && gTempDepthTex[neighborCoord] != uint(-1)) {
+                    float depth = (float)gTempDepthTex[neighborCoord] / float(mDepthScale);
+                    // float weight = softmax_exp(depth) * abs(gKernelSize + 1 - ux) * abs(gKernelSize + 1 - uy) / ((gKernelSize+1) * (gKernelSize+1));
+                    float weight = softmax_exp(depth) * exp(-abs(gSplatDistSigma * ux)) * exp(-abs(gSplatDistSigma * uy));
+
+                    total_weight += weight;
+                    targetRender += tonemap(gTempWarpTex[neighborCoord], mu) * weight;
+                    targetDepth += depth * weight;
+                    targetMotionVector += gTempMotionVectorTex[neighborCoord] * weight;
+                }
+            }
+        }
+
+        if (total_weight > 0.0f) {
+            break;
+        }
+    }
+
+    if (total_weight > 0.0f) {
+        targetRender /= total_weight;
+        targetDepth /= total_weight;
+        targetMotionVector /= total_weight;
     }
 
     targetRender = detonemap(targetRender, mu);
     targetRenderTex[pixelCoord] = targetRender;
     targetDepthTex[pixelCoord] = float2(targetDepth, 0.);
-    targetMotionVectorTex[pixelCoord] = float2(0., 0.);
+    targetMotionVectorTex[pixelCoord] = targetMotionVector;
 
 
     return;
