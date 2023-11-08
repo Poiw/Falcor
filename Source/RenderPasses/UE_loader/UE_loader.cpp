@@ -183,7 +183,7 @@ void UE_loader::loadCamera(const std::string& cameraFilePath, Falcor::float2 fra
 
     JitterX /= frameDim.x;
     JitterY /= frameDim.y;
-    Camera->setJitter(JitterX, JitterY);
+    Camera->setJitter(JitterX, -JitterY); // This is closest to correct jitter
 
 
 }
@@ -221,16 +221,22 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
 
     auto curDim = renderData.getDefaultTextureDims();
 
+    if (mpPrevPosWTex == nullptr)
+        mpPrevPosWTex = mpPosWTex;
+
     // ----------------------- Process Data -----------------------
 
     // std::cout << mpScene->getCamera()->getViewMatrix() << std::endl;
     // std::cout << mpScene->getCamera()->getProjMatrix() << std::endl;
     // std::cout << mpScene->getCamera()->getViewProjMatrix() << std::endl;
 
+
+
     // Input
     {
         mpProcessDataPass["PerFrameCB"]["gFrameDim"] = curDim;
         mpProcessDataPass["PerFrameCB"]["curViewProjMat"] = mpScene->getCamera()->getViewProjMatrix();
+        mpProcessDataPass["PerFrameCB"]["curViewProjMatInv"] = mpScene->getCamera()->getInvViewProjMatrix();
 
         auto curPosWSRV = mpPosWTex->getSRV();
         mpProcessDataPass["gCurPosWTex"].setSrv(curPosWSRV);
@@ -240,6 +246,9 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
 
         auto curMotionVectorSRV = mpMotionVectorTex->getSRV();
         mpProcessDataPass["gCurMotionVectorTex"].setSrv(curMotionVectorSRV);
+
+        auto prevPosWSRV = mpPrevPosWTex->getSRV();
+        mpProcessDataPass["gPrevPosWTex"].setSrv(prevPosWSRV);
     }
 
     // Output
@@ -275,11 +284,14 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
         pRenderContext->uavBarrier(renderData.getTexture("Color").get());
         pRenderContext->uavBarrier(renderData.getTexture("MotionVector").get());
         pRenderContext->uavBarrier(renderData.getTexture("LinearZ").get());
+        pRenderContext->uavBarrier(renderData.getTexture("PosW").get());
     }
 
 
     // ------------------------------------------------------------
 
+
+    pRenderContext->blit(renderData.getTexture("PosW")->getSRV(), mpPosWTex->getRTV());
 
 
     // Blit data
@@ -303,7 +315,7 @@ void UE_loader::execute(RenderContext* pRenderContext, const RenderData& renderD
 
         mpColorTex = Texture::createFromFile(colorPath, false, true);
         mpDepthTex = Texture::createFromFile(depthPath, false, true);
-        mpPosWTex = Texture::createFromFile(posWPath, false, true);
+        mpPosWTex = Texture::createFromFile(posWPath, false, true, Resource::BindFlags::AllColorViews);
         mpMotionVectorTex = Texture::createFromFile(motionVectorPath, false, true);
 
         loadCamera(cameraPath, renderData.getDefaultTextureDims());
@@ -355,6 +367,7 @@ void UE_loader::renderUI(Gui::Widgets& widget)
             }
 
             mCurFrame = mStartFrame;
+            // mEndFrame = mStartFrame + 1;
             clearVariable();
             infoFile.close();
 

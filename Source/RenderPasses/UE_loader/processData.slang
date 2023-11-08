@@ -1,11 +1,13 @@
 cbuffer PerFrameCB {
     uint2 gFrameDim;
     float4x4 curViewProjMat;
+    float4x4 curViewProjMatInv;
 };
 
 Texture2D<float4> gCurPosWTex;
 Texture2D<float4> gCurColorTex;
 Texture2D<float4> gCurMotionVectorTex;
+Texture2D<float4> gPrevPosWTex;
 
 RWTexture2D<float4> gNextPosWTex;
 RWTexture2D<float4> gPosWTex;
@@ -22,43 +24,89 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     uint2 flipX_Coord = uint2(gFrameDim.x - 1 - pixelCoord.x, pixelCoord.y);
 
-    gPosWTex[flipX_Coord] = gCurPosWTex[pixelCoord];
+    // Color
     gColorTex[flipX_Coord] = gCurColorTex[pixelCoord];
 
-
+    // gNextPosWTex[flipX_Coord] = float4(gCurPosWTex[pixelCoord].xyz, 1);
+    // Motion Vector
     float2 mv = gCurMotionVectorTex[pixelCoord].xy;
-    mv.x = -mv.x;
-    mv.y = -mv.y;
 
     mv = mv / gFrameDim;
 
     gMotionVectorTex[flipX_Coord] = mv;
 
-
-
-
-
-    float4 curPosW = float4(gCurPosWTex[pixelCoord].xyz, 1);
-    // float4 curPosW = float4(-gCurPosWTex[pixelCoord].x, gCurPosWTex[pixelCoord].y, -gCurPosWTex[pixelCoord].z, 1);
-    float4 curPosH = mul(curViewProjMat, curPosW);
+    // Position
+    float4 curPosH = mul(curViewProjMat, float4(gCurPosWTex[pixelCoord].xyz, 1));
 
     float2 curCrd = curPosH.xy / curPosH.w;
-    float linearZ = curPosH.w;
 
+    // Linear Z
+    float linearZ = curPosH.w;
+    gLinearZTex[flipX_Coord] = float2(linearZ, 1);
+
+    // Position
+
+    float2 gtXY = flipX_Coord + float2(0.5, 0.5);
+    gtXY = gtXY / gFrameDim;
+    gtXY -= float2(0.5, 0.5);
 
 #ifdef FALCOR_FLIP_Y
-    curCrd *= float2(0.5, 0.5);
+    gtXY /= float2(0.5, 0.5);
 #else
-    curCrd *= float2(0.5, -0.5);
+    gtXY /= float2(0.5, -0.5);
 #endif
 
-    curCrd += float2(0.5, 0.5);
+    curPosH.xy = gtXY * curPosH.w;
+    float4 fixedCurPosW = mul(curViewProjMatInv, curPosH);
+    fixedCurPosW.xyz /= fixedCurPosW.w;
+    gPosWTex[flipX_Coord] = fixedCurPosW;
+    // gPosWTex[flipX_Coord] = float4(curPosH.xyz/curPosH.w, 1);
 
-    float2 curCoord = curCrd * gFrameDim;
 
-    gNextPosWTex[flipX_Coord] = float4(curCoord, linearZ, 1);
+// #ifdef FALCOR_FLIP_Y
+//     curCrd *= float2(0.5, 0.5);
+// #else
+//     curCrd *= float2(0.5, -0.5);
+// #endif
 
-    gLinearZTex[flipX_Coord] = float2(linearZ, 1);
+    // curCrd += float2(0.5, 0.5);
+
+    // float2 curCoord = curCrd * gFrameDim;
+
+    // gNextPosWTex[flipX_Coord] = float4(curCoord, linearZ, 1);
+
+//     curPosH = mul(curViewProjMat, float4(fixedCurPosW.xyz, 1));
+//     curCrd = curPosH.xy / curPosH.w;
+
+// #ifdef FALCOR_FLIP_Y
+//     curCrd *= float2(0.5, 0.5);
+// #else
+//     curCrd *= float2(0.5, -0.5);
+// #endif
+
+//     curCrd += float2(0.5, 0.5);
+//     curCrd = clamp(curCrd, float2(0, 0), float2(1, 1));
+//     curCrd *= gFrameDim;
+//     gNextPosWTex[flipX_Coord] = float4(curCrd, linearZ, 1);
+    // gNextPosWTex[flipX_Coord] = float4(gCurPosWTex[pixelCoord].xyz, 1);
+    // gNextPosWTex[flipX_Coord] = float4(gCurPosWTex[pixelCoord].xyz, 1);
+
+
+
+    float2 prevCrd = (flipX_Coord + float2(0.5, 0.5)) / gFrameDim + mv;
+
+    prevCrd = clamp(prevCrd, float2(0, 0), float2(1, 1));
+
+    uint2 prevCoord = uint2(prevCrd * gFrameDim);
+
+    float3 prevPosW = gPrevPosWTex[prevCoord].xyz;
+    // float3 curPosW = gCurPosWTex[pixelCoord].xyz;
+    float3 curPosW = fixedCurPosW.xyz;
+
+    float3 nextPosW = curPosW.xyz * 2 - prevPosW ;
+
+    gNextPosWTex[flipX_Coord] = float4(nextPosW, 1);
+    // gNextPosWTex[flipX_Coord] = gCurPosWTex[pixelCoord];
 
     return;
 }

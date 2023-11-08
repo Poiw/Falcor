@@ -1,7 +1,7 @@
 from falcor import *
 
 def render_graph_ForwardExtrapolation_UE():
-    g = RenderGraph("ForwardExtrapolation")
+    g = RenderGraph("ForwardExtrapolationUE")
 
     loadRenderPassLibrary("DLSSPass.dll")
     loadRenderPassLibrary("ToneMapper.dll")
@@ -35,17 +35,20 @@ def render_graph_ForwardExtrapolation_UE():
     g.addEdge("ForwardExtrapolation.MotionVector_out",                  "DLSS.mvec")
     g.addEdge("ForwardExtrapolation.LinearZ_out",                       "DLSS.depth")
     g.addEdge("ForwardExtrapolation.PreTonemapped_out",                 "DLSS.color")
+    # g.addEdge("loadUE.MotionVector",                  "DLSS.mvec")
+    # g.addEdge("loadUE.LinearZ",                       "DLSS.depth")
+    # g.addEdge("loadUE.Color",                 "DLSS.color")
     g.addEdge("DLSS.output",                                            "ToneMapper.src")
 
     # Outputs
     g.markOutput("ToneMapper.dst")
-    g.markOutput("ForwardExtrapolation.PreTonemapped_out_woSplat")
-    g.markOutput("ForwardExtrapolation.Background_Color")
+    # g.markOutput("ForwardExtrapolation.PreTonemapped_out_woSplat")
+    # g.markOutput("ForwardExtrapolation.Background_Color")
 
     return g
 
-ForwardExtrapolation = render_graph_ForwardExtrapolation_UE()
-try: m.addGraph(ForwardExtrapolation)
+ForwardExtrapolationUE = render_graph_ForwardExtrapolation_UE()
+try: m.addGraph(ForwardExtrapolationUE)
 except NameError: None
 
 m.resizeSwapChain(1920, 1080)
