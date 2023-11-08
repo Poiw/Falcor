@@ -83,7 +83,9 @@ private:
     uint mCurFrame;
     uint mStartFrame;
     uint mEndFrame;
-    Falcor::float4x4 mUEViewProjMat;
+
+    float3 mSceneMin, mSceneMax;
+    bool mRescaleScene;
 
     ComputePass::SharedPtr mpProcessDataPass;
 
