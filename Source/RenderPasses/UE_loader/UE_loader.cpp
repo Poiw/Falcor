@@ -29,7 +29,12 @@
 #include "RenderGraph/RenderPassLibrary.h"
 #include <fstream>
 
-const RenderPass::Info UE_loader::kInfo { "UE_loader", "Insert pass description here." };
+const RenderPass::Info UE_loader::kInfo { "UE_loader", "Load Unreal Engine Data" };
+
+namespace {
+const std::string processDataShaderPath=
+    "RenderPasses/UE_loader/processData.slang";
+}
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" FALCOR_API_EXPORT const char* getProjDir()
@@ -52,6 +57,9 @@ UE_loader::UE_loader() : RenderPass(kInfo)
     mStartFrame = 1;
     mEndFrame = 0;
     mCurFrame = 0;
+
+    mpProcessDataPass = nullptr;
+
 }
 
 UE_loader::SharedPtr UE_loader::create(RenderContext* pRenderContext, const Dictionary& dict)
@@ -60,10 +68,39 @@ UE_loader::SharedPtr UE_loader::create(RenderContext* pRenderContext, const Dict
     return pPass;
 }
 
+
+void UE_loader::clearVariable()
+{
+    mpColorTex = nullptr;
+    mpDepthTex = nullptr;
+    mpPosWTex = nullptr;
+    mpMotionVectorTex = nullptr;
+    mpPrevPosWTex = nullptr;
+}
+
+void UE_loader::setComputeShader()
+{
+    // Create data process Shader
+    {
+        Program::Desc desc;
+        desc.addShaderLibrary(processDataShaderPath).csEntry("csMain");
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+        mpProcessDataPass = ComputePass::create(desc, defines, false);
+        // Bind the scene.
+        mpProcessDataPass->setVars(nullptr);  // Trigger vars creation
+    }
+}
+
 void UE_loader::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
 {
     if (pScene) {
         mpScene = pScene;
+
+        clearVariable();
+
+        setComputeShader();
+
     }
 }
 
@@ -84,7 +121,7 @@ std::string UE_loader::getFilePath(const std::string& folderPath, const std::str
     return filePath;
 }
 
-void UE_loader::loadCamera(const std::string& cameraFilePath)
+void UE_loader::loadCamera(const std::string& cameraFilePath, Falcor::float2 frameDim)
 {
     std::ifstream cameraFile(cameraFilePath);
 
@@ -120,6 +157,12 @@ void UE_loader::loadCamera(const std::string& cameraFilePath)
         else if (name == "FOV:") {
             cameraFile >> FoVX;
         }
+        else if (name == "ViewProjectionMatrix:") {
+            cameraFile >> mUEViewProjMat.data()[0] >> mUEViewProjMat.data()[1] >> mUEViewProjMat.data()[2] >> mUEViewProjMat.data()[3]
+                >> mUEViewProjMat.data()[4] >> mUEViewProjMat.data()[5] >> mUEViewProjMat.data()[6] >> mUEViewProjMat.data()[7]
+                >> mUEViewProjMat.data()[8] >> mUEViewProjMat.data()[9] >> mUEViewProjMat.data()[10] >> mUEViewProjMat.data()[11]
+                >> mUEViewProjMat.data()[12] >> mUEViewProjMat.data()[13] >> mUEViewProjMat.data()[14] >> mUEViewProjMat.data()[15];
+        }
 
     }
 
@@ -128,9 +171,9 @@ void UE_loader::loadCamera(const std::string& cameraFilePath)
 
     auto Camera = mpScene->getCamera();
 
-    auto frameWidth = Camera->getFrameWidth(), frameHeight = Camera->getFrameHeight();
+    auto frameWidth = Camera->getFrameWidth();
 
-    float focalLength = frameWidth / (2.0f * std::tan(0.5f * FoVX));
+    float focalLength = frameWidth / (2.0f * std::tan(0.5f * FoVX / 180.f * M_PI));
 
     Camera->setPosition(cameraPos);
     Camera->setTarget(cameraTarget);
@@ -138,8 +181,8 @@ void UE_loader::loadCamera(const std::string& cameraFilePath)
 
     Camera->setFocalLength(focalLength);
 
-    JitterX /= frameWidth;
-    JitterY /= frameHeight;
+    JitterX /= frameDim.x;
+    JitterY /= frameDim.y;
     Camera->setJitter(JitterX, JitterY);
 
 
@@ -172,6 +215,80 @@ RenderPassReflection UE_loader::reflect(const CompileData& compileData)
     return reflector;
 }
 
+
+void UE_loader::processData(RenderContext* pRenderContext, const RenderData& renderData)
+{
+
+    auto curDim = renderData.getDefaultTextureDims();
+
+    // ----------------------- Process Data -----------------------
+
+    // std::cout << mpScene->getCamera()->getViewMatrix() << std::endl;
+    // std::cout << mpScene->getCamera()->getProjMatrix() << std::endl;
+    // std::cout << mpScene->getCamera()->getViewProjMatrix() << std::endl;
+
+    // Input
+    {
+        mpProcessDataPass["PerFrameCB"]["gFrameDim"] = curDim;
+        mpProcessDataPass["PerFrameCB"]["curViewProjMat"] = mpScene->getCamera()->getViewProjMatrix();
+
+        auto curPosWSRV = mpPosWTex->getSRV();
+        mpProcessDataPass["gCurPosWTex"].setSrv(curPosWSRV);
+
+        auto curColorSRV = mpColorTex->getSRV();
+        mpProcessDataPass["gCurColorTex"].setSrv(curColorSRV);
+
+        auto curMotionVectorSRV = mpMotionVectorTex->getSRV();
+        mpProcessDataPass["gCurMotionVectorTex"].setSrv(curMotionVectorSRV);
+    }
+
+    // Output
+    {
+        auto nextPosWUAV = renderData.getTexture("NextPosW")->getUAV();
+        pRenderContext->clearUAV(nextPosWUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+        mpProcessDataPass["gNextPosWTex"].setUav(nextPosWUAV);
+
+        auto curPosWUAV = renderData.getTexture("PosW")->getUAV();
+        pRenderContext->clearUAV(curPosWUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+        mpProcessDataPass["gPosWTex"].setUav(curPosWUAV);
+
+        auto colorUAV = renderData.getTexture("Color")->getUAV();
+        pRenderContext->clearUAV(colorUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+        mpProcessDataPass["gColorTex"].setUav(colorUAV);
+
+        auto motionVectorUAV = renderData.getTexture("MotionVector")->getUAV();
+        pRenderContext->clearUAV(motionVectorUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+        mpProcessDataPass["gMotionVectorTex"].setUav(motionVectorUAV);
+
+        auto linearZUAV = renderData.getTexture("LinearZ")->getUAV();
+        pRenderContext->clearUAV(linearZUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+        mpProcessDataPass["gLinearZTex"].setUav(linearZUAV);
+
+    }
+
+    // Execute
+    mpProcessDataPass->execute(pRenderContext, curDim.x, curDim.y);
+
+    // Barrier
+    {
+        pRenderContext->uavBarrier(renderData.getTexture("NextPosW").get());
+        pRenderContext->uavBarrier(renderData.getTexture("Color").get());
+        pRenderContext->uavBarrier(renderData.getTexture("MotionVector").get());
+        pRenderContext->uavBarrier(renderData.getTexture("LinearZ").get());
+    }
+
+
+    // ------------------------------------------------------------
+
+
+
+    // Blit data
+    // pRenderContext->blit(mpColorTex->getSRV(), renderData.getTexture("Color")->getRTV());
+    // pRenderContext->blit(mpDepthTex->getSRV(), renderData.getTexture("LinearZ")->getRTV());
+    // pRenderContext->blit(mpPosWTex->getSRV(), renderData.getTexture("PosW")->getRTV());
+    // pRenderContext->blit(mpMotionVectorTex->getSRV(), renderData.getTexture("MotionVector")->getRTV());
+}
+
 void UE_loader::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
 
@@ -189,22 +306,11 @@ void UE_loader::execute(RenderContext* pRenderContext, const RenderData& renderD
         mpPosWTex = Texture::createFromFile(posWPath, false, true);
         mpMotionVectorTex = Texture::createFromFile(motionVectorPath, false, true);
 
-        loadCamera(cameraPath);
+        loadCamera(cameraPath, renderData.getDefaultTextureDims());
 
 
-        if (mCurFrame != mStartFrame)
-        {
-
-
-
-        }
-
-
-        // Blit data
-        pRenderContext->blit(mpColorTex->getSRV(), renderData.getTexture("Color")->getRTV());
-        pRenderContext->blit(mpDepthTex->getSRV(), renderData.getTexture("LinearZ")->getRTV());
-        pRenderContext->blit(mpPosWTex->getSRV(), renderData.getTexture("PosW")->getRTV());
-        pRenderContext->blit(mpMotionVectorTex->getSRV(), renderData.getTexture("MotionVector")->getRTV());
+        // Process data
+        processData(pRenderContext, renderData);
 
 
         // Store previous data
@@ -214,6 +320,7 @@ void UE_loader::execute(RenderContext* pRenderContext, const RenderData& renderD
         mCurFrame++;
         if (mCurFrame > mEndFrame)
         {
+            clearVariable();
             mCurFrame = mStartFrame;
             mLoadData = false;
         }
@@ -248,6 +355,7 @@ void UE_loader::renderUI(Gui::Widgets& widget)
             }
 
             mCurFrame = mStartFrame;
+            clearVariable();
             infoFile.close();
 
         }

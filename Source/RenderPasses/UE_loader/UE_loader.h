@@ -49,7 +49,7 @@ public:
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene);
+    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
@@ -58,7 +58,12 @@ private:
 
     std::string getFilePath(const std::string& folderPath, const std::string& fileName, const std::string& fileExt, int frame);
 
-    void loadCamera(const std::string& cameraFilePath);
+    void loadCamera(const std::string& cameraFilePath, Falcor::float2 frameDim);
+    void clearVariable();
+    void setComputeShader();
+
+
+    void processData(RenderContext* pRenderContext, const RenderData& renderData);
 
     bool mLoadData;
     std::string mFolderPath;
@@ -78,5 +83,8 @@ private:
     uint mCurFrame;
     uint mStartFrame;
     uint mEndFrame;
+    Falcor::float4x4 mUEViewProjMat;
+
+    ComputePass::SharedPtr mpProcessDataPass;
 
 };
