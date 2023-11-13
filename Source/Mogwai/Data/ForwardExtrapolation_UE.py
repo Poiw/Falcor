@@ -12,9 +12,6 @@ def render_graph_ForwardExtrapolation_UE():
     g.addPass(forwardExtrapolation, "ForwardExtrapolation")
 
 
-    ToneMapperReference = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})
-    g.addPass(ToneMapperReference, "ToneMapperReference")
-
     DLSS = createPass("DLSSPass", {'enabled': True, 'profile': DLSSProfile.Balanced, 'motionVectorScale': DLSSMotionVectorScale.Relative, 'isHDR': True, 'sharpness': 0.0, 'exposure': 0.0})
     g.addPass(DLSS, "DLSS")
     ToneMapper = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})

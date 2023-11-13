@@ -168,14 +168,13 @@ void UE_loader::loadCamera(const std::string& cameraFilePath, Falcor::float2 fra
 
     }
 
-    Falcor::float3 cameraTarget = cameraPos + cameraDir;
 
 
     if (mRescaleScene) {
-        cameraPos.x = (cameraPos.x - mSceneMin.x) / (mSceneMax.x - mSceneMin.x) * 2.0f - 1.0f;
-        cameraPos.y = (cameraPos.y - mSceneMin.y) / (mSceneMax.y - mSceneMin.y) * 2.0f - 1.0f;
-        cameraPos.z = (cameraPos.z - mSceneMin.z) / (mSceneMax.z - mSceneMin.z) * 2.0f - 1.0f;
+        cameraPos = (cameraPos - mSceneMin) / (mSceneMax - mSceneMin) * 2.0f - 1.0f;
     }
+
+    Falcor::float3 cameraTarget = cameraPos + cameraDir;
 
     auto Camera = mpScene->getCamera();
 
@@ -380,11 +379,11 @@ void UE_loader::renderUI(Gui::Widgets& widget)
                 }
                 else if (name == "Min:")
                 {
-                    infoFile >> mSceneMin.x >> mSceneMin.y >> mSceneMin.z;
+                    infoFile >> mSceneMin;
                 }
                 else if (name == "Max:")
                 {
-                    infoFile >> mSceneMax.x >> mSceneMax.y >> mSceneMax.z;
+                    infoFile >> mSceneMax;
                     mRescaleScene = true;
                 }
             }
@@ -401,7 +400,7 @@ void UE_loader::renderUI(Gui::Widgets& widget)
     widget.text("Start Frame: " + std::to_string(mStartFrame));
     widget.text("End Frame: " + std::to_string(mEndFrame));
     widget.text("Cur Frame: " + std::to_string(mCurFrame));
-    widget.text("Scene Min: " + std::to_string(mSceneMin.x) + " " + std::to_string(mSceneMin.y) + " " + std::to_string(mSceneMin.z));
-    widget.text("Scene Max: " + std::to_string(mSceneMax.x) + " " + std::to_string(mSceneMax.y) + " " + std::to_string(mSceneMax.z));
+    widget.text("Scene Min: " + std::to_string(mSceneMin));
+    widget.text("Scene Max: " + std::to_string(mSceneMax));
     widget.text("Rescale Scene: " + std::to_string(mRescaleScene));
 }

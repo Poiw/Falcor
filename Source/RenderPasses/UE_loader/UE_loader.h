@@ -84,7 +84,7 @@ private:
     uint mStartFrame;
     uint mEndFrame;
 
-    float3 mSceneMin, mSceneMax;
+    float mSceneMin, mSceneMax;
     bool mRescaleScene;
 
     ComputePass::SharedPtr mpProcessDataPass;

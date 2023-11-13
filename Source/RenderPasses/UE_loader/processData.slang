@@ -3,8 +3,8 @@ cbuffer PerFrameCB {
     float4x4 curViewProjMat;
     float4x4 curViewProjMatInv;
     bool rescaleScene;
-    float3 sceneMin;
-    float3 sceneMax;
+    float sceneMin;
+    float sceneMax;
 };
 
 Texture2D<float4> gCurPosWTex;
@@ -41,7 +41,9 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // Position
     float3 tmpCurPosW = gCurPosWTex[pixelCoord].xyz;
 
-    tmpCurPosW = (tmpCurPosW - sceneMin) / (sceneMax - sceneMin) * 2 - 1;
+    if (rescaleScene) {
+        tmpCurPosW = (tmpCurPosW - sceneMin) / (sceneMax - sceneMin) * 2 - 1;
+    }
 
     float4 curPosH = mul(curViewProjMat, float4(tmpCurPosW, 1));
 
