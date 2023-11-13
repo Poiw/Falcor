@@ -851,9 +851,10 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
             auto nextCamera = Camera::create("nextCamera");
             *nextCamera = *(mpScene->getCamera());
 
-            nextCamera->setPosition(mNextCameraPos);
-            nextCamera->setTarget(mNextCameraLookat);
-            nextCamera->setUpVector(mNextCameraUp);
+            // We use ground truth camera instead of predicted since camera info is usually known in advance
+            // nextCamera->setPosition(mNextCameraPos);
+            // nextCamera->setTarget(mNextCameraLookat);
+            // nextCamera->setUpVector(mNextCameraUp);
 
             // Warp Background
             warpBackground(pRenderContext, renderData, nextCamera);
