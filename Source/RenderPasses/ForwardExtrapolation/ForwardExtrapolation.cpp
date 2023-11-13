@@ -546,7 +546,7 @@ void ForwardExtrapolation::warpBackground(RenderContext* pRenderContext, const R
     // Input
     {
         mpBackgroundWarpDepthTestPass["PerFrameCB"]["gFrameDim"] = curDim;
-        mpBackgroundWarpDepthTestPass["PerFrameCB"]["curViewProjMat"] = nextCamera->getViewProjMatrixNoJitter();
+        mpBackgroundWarpDepthTestPass["PerFrameCB"]["curViewProjMat"] = nextCamera->getViewProjMatrix();
         mpBackgroundWarpDepthTestPass["PerFrameCB"]["mDepthScale"] = mDepthScale;
 
         auto backgroundPosWSRV = mpBackgroundPosWTex->getSRV();
@@ -575,7 +575,7 @@ void ForwardExtrapolation::warpBackground(RenderContext* pRenderContext, const R
     // Input
     {
         mpBackgroundWarpPass["PerFrameCB"]["gFrameDim"] = curDim;
-        mpBackgroundWarpPass["PerFrameCB"]["curViewProjMat"] = nextCamera->getViewProjMatrixNoJitter();
+        mpBackgroundWarpPass["PerFrameCB"]["curViewProjMat"] = nextCamera->getViewProjMatrix();
         mpBackgroundWarpPass["PerFrameCB"]["mDepthScale"] = mDepthScale;
 
         auto backgroundPosWSRV = mpBackgroundPosWTex->getSRV();
@@ -638,7 +638,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
         // Input
         {
             mpForwardWarpDepthTestPass["PerFrameCB"]["gFrameDim"] = curDim;
-            mpForwardWarpDepthTestPass["PerFrameCB"]["curViewProjMat"] = nextCamera->getViewProjMatrixNoJitter();
+            mpForwardWarpDepthTestPass["PerFrameCB"]["curViewProjMat"] = nextCamera->getViewProjMatrix();
             mpForwardWarpDepthTestPass["PerFrameCB"]["mDepthScale"] = mDepthScale;
 
             auto nextPosWSRV = mpNextPosWTex->getSRV();
@@ -856,6 +856,7 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
                 nextCamera->setPosition(mNextCameraPos);
                 nextCamera->setTarget(mNextCameraLookat);
                 nextCamera->setUpVector(mNextCameraUp);
+                nextCamera->setJitter(0, 0);
             }
 
             // Warp Background
