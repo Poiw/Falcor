@@ -138,4 +138,8 @@ private:
     ComputePass::SharedPtr mpBackgroundWarpDepthTestPass;
     ComputePass::SharedPtr mpBackgroundWarpPass;
 
+
+    // Options
+    bool mUseGTCamera;
+
 };

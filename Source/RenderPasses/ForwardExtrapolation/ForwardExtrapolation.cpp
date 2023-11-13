@@ -136,7 +136,7 @@ void ForwardExtrapolation::ClearVariables()
 
     mBackgroundScreenScale = 1.2f;
 
-
+    mUseGTCamera = true;
 
 }
 
@@ -852,9 +852,11 @@ void ForwardExtrapolation::execute(RenderContext* pRenderContext, const RenderDa
             *nextCamera = *(mpScene->getCamera());
 
             // We use ground truth camera instead of predicted since camera info is usually known in advance
-            // nextCamera->setPosition(mNextCameraPos);
-            // nextCamera->setTarget(mNextCameraLookat);
-            // nextCamera->setUpVector(mNextCameraUp);
+            if (!mUseGTCamera) {
+                nextCamera->setPosition(mNextCameraPos);
+                nextCamera->setTarget(mNextCameraLookat);
+                nextCamera->setUpVector(mNextCameraUp);
+            }
 
             // Warp Background
             warpBackground(pRenderContext, renderData, nextCamera);
@@ -914,5 +916,6 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
     widget.textbox("Dump Dir Path", mDumpDirPath);
 
     widget.checkbox("Refresh background data", mIsNewBackground);
+    widget.checkbox("Use Ground Truth Camera", mUseGTCamera);
 
 }

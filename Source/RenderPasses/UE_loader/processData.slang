@@ -112,10 +112,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // float3 curPosW = gCurPosWTex[pixelCoord].xyz;
     float3 curPosW = fixedCurPosW.xyz;
 
-    float3 nextPosW = curPosW.xyz * 2 - prevPosW ;
+    float3 nextPosW = curPosW.xyz * 2 - prevPosW;
 
     gNextPosWTex[flipX_Coord] = float4(nextPosW, 1);
-    // gNextPosWTex[flipX_Coord] = gCurPosWTex[pixelCoord];
+    // gNextPosWTex[flipX_Coord] = float4(tmpCurPosW.xyz, 1);
 
     return;
 }
