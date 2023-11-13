@@ -86,6 +86,7 @@ private:
 
     float mSceneMin, mSceneMax;
     bool mRescaleScene;
+    float mInputLinearZScale;
 
     ComputePass::SharedPtr mpProcessDataPass;
 

@@ -78,6 +78,8 @@ void UE_loader::clearVariable()
     mpPrevPosWTex = nullptr;
 
     mRescaleScene = false;
+
+    mInputLinearZScale = 1.0;
 }
 
 void UE_loader::setComputeShader()
@@ -244,9 +246,13 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
         mpProcessDataPass["PerFrameCB"]["gFrameDim"] = curDim;
         mpProcessDataPass["PerFrameCB"]["curViewProjMat"] = mpScene->getCamera()->getViewProjMatrix();
         mpProcessDataPass["PerFrameCB"]["curViewProjMatInv"] = mpScene->getCamera()->getInvViewProjMatrix();
+        mpProcessDataPass["PerFrameCB"]["curViewMatInv"] = rmcv::inverse(mpScene->getCamera()->getViewMatrix());
+        mpProcessDataPass["PerFrameCB"]["tan2FovY"] = mpScene->getCamera()->getFrameHeight() / mpScene->getCamera()->getFocalLength() * 0.5f;
+        mpProcessDataPass["PerFrameCB"]["tan2FovX"] = mpScene->getCamera()->getFrameWidth() / mpScene->getCamera()->getFocalLength() * 0.5f;
         mpProcessDataPass["PerFrameCB"]["rescaleScene"] = mRescaleScene;
         mpProcessDataPass["PerFrameCB"]["sceneMin"] = mSceneMin;
         mpProcessDataPass["PerFrameCB"]["sceneMax"] = mSceneMax;
+        mpProcessDataPass["PerFrameCB"]["inputLinearZScale"] = mInputLinearZScale;
 
         auto curPosWSRV = mpPosWTex->getSRV();
         mpProcessDataPass["gCurPosWTex"].setSrv(curPosWSRV);
@@ -256,6 +262,9 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
 
         auto curMotionVectorSRV = mpMotionVectorTex->getSRV();
         mpProcessDataPass["gCurMotionVectorTex"].setSrv(curMotionVectorSRV);
+
+        auto curLinearZSRV = mpDepthTex->getSRV();
+        mpProcessDataPass["gCurLinearZTex"].setSrv(curLinearZSRV);
 
         auto prevPosWSRV = mpPrevPosWTex->getSRV();
         mpProcessDataPass["gPrevPosWTex"].setSrv(prevPosWSRV);
@@ -385,6 +394,9 @@ void UE_loader::renderUI(Gui::Widgets& widget)
                 {
                     infoFile >> mSceneMax;
                     mRescaleScene = true;
+                }
+                else if (name == "InputLinearZScale:") {
+                    infoFile >> mInputLinearZScale;
                 }
             }
 
