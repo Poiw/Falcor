@@ -60,11 +60,13 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     ndc_xy -= float2(0.5, 0.5);
 
-#ifdef FALCOR_FLIP_Y
-    ndc_xy /= float2(0.5, 0.5);
-#else
-    ndc_xy /= float2(0.5, -0.5);
-#endif
+    ndc_xy *= float2(2, 2);
+
+// #ifdef FALCOR_FLIP_Y
+//     ndc_xy /= float2(0.5, 0.5);
+// #else
+//     ndc_xy /= float2(0.5, -0.5);
+// #endif
 
     float4 curPosH;
     curPosH.x = ndc_xy.x * tan2FovX * linearZ;

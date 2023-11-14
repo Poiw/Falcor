@@ -407,6 +407,8 @@ void UE_loader::renderUI(Gui::Widgets& widget)
         }
     }
 
+    widget.checkbox("Rescale Scene", mRescaleScene);
+
     widget.textbox("Folder Path", mFolderPath);
 
     widget.text("Start Frame: " + std::to_string(mStartFrame));
@@ -415,4 +417,5 @@ void UE_loader::renderUI(Gui::Widgets& widget)
     widget.text("Scene Min: " + std::to_string(mSceneMin));
     widget.text("Scene Max: " + std::to_string(mSceneMax));
     widget.text("Rescale Scene: " + std::to_string(mRescaleScene));
+    widget.text("LinearZ Scale: " + std::to_string(mInputLinearZScale));
 }
