@@ -3,6 +3,7 @@ cbuffer PerFrameCB {
     // float4x4 curViewProjMat;
     // float4x4 curViewProjMatInv;
     float4x4 curViewMatInv;
+    float4x4 prevViewProjMatNoJitter;
     float tan2FovY;
     float tan2FovX;
     float inputLinearZScale;
@@ -31,6 +32,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     uint2 flipX_Coord = uint2(gFrameDim.x - 1 - pixelCoord.x, pixelCoord.y);
 
+    float2 curCrd = (flipX_Coord + float2(0.5, 0.5)) / gFrameDim;
+
     // Color
     gColorTex[flipX_Coord] = gCurColorTex[pixelCoord];
 
@@ -55,8 +58,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // Position
 
     float2 ndc_xy;
-    ndc_xy.x = (flipX_Coord.x + 0.5) / gFrameDim.x;
-    ndc_xy.y = (flipX_Coord.y + 0.5) / gFrameDim.y;
+    ndc_xy.x = curCrd.x;
+    ndc_xy.y = curCrd.y;
 
     ndc_xy -= float2(0.5, 0.5);
 
@@ -79,18 +82,58 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     gPosWTex[flipX_Coord] = curPosW;
 
-    float2 prevCrd = (flipX_Coord + float2(0.5, 0.5)) / gFrameDim + mv;
+
+    // Calculate previous world position
+
+    // If the point is static
+    float4 prevPosH_static = mul(prevViewProjMatNoJitter, curPosW);
+    float2 prevCrd_static = prevPosH_static.xy / prevPosH_static.w;
+
+#ifdef FALCOR_FLIP_Y
+    prevCrd_static *= float2(0.5, 0.5);
+#else
+    prevCrd_static *= float2(0.5, -0.5);
+#endif
+
+    prevCrd_static += float2(0.5, 0.5);
+
+
+    prevCrd_static = clamp(prevCrd_static, float2(0, 0), float2(1, 1));
+
+    uint2 prevCoord_static = uint2(prevCrd_static * gFrameDim);
+
+    float2 prevCrd = curCrd + mv;
 
     prevCrd = clamp(prevCrd, float2(0, 0), float2(1, 1));
 
     uint2 prevCoord = uint2(prevCrd * gFrameDim);
 
-    float3 prevPosW = gPrevPosWTex[prevCoord].xyz;
+    float3 prevPosW;
+    if (abs(prevCoord.x - prevCoord_static.x) > 1 || abs(prevCoord.y - prevCoord_static.y) > 1) {
+        // The fragment is dynamic
+        prevPosW = gPrevPosWTex[prevCoord].xyz;
+    }
+    else {
+        // We consider the fragement is static
+        prevPosW = curPosW.xyz;
+    }
+
+
+
+    // float3 prevPosW = gPrevPosWTex[prevCoord].xyz;
+
+
+
+
+
+    // -----------------------------------------------------------------
+
+
+
 
     float3 nextPosW = curPosW.xyz * 2 - prevPosW;
 
     gNextPosWTex[flipX_Coord] = float4(nextPosW, 1);
-    // gNextPosWTex[flipX_Coord] = float4(tmpCurPosW.xyz, 1);
 
     return;
 }

@@ -79,6 +79,8 @@ private:
 
     Texture::SharedPtr mpPrevPosWTex;
 
+    float4x4 mPrevViewProjMatNoJitter;
+
 
     uint mCurFrame;
     uint mStartFrame;

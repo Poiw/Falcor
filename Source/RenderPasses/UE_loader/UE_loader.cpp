@@ -248,6 +248,7 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
         mpProcessDataPass["PerFrameCB"]["gFrameDim"] = curDim;
         // mpProcessDataPass["PerFrameCB"]["curViewProjMat"] = mpScene->getCamera()->getViewProjMatrix();
         // mpProcessDataPass["PerFrameCB"]["curViewProjMatInv"] = mpScene->getCamera()->getInvViewProjMatrix();
+        mpProcessDataPass["PerFrameCB"]["prevViewProjMatNoJitter"] = mPrevViewProjMatNoJitter;
         mpProcessDataPass["PerFrameCB"]["curViewMatInv"] = rmcv::inverse(mpScene->getCamera()->getViewMatrix());
         mpProcessDataPass["PerFrameCB"]["tan2FovY"] = mpScene->getCamera()->getFrameHeight() / mpScene->getCamera()->getFocalLength() * 0.5f;
         mpProcessDataPass["PerFrameCB"]["tan2FovX"] = mpScene->getCamera()->getFrameWidth() / mpScene->getCamera()->getFocalLength() * 0.5f;
@@ -342,6 +343,10 @@ void UE_loader::execute(RenderContext* pRenderContext, const RenderData& renderD
         loadCamera(cameraPath, renderData.getDefaultTextureDims());
 
 
+        if (mCurFrame == mStartFrame) {
+            mPrevViewProjMatNoJitter = mpScene->getCamera()->getViewProjMatrixNoJitter();
+        }
+
         // Process data
         processData(pRenderContext, renderData);
 
@@ -357,6 +362,8 @@ void UE_loader::execute(RenderContext* pRenderContext, const RenderData& renderD
             mCurFrame = mStartFrame;
             mLoadData = false;
         }
+
+        mPrevViewProjMatNoJitter = mpScene->getCamera()->getViewProjMatrixNoJitter();
 
     }
 
