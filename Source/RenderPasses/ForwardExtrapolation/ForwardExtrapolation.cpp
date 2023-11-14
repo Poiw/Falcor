@@ -138,6 +138,12 @@ void ForwardExtrapolation::ClearVariables()
 
     mUseGTCamera = true;
 
+    mDumpFlags.depth = false;
+    mDumpFlags.mv = false;
+    mDumpFlags.wo_splat = false;
+    mDumpFlags.gt = true;
+    mDumpFlags.color = true;
+
 }
 
 void ForwardExtrapolation::setComputeShaders()
@@ -236,11 +242,11 @@ void ForwardExtrapolation::setComputeShaders()
 
 void ForwardExtrapolation::DumpDataFunc(const RenderData &renderData, uint frameIdx, const std::string dirPath)
 {
-    renderData.getTexture("PreTonemapped_out")->captureToFile(0, 0, dirPath + "/Render." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
-    renderData.getTexture("PreTonemapped_in")->captureToFile(0, 0, dirPath + "/GT." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
-    renderData.getTexture("MotionVector_out")->captureToFile(0, 0, dirPath + "/MotionVector." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
-    renderData.getTexture("LinearZ_out")->captureToFile(0, 0, dirPath + "/LinearZ." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
-    renderData.getTexture("PreTonemapped_out_woSplat")->captureToFile(0, 0, dirPath + "/Render_woSplat." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    if (mDumpFlags.color)    renderData.getTexture("PreTonemapped_out")->captureToFile(0, 0, dirPath + "/Render." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    if (mDumpFlags.gt)       renderData.getTexture("PreTonemapped_in")->captureToFile(0, 0, dirPath + "/GT." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    if (mDumpFlags.mv)       renderData.getTexture("MotionVector_out")->captureToFile(0, 0, dirPath + "/MotionVector." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    if (mDumpFlags.depth)    renderData.getTexture("LinearZ_out")->captureToFile(0, 0, dirPath + "/LinearZ." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    if (mDumpFlags.wo_splat) renderData.getTexture("PreTonemapped_out_woSplat")->captureToFile(0, 0, dirPath + "/Render_woSplat." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
 }
 
 void ForwardExtrapolation::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -914,6 +920,12 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
     widget.var<float>("Background screen space scale", mBackgroundScreenScale, 0.1f, 4.f);
 
     widget.checkbox("Dump Data", mDumpData);
+    widget.checkbox("gt", mDumpFlags.gt);
+    widget.checkbox("color", mDumpFlags.color, true);
+    widget.checkbox("depth", mDumpFlags.depth, true);
+    widget.checkbox("mv", mDumpFlags.mv, true);
+    widget.checkbox("woSplat", mDumpFlags.wo_splat, true);
+
     widget.textbox("Dump Dir Path", mDumpDirPath);
 
     widget.checkbox("Refresh background data", mIsNewBackground);

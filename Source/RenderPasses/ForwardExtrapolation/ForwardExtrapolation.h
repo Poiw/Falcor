@@ -142,4 +142,13 @@ private:
     // Options
     bool mUseGTCamera;
 
+    struct DumpData
+    {
+        bool gt;
+        bool color;
+        bool mv;
+        bool depth;
+        bool wo_splat;
+    } mDumpFlags;
+
 };
