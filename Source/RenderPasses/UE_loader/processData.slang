@@ -120,7 +120,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
 
 
-    // float3 prevPosW = gPrevPosWTex[prevCoord].xyz;
+    // prevPosW = gPrevPosWTex[prevCoord].xyz;
 
 
 
