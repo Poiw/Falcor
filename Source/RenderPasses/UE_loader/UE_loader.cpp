@@ -239,13 +239,15 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
     // std::cout << mpScene->getCamera()->getProjMatrix() << std::endl;
     // std::cout << mpScene->getCamera()->getViewProjMatrix() << std::endl;
 
-
+    // std::cout << "Projection matrix: " << mpScene->getCamera()->getProjMatrix() << std::endl;
+    // std::cout <<  mpScene->getCamera()->getFrameHeight() / mpScene->getCamera()->getFocalLength() * 0.5f << std::endl;
+    // std::cout <<  mpScene->getCamera()->getFrameWidth() / mpScene->getCamera()->getFocalLength() * 0.5f << std::endl;
 
     // Input
     {
         mpProcessDataPass["PerFrameCB"]["gFrameDim"] = curDim;
-        mpProcessDataPass["PerFrameCB"]["curViewProjMat"] = mpScene->getCamera()->getViewProjMatrix();
-        mpProcessDataPass["PerFrameCB"]["curViewProjMatInv"] = mpScene->getCamera()->getInvViewProjMatrix();
+        // mpProcessDataPass["PerFrameCB"]["curViewProjMat"] = mpScene->getCamera()->getViewProjMatrix();
+        // mpProcessDataPass["PerFrameCB"]["curViewProjMatInv"] = mpScene->getCamera()->getInvViewProjMatrix();
         mpProcessDataPass["PerFrameCB"]["curViewMatInv"] = rmcv::inverse(mpScene->getCamera()->getViewMatrix());
         mpProcessDataPass["PerFrameCB"]["tan2FovY"] = mpScene->getCamera()->getFrameHeight() / mpScene->getCamera()->getFocalLength() * 0.5f;
         mpProcessDataPass["PerFrameCB"]["tan2FovX"] = mpScene->getCamera()->getFrameWidth() / mpScene->getCamera()->getFocalLength() * 0.5f;

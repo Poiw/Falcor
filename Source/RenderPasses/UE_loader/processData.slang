@@ -1,7 +1,7 @@
 cbuffer PerFrameCB {
     uint2 gFrameDim;
-    float4x4 curViewProjMat;
-    float4x4 curViewProjMatInv;
+    // float4x4 curViewProjMat;
+    // float4x4 curViewProjMatInv;
     float4x4 curViewMatInv;
     float tan2FovY;
     float tan2FovX;
@@ -55,24 +55,24 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // Position
 
     float2 ndc_xy;
-    ndc_xy.x = (pixelCoord.x + 0.5) / gFrameDim.x;
-    ndc_xy.y = (pixelCoord.y + 0.5) / gFrameDim.y;
+    ndc_xy.x = (flipX_Coord.x + 0.5) / gFrameDim.x;
+    ndc_xy.y = (flipX_Coord.y + 0.5) / gFrameDim.y;
 
     ndc_xy -= float2(0.5, 0.5);
 
-    ndc_xy *= float2(2, 2);
+    // ndc_xy *= float2(2, 2);
 
-// #ifdef FALCOR_FLIP_Y
-//     ndc_xy /= float2(0.5, 0.5);
-// #else
-//     ndc_xy /= float2(0.5, -0.5);
-// #endif
+#ifdef FALCOR_FLIP_Y
+    ndc_xy *= float2(2., 2.);
+#else
+    ndc_xy *= float2(2., -2.);
+#endif
 
     float4 curPosH;
-    curPosH.x = ndc_xy.x * tan2FovX * linearZ;
+    curPosH.x = ndc_xy.x * tan2FovX * linearZ; // For some unknown issues, we need to use linearZ instead of -linearZ
     curPosH.y = ndc_xy.y * tan2FovY * linearZ;
 
-    curPosH.z = linearZ;
+    curPosH.z = -linearZ;
     curPosH.w = 1;
 
     float4 curPosW = mul(curViewMatInv, curPosH);
