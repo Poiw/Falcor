@@ -141,6 +141,7 @@ private:
 
     // Options
     bool mUseGTCamera;
+    bool mUseBGCollection;
 
     struct DumpData
     {

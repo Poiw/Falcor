@@ -5,6 +5,7 @@ cbuffer PerFrameCB {
     float gSplatDistSigma;
     uint gStrideNum;
     uint mDepthScale;
+    bool mUseBGCollection;
 };
 
 Texture2D<float4> gTempWarpTex;
@@ -91,35 +92,37 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // ---------------------------------------------------
     // Look for background warped frame
 
-    targetRender = 0.;
-    targetDepth = 0.;
-    targetMotionVector = float2(0., 0.);
+    if (mUseBGCollection) {
+        targetRender = 0.;
+        targetDepth = 0.;
+        targetMotionVector = float2(0., 0.);
 
-    for (int ux = -size; ux <= size; ux++) {
-        for (int uy = -size; uy <= size; uy++) {
+        for (int ux = -size; ux <= size; ux++) {
+            for (int uy = -size; uy <= size; uy++) {
 
-            int2 neighborCoord = pixelCoord + int2(ux, uy);
+                int2 neighborCoord = pixelCoord + int2(ux, uy);
 
-            if (neighborCoord.x >= 0 && neighborCoord.x < gFrameDim.x && neighborCoord.y >= 0 && neighborCoord.y < gFrameDim.y && gBackgroundWarpedDepthTex[neighborCoord] != uint(-1)) {
-                float depth = (float)gBackgroundWarpedDepthTex[neighborCoord] / float(mDepthScale);
-                // float weight = softmax_exp(depth) * abs(gKernelSize + 1 - ux) * abs(gKernelSize + 1 - uy) / ((gKernelSize+1) * (gKernelSize+1));
-                float weight = softmax_exp(depth) * exp(-abs(gSplatDistSigma * ux)) * exp(-abs(gSplatDistSigma * uy));
+                if (neighborCoord.x >= 0 && neighborCoord.x < gFrameDim.x && neighborCoord.y >= 0 && neighborCoord.y < gFrameDim.y && gBackgroundWarpedDepthTex[neighborCoord] != uint(-1)) {
+                    float depth = (float)gBackgroundWarpedDepthTex[neighborCoord] / float(mDepthScale);
+                    // float weight = softmax_exp(depth) * abs(gKernelSize + 1 - ux) * abs(gKernelSize + 1 - uy) / ((gKernelSize+1) * (gKernelSize+1));
+                    float weight = softmax_exp(depth) * exp(-abs(gSplatDistSigma * ux)) * exp(-abs(gSplatDistSigma * uy));
 
-                total_weight += weight;
-                targetRender += tonemap(gBackgroundWarpedTex[neighborCoord], mu) * weight;
-                targetDepth += depth * weight;
+                    total_weight += weight;
+                    targetRender += tonemap(gBackgroundWarpedTex[neighborCoord], mu) * weight;
+                    targetDepth += depth * weight;
+                }
             }
         }
-    }
 
-    if (total_weight > 0.0f) {
-        targetRender /= total_weight;
-        targetDepth /= total_weight;
-        targetRender = detonemap(targetRender, mu);
-        targetRenderTex[pixelCoord] = targetRender;
-        targetDepthTex[pixelCoord] = float2(targetDepth, 0.);
-        targetMotionVectorTex[pixelCoord] = float2(0., 0.);
-        return;
+        if (total_weight > 0.0f) {
+            targetRender /= total_weight;
+            targetDepth /= total_weight;
+            targetRender = detonemap(targetRender, mu);
+            targetRenderTex[pixelCoord] = targetRender;
+            targetDepthTex[pixelCoord] = float2(targetDepth, 0.);
+            targetMotionVectorTex[pixelCoord] = float2(0., 0.);
+            return;
+        }
     }
 
     // background is not helpful

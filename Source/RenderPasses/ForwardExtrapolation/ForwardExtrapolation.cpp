@@ -137,6 +137,7 @@ void ForwardExtrapolation::ClearVariables()
     mBackgroundScreenScale = 1.2f;
 
     mUseGTCamera = true;
+    mUseBGCollection = true;
 
     mDumpFlags.depth = false;
     mDumpFlags.mv = false;
@@ -745,6 +746,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             mpSplatPass["PerFrameCB"]["gSplatDistSigma"] = gSplatDistSigma;
             mpSplatPass["PerFrameCB"]["gStrideNum"] = gSplatStrideNum;
             mpSplatPass["PerFrameCB"]["mDepthScale"] = mDepthScale;
+            mpSplatPass["PerFrameCB"]["mUseBGCollection"] = mUseBGCollection;
 
             auto tempWarpTexSRV = mpTempWarpTex->getSRV();
             mpSplatPass["gTempWarpTex"].setSrv(tempWarpTexSRV);
@@ -935,5 +937,5 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
 
     widget.checkbox("Refresh background data", mIsNewBackground);
     widget.checkbox("Use Ground Truth Camera", mUseGTCamera);
-
+    widget.checkbox("Use Background Collection", mUseBGCollection);
 }
