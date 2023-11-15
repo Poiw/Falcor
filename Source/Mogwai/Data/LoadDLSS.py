@@ -17,9 +17,9 @@ def render_graph_TestDLSS():
     g.addEdge("PreprocessDLSS.color",           "DLSS.color")
 
     # Outputs
-    g.markOutput("PreprocessDLSS.depth")
-    g.markOutput("PreprocessDLSS.color")
-    g.markOutput("PreprocessDLSS.mvec")
+    # g.markOutput("PreprocessDLSS.depth")
+    # g.markOutput("PreprocessDLSS.color")
+    # g.markOutput("PreprocessDLSS.mvec")
     g.markOutput("DLSS.output")
 
     return g

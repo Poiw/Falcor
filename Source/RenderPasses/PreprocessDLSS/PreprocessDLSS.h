@@ -49,16 +49,22 @@ public:
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override {}
+    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
 private:
     PreprocessDLSS();
 
+    void loadCamera(const std::string& cameraFilePath, Falcor::float2 frameDim);
+
+
+    Scene::SharedPtr mpScene;
+
     std::string getMVPath(const std::string& dataDir, int frame);
     std::string getDepthPath(const std::string& dataDir, int frame);
     std::string getColorPath(const std::string& dataDir, int frame);
+    std::string getCameraPath(const std::string& dataDir, int frame);
     std::string getBaseColorPath(const std::string& dataDir, int frame);
     std::string getNormalPath(const std::string& dataDir, int frame);
 
@@ -72,8 +78,26 @@ private:
 
     bool mStartLoading;
     int mStartFrame, mEndFrame, mCurFrame;
+
+
+    struct StartInfo
+    {
+        int color;
+        int depth;
+        int mv;
+        int camera;
+    } mStartInfo;
+
+    struct DataDir
+    {
+        std::string color;
+        std::string depth;
+        std::string mv;
+        std::string camera;
+    } mDataDir;
+
     uint2 mCurReso;
-    std::string mDataDir;
+    // std::string mDataDir;
 
     bool mLoadDepth;
     bool mLoadBaseColor;

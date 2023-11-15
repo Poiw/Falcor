@@ -18,7 +18,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     gMotionVectorOut[posI] = gMotionVector[posI].xy;
     gColorOut[posI] = gColor[posI];
-    gDepthOut[posI] = float2(gDepth[posI].x, 1.0 / max(1e-3, gDepth[posI].y));
+    gDepthOut[posI] = float2(gDepth[posI].x, 1.0);
 
     return;
 }

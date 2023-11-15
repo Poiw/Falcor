@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "PreprocessDLSS.h"
 #include "RenderGraph/RenderPassLibrary.h"
+#include <fstream>
 
 const RenderPass::Info PreprocessDLSS::kInfo { "PreprocessDLSS", "Prepare data for DLSS." };
 
@@ -49,8 +50,21 @@ extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 PreprocessDLSS::PreprocessDLSS() : RenderPass(kInfo)
 {
     mStartLoading = false;
-    mCurFrame = -1;
-    mDataDir = "E:/Data/Bunker/train/seq1/Seq1";
+    mCurFrame = 0;
+    // mDataDir = "E:/Data/Bunker/train/seq1/Seq1";
+    mDataDir.camera = "F:/RemoteRenderingData/UE_Data/Bunker/Seq1";
+    mDataDir.depth = "F:/RemoteRenderingData/UE_Data/Bunker_BlendSplat";
+    mDataDir.mv = "F:/RemoteRenderingData/UE_Data/Bunker_BlendSplat";
+
+    mDataDir.color = "E:/1115/Bunker_SplatRefine";
+
+    mStartInfo.color = 8;
+    mStartInfo.depth = 549;
+    mStartInfo.mv = 549;
+    mStartInfo.camera = 35;
+
+    mEndFrame = 520;
+
 
     // mLoadDepth = true;
     mLoadBaseColor = false;
@@ -59,7 +73,7 @@ PreprocessDLSS::PreprocessDLSS() : RenderPass(kInfo)
     mpBaseColorTex = NULL;
     mpNormalTex = NULL;
 
-    mCurReso = uint2(1024, 1024);
+    mCurReso = uint2(1920, 1080);
 
     {
         Program::Desc desc;
@@ -70,12 +84,19 @@ PreprocessDLSS::PreprocessDLSS() : RenderPass(kInfo)
         mpPreprocessPass->setVars(nullptr);  // Trigger vars creation
     }
 
+    mpScene = nullptr;
+
 }
 
 PreprocessDLSS::SharedPtr PreprocessDLSS::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
     SharedPtr pPass = SharedPtr(new PreprocessDLSS());
     return pPass;
+}
+
+void PreprocessDLSS::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+{
+    mpScene = pScene;
 }
 
 Dictionary PreprocessDLSS::getScriptingDictionary()
@@ -88,7 +109,7 @@ std::string PreprocessDLSS::getMVPath(const std::string& dataDir, int frame)
     std::string frameString = std::to_string(frame);
     int precision = 4 - std::min((size_t)4, frameString.length());
 
-    frameString.insert(0, precision, '0');
+    // frameString.insert(0, precision, '0');
 
     std::string path = dataDir + "/MotionVector." + frameString + ".exr";
     return path;
@@ -99,7 +120,7 @@ std::string PreprocessDLSS::getDepthPath(const std::string& dataDir, int frame)
     std::string frameString = std::to_string(frame);
     int precision = 4 - std::min((size_t)4, frameString.length());
 
-    frameString.insert(0, precision, '0');
+    // frameString.insert(0, precision, '0');
 
     std::string path = dataDir + "/LinearZ." + frameString + ".exr";
     return path;
@@ -135,6 +156,17 @@ std::string PreprocessDLSS::getNormalPath(const std::string& dataDir, int frame)
     frameString.insert(0, precision, '0');
 
     std::string path = dataDir + "/WorldNormal." + frameString + ".exr";
+    return path;
+}
+
+std::string PreprocessDLSS::getCameraPath(const std::string& dataDir, int frame)
+{
+    std::string frameString = std::to_string(frame);
+    int precision = 4 - std::min((size_t)4, frameString.length());
+
+    frameString.insert(0, precision, '0');
+
+    std::string path = dataDir + "/CameraInfo." + frameString + ".txt";
     return path;
 }
 
@@ -175,6 +207,72 @@ RenderPassReflection PreprocessDLSS::reflect(const CompileData& compileData)
     return reflector;
 }
 
+void PreprocessDLSS::loadCamera(const std::string& cameraFilePath, Falcor::float2 frameDim)
+{
+    std::ifstream cameraFile(cameraFilePath);
+
+    std::string name;
+
+    Falcor::float3 cameraPos;
+    Falcor::float3 cameraUp;
+    Falcor::float3 cameraDir;
+
+    float JitterX;
+    float JitterY;
+
+    float FoVX;
+
+
+    while (cameraFile >> name) {
+
+        if (name == "Origin:") {
+            cameraFile >> cameraPos.x >> cameraPos.y >> cameraPos.z;
+        }
+        else if (name == "ViewUp:") {
+            cameraFile >> cameraUp.x >> cameraUp.y >> cameraUp.z;
+        }
+        else if (name == "ViewDir:") {
+            cameraFile >> cameraDir.x >> cameraDir.y >> cameraDir.z;
+        }
+        else if (name == "JitterX:") {
+            cameraFile >> JitterX;
+        }
+        else if (name == "JitterY:") {
+            cameraFile >> JitterY;
+        }
+        else if (name == "FOV:") {
+            cameraFile >> FoVX;
+        }
+        // else if (name == "ViewProjectionMatrix:") {
+        //     cameraFile >> mUEViewProjMat.data()[0] >> mUEViewProjMat.data()[1] >> mUEViewProjMat.data()[2] >> mUEViewProjMat.data()[3]
+        //         >> mUEViewProjMat.data()[4] >> mUEViewProjMat.data()[5] >> mUEViewProjMat.data()[6] >> mUEViewProjMat.data()[7]
+        //         >> mUEViewProjMat.data()[8] >> mUEViewProjMat.data()[9] >> mUEViewProjMat.data()[10] >> mUEViewProjMat.data()[11]
+        //         >> mUEViewProjMat.data()[12] >> mUEViewProjMat.data()[13] >> mUEViewProjMat.data()[14] >> mUEViewProjMat.data()[15];
+        // }
+
+    }
+
+    Falcor::float3 cameraTarget = cameraPos + cameraDir;
+
+    auto Camera = mpScene->getCamera();
+
+    auto frameWidth = Camera->getFrameWidth();
+
+    float focalLength = frameWidth / (2.0f * std::tan(0.5f * FoVX / 180.f * M_PI));
+
+    Camera->setPosition(cameraPos);
+    Camera->setTarget(cameraTarget);
+    Camera->setUpVector(cameraUp);
+
+    Camera->setFocalLength(focalLength);
+
+    JitterX /= frameDim.x;
+    JitterY /= frameDim.y;
+    Camera->setJitter(JitterX, -JitterY); // This is closest to correct jitter
+
+
+}
+
 void PreprocessDLSS::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     // renderData holds the requested resources
@@ -182,26 +280,29 @@ void PreprocessDLSS::execute(RenderContext* pRenderContext, const RenderData& re
 
 
     if (mStartLoading) {
-        if (mCurFrame == -1) {
-            mCurFrame = mStartFrame;
-        }
+        // if (mCurFrame == -1) {
+        //     mCurFrame = mStartFrame;
+        // }
+
+        auto curDim = renderData.getDefaultTextureDims();
 
         {
-            mpMVTex = Texture::createFromFile(getMVPath(mDataDir, mCurFrame), false, true);
-            mpColorTex = Texture::createFromFile(getColorPath(mDataDir, mCurFrame), false, true);
-            mpDepthTex = Texture::createFromFile(getDepthPath(mDataDir, mCurFrame), false, true);
+            mpMVTex = Texture::createFromFile(getMVPath(mDataDir.mv, mCurFrame + mStartInfo.mv), false, true);
+            mpColorTex = Texture::createFromFile(getColorPath(mDataDir.color, mCurFrame + mStartInfo.color), false, true);
+            mpDepthTex = Texture::createFromFile(getDepthPath(mDataDir.depth, mCurFrame + mStartInfo.depth), false, true);
 
-            if (mLoadBaseColor) {
-                mpBaseColorTex = Texture::createFromFile(getBaseColorPath(mDataDir, mCurFrame), false, true);
-            }
-            if (mLoadNormal) {
-                mpNormalTex = Texture::createFromFile(getNormalPath(mDataDir, mCurFrame), false, true);
-            }
 
-            {
-                if (mpBaseColorTex) pRenderContext->blit(mpBaseColorTex->getSRV(), renderData.getTexture("basecolor")->getRTV());
-                if (mpNormalTex) pRenderContext->blit(mpNormalTex->getSRV(), renderData.getTexture("normal")->getRTV());
-            }
+            // if (mLoadBaseColor) {
+            //     mpBaseColorTex = Texture::createFromFile(getBaseColorPath(mDataDir, mCurFrame), false, true);
+            // }
+            // if (mLoadNormal) {
+            //     mpNormalTex = Texture::createFromFile(getNormalPath(mDataDir, mCurFrame), false, true);
+            // }
+
+            // {
+            //     if (mpBaseColorTex) pRenderContext->blit(mpBaseColorTex->getSRV(), renderData.getTexture("basecolor")->getRTV());
+            //     if (mpNormalTex) pRenderContext->blit(mpNormalTex->getSRV(), renderData.getTexture("normal")->getRTV());
+            // }
 
             auto mCurDim = uint2(mpMVTex->getWidth(), mpMVTex->getHeight());
 
@@ -209,6 +310,8 @@ void PreprocessDLSS::execute(RenderContext* pRenderContext, const RenderData& re
                 mCurReso = mCurDim;
                 requestRecompile();
             }
+
+            loadCamera(getCameraPath(mDataDir.camera, mCurFrame + mStartInfo.camera), curDim);
 
             {
                 mpPreprocessPass["PerFrameCB"]["gFrameDim"] = mCurDim;
@@ -254,10 +357,13 @@ void PreprocessDLSS::execute(RenderContext* pRenderContext, const RenderData& re
         mCurFrame++;
 
         if (mCurFrame > mEndFrame) {
-            mCurFrame = -1;
+            mCurFrame = 0;
             mStartLoading = false;
         }
 
+    }
+    else {
+        mCurFrame = 0;
     }
 
 }
@@ -272,10 +378,16 @@ void PreprocessDLSS::renderUI(Gui::Widgets& widget)
     // widget.checkbox("Load Depth", mLoadDepth);
     widget.checkbox("Load Normal", mLoadNormal);
 
-    widget.var<int>("Start Frame", mStartFrame, 0);
+    widget.var<int>("Start Frame color", mStartInfo.color, 0);
+    widget.var<int>("Start Frame depth", mStartInfo.depth, 0);
+    widget.var<int>("Start Frame mv", mStartInfo.mv, 0);
+    widget.var<int>("Start Frame camera", mStartInfo.camera, 0);
     widget.var<int>("End Frame", mEndFrame, 0);
 
 
-    widget.textbox("Data Dir", mDataDir);
+    widget.textbox("Data Dir color", mDataDir.color);
+    widget.textbox("Data Dir depth", mDataDir.depth);
+    widget.textbox("Data Dir mv", mDataDir.mv);
+    widget.textbox("Data Dir camera", mDataDir.camera);
 
 }
