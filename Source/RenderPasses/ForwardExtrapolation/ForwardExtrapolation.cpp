@@ -619,9 +619,14 @@ void ForwardExtrapolation::warpBackground(RenderContext* pRenderContext, const R
 
 void ForwardExtrapolation::extrapolatedFrameInit(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera)
 {
+
+    // Store for next rendered frame to calculate the motion vectors
+
     createNewTexture(mpPrevMotionVectorTex, renderData.getDefaultTextureDims(), ResourceFormat::RG32Float);
 
     pRenderContext->blit(renderData.getTexture("MotionVector_in")->getSRV(), mpPrevMotionVectorTex->getRTV());
+
+    // -------------------------------------------------------------------------------------------------------
 }
 
 void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContext, const RenderData& renderData, const Camera::SharedPtr& nextCamera)
