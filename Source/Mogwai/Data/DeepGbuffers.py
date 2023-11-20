@@ -11,7 +11,8 @@ def render_deep_gbuffers():
 
 
     # g.markOutput('TwoLayeredGbuffers.gMyDepth')
-    g.markOutput('DeepGbuffers.albedo0')
+    g.markOutput('DeepGbuffers.Normal')
+    g.markOutput('DeepGbuffers.Albedo')
     return g
 
 

@@ -60,7 +60,13 @@ private:
 
     void InitVars();
 
+    void CreateTextures(const uint2 &curDim);
+
     void GenGbuffers(RenderContext* pRenderContext, const RenderData& renderData);
+
+    void GenGTGbuffers(RenderContext* pRenderContext, const RenderData& renderData);
+
+    void WarpGbuffers(RenderContext* pRenderContext, const RenderData& renderData);
 
     Scene::SharedPtr mpScene;
 
@@ -72,7 +78,7 @@ private:
         Texture::SharedPtr pNextPosW;
         Texture::SharedPtr pLinearZ;
         Texture::SharedPtr pDepth;
-    } mDeepGbuf, mGTGbuf;
+    } mDeepGbuf, mGTGbuf, mCurGbuf;
 
 
     // Rasterization pass
@@ -82,12 +88,21 @@ private:
         Fbo::SharedPtr pFbo;
     } mRasterPass;
 
+    ComputePass::SharedPtr mpWarpPass = nullptr;
+    ComputePass::SharedPtr mpWarpDepthTestPass = nullptr;
+
     float mThreshold;
 
     uint mFrameCount = 0;
     uint mGenFreq;
 
     uint mGbufferLevel = 5;
+
+    uint mDepthTestScale = 65536;
+
+    uint mSubpixelNum = 4;
+
+    uint mDisplayMode = 0;
 
 
 };

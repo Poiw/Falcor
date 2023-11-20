@@ -44,6 +44,10 @@ extern "C" FALCOR_API_EXPORT void getPasses(Falcor::RenderPassLibrary& lib)
 namespace {
 const std::string genDeepGbuffersShaderFilePath =
     "RenderPasses/DeepGbuffers/GenGbuffers.slang";
+const std::string warpDepthTestShaderFilePath =
+    "RenderPasses/DeepGbuffers/WarpDepthTest.slang";
+const std::string warpGbuffersShaderFilePath =
+    "RenderPasses/DeepGbuffers/Warp.slang";
 
 std::vector<std::string> albedoLayers = {
     "albedo0",
@@ -125,6 +129,28 @@ void DeepGbuffers::setScene(RenderContext* pRenderContext, const Scene::SharedPt
             mRasterPass.pVars = GraphicsVars::create(program.get());
         }
 
+        {
+            Program::Desc desc;
+            desc.addShaderLibrary(warpDepthTestShaderFilePath).csEntry("csMain");
+            // desc.addTypeConformances(mpScene->getTypeConformances());
+            Program::DefineList defines;
+            defines.add(mpScene->getSceneDefines());
+            mpWarpDepthTestPass = ComputePass::create(desc, defines, false);
+            // Bind the scene.
+            mpWarpDepthTestPass->setVars(nullptr);  // Trigger vars creation
+        }
+
+        {
+            Program::Desc desc;
+            desc.addShaderLibrary(warpGbuffersShaderFilePath).csEntry("csMain");
+            // desc.addTypeConformances(mpScene->getTypeConformances());
+            Program::DefineList defines;
+            defines.add(mpScene->getSceneDefines());
+            mpWarpPass = ComputePass::create(desc, defines, false);
+            // Bind the scene.
+            mpWarpPass->setVars(nullptr);  // Trigger vars creation
+        }
+
 
     }
 }
@@ -148,6 +174,30 @@ RenderPassReflection DeepGbuffers::reflect(const CompileData& compileData)
                 .texture2D();
 
     }
+
+    reflector.addOutput("GTNormal", "GTNormal")
+            .format(ResourceFormat::RGBA32Float)
+            .bindFlags(Resource::BindFlags::AllColorViews)
+            .texture2D();
+
+    reflector.addOutput("GTAlbedo", "GTAlbedo")
+            .format(ResourceFormat::RGBA32Float)
+            .bindFlags(Resource::BindFlags::AllColorViews)
+            .texture2D();
+
+    reflector.addOutput("GTPosW", "GT PosW")
+            .format(ResourceFormat::RGBA32Float)
+            .bindFlags(Resource::BindFlags::AllColorViews)
+            .texture2D();
+
+    reflector.addOutput("Normal", "Output Normal")
+            .format(ResourceFormat::RGBA32Float)
+            .bindFlags(Resource::BindFlags::AllColorViews)
+            .texture2D();
+    reflector.addOutput("Albedo", "Output Albedo")
+            .format(ResourceFormat::RGBA32Float)
+            .bindFlags(Resource::BindFlags::AllColorViews)
+            .texture2D();
 
     return reflector;
 }
@@ -190,9 +240,136 @@ void DeepGbuffers::GenGbuffers(RenderContext* pRenderContext, const RenderData& 
 
         pRenderContext->blit(normalSRV, renderData.getTexture(normalLayers[i])->getRTV());
         pRenderContext->blit(albedoSRV, renderData.getTexture(albedoLayers[i])->getRTV());
+    }
+
+    auto gtNormalSRV = mDeepGbuf.pNormal->getSRV(0, -1, 0, 1);
+    auto gtAlbedoSRV = mDeepGbuf.pAlbedo->getSRV(0, -1, 0, 1);
+    auto gtPosWSRV = mDeepGbuf.pNextPosW->getSRV(0, -1, 0, 1);
+
+    pRenderContext->blit(gtNormalSRV, renderData.getTexture("GTNormal")->getRTV());
+    pRenderContext->blit(gtAlbedoSRV, renderData.getTexture("GTAlbedo")->getRTV());
+    pRenderContext->blit(gtPosWSRV, renderData.getTexture("GTPosW")->getRTV());
+
+    if (mDisplayMode == 1) {
+        return;
+    }
+    pRenderContext->blit(gtNormalSRV, renderData.getTexture("Normal")->getRTV());
+    pRenderContext->blit(gtAlbedoSRV, renderData.getTexture("Albedo")->getRTV());
+
+
+}
+
+void DeepGbuffers::GenGTGbuffers(RenderContext* pRenderContext, const RenderData& renderData)
+{
+    mRasterPass.pVars["PerFrameCB"]["gThreshold"] = -1;
+    mRasterPass.pVars["PerFrameCB"]["gCurLevel"] = 0;
+
+
+    mRasterPass.pFbo->attachColorTarget(mGTGbuf.pAlbedo, 0);
+    mRasterPass.pFbo->attachColorTarget(mGTGbuf.pNormal, 1);
+    mRasterPass.pFbo->attachColorTarget(mGTGbuf.pNextPosW, 2);
+    mRasterPass.pFbo->attachColorTarget(mGTGbuf.pLinearZ, 3);
+    mRasterPass.pFbo->attachDepthStencilTarget(mGTGbuf.pDepth);
+    pRenderContext->clearFbo(mRasterPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
+                            0, FboAttachmentType::All);
+    mRasterPass.pGraphicsState->setFbo(mRasterPass.pFbo);
+    // Rasterize it!
+    mpScene->rasterize(pRenderContext, mRasterPass.pGraphicsState.get(),
+                        mRasterPass.pVars.get(),
+                        RasterizerState::CullMode::None);
+
+    auto gtNormalSRV = mGTGbuf.pNormal->getSRV();
+    auto gtAlbedoSRV = mGTGbuf.pAlbedo->getSRV();
+
+    pRenderContext->blit(gtNormalSRV, renderData.getTexture("GTNormal")->getRTV());
+    pRenderContext->blit(gtAlbedoSRV, renderData.getTexture("GTAlbedo")->getRTV());
+
+}
+
+
+void DeepGbuffers::WarpGbuffers(RenderContext* pRenderContext, const RenderData& renderData)
+{
+
+    auto curDim = renderData.getDefaultTextureDims();
+    auto curViewProjMat = mpScene->getCamera()->getViewProjMatrix();
+
+    // Depth test
+    {
+        // Input
+        {
+            mpWarpDepthTestPass["PerFrameCB"]["gViewProjMat"] = curViewProjMat;
+            mpWarpDepthTestPass["PerFrameCB"]["gCurDim"] = curDim;
+            mpWarpDepthTestPass["PerFrameCB"]["gLevelNum"] = mGbufferLevel;
+            mpWarpDepthTestPass["PerFrameCB"]["gLinearZScale"] = mDepthTestScale;
+            mpWarpDepthTestPass["PerFrameCB"]["gSubpixelNum"] = mSubpixelNum;
+
+            auto posWSRV = mDeepGbuf.pNextPosW->getSRV();
+            mpWarpDepthTestPass["gPosW"].setSrv(posWSRV);
+
+        }
+
+        // Output
+        {
+
+            auto depthUAV = mCurGbuf.pDepth->getUAV();
+            pRenderContext->clearUAV(depthUAV.get(), uint4(-1));
+            mpWarpDepthTestPass["gDepth"].setUav(depthUAV);
+
+        }
+
+        mpWarpDepthTestPass->execute(pRenderContext, uint3(curDim, 1));
+
+        {
+            pRenderContext->uavBarrier(mCurGbuf.pDepth.get());
+        }
 
     }
 
+
+    // Warping
+    {
+        // Input
+        {
+            mpWarpPass["PerFrameCB"]["gViewProjMat"] = curViewProjMat;
+            mpWarpPass["PerFrameCB"]["gCurDim"] = curDim;
+            mpWarpPass["PerFrameCB"]["gLevelNum"] = mGbufferLevel;
+            mpWarpPass["PerFrameCB"]["gLinearZScale"] = mDepthTestScale;
+            mpWarpPass["PerFrameCB"]["gSubpixelNum"] = mSubpixelNum;
+
+            auto posWSRV = mDeepGbuf.pNextPosW->getSRV();
+            mpWarpPass["gPosW"].setSrv(posWSRV);
+
+            auto normalSRV = mDeepGbuf.pNormal->getSRV();
+            mpWarpPass["gNormal"].setSrv(normalSRV);
+
+            auto albedoSRV = mDeepGbuf.pAlbedo->getSRV();
+            mpWarpPass["gAlbedo"].setSrv(albedoSRV);
+
+            auto depthSRV = mCurGbuf.pDepth->getSRV();
+            mpWarpPass["gDepth"].setSrv(depthSRV);
+        }
+
+        {
+            // Output
+            auto normalUAV = mCurGbuf.pNormal->getUAV();
+            pRenderContext->clearUAV(normalUAV.get(), float4(0, 0, 0, 0));
+            mpWarpPass["gNormalOut"].setUav(normalUAV);
+
+            auto albedoUAV = mCurGbuf.pAlbedo->getUAV();
+            pRenderContext->clearUAV(albedoUAV.get(), float4(0, 0, 0, 0));
+            mpWarpPass["gAlbedoOut"].setUav(albedoUAV);
+        }
+
+        mpWarpPass->execute(pRenderContext, uint3(curDim, 1));
+
+        {
+            pRenderContext->uavBarrier(mCurGbuf.pNormal.get());
+            pRenderContext->uavBarrier(mCurGbuf.pAlbedo.get());
+        }
+    }
+
+    pRenderContext->blit(mCurGbuf.pNormal->getSRV(), renderData.getTexture("Normal")->getRTV());
+    pRenderContext->blit(mCurGbuf.pAlbedo->getSRV(), renderData.getTexture("Albedo")->getRTV());
 
 }
 
@@ -204,17 +381,9 @@ void DeepGbuffers::execute(RenderContext* pRenderContext, const RenderData& rend
         return;
     }
 
-    auto curDim = renderData.getDefaultTextureDims();
+    uint2 curDim = renderData.getDefaultTextureDims();
 
-    // Create Textures
-    {
-        createNewTexture(mDeepGbuf.pNormal, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
-        createNewTexture(mDeepGbuf.pAlbedo, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
-        createNewTexture(mDeepGbuf.pNextPosW, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
-        createNewTexture(mDeepGbuf.pLinearZ, curDim, ResourceFormat::R32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
-        createNewTexture(mDeepGbuf.pDepth, curDim, ResourceFormat::D32Float, Resource::BindFlags::DepthStencil, mGbufferLevel);
-    }
-
+    CreateTextures(curDim);
 
 
     if (mFrameCount % mGenFreq == 0) {
@@ -224,6 +393,11 @@ void DeepGbuffers::execute(RenderContext* pRenderContext, const RenderData& rend
 
     else {
         // Warp Gbuffers
+
+        GenGTGbuffers(pRenderContext, renderData);
+
+        WarpGbuffers(pRenderContext, renderData);
+
     }
 
     mFrameCount++;
@@ -236,6 +410,14 @@ void DeepGbuffers::renderUI(Gui::Widgets& widget)
     widget.var<float>("Eps", mThreshold, -1.0f, 10.0f);
     widget.var<uint>("Gbuffer Level", mGbufferLevel, 1, 5);
     widget.var<uint>("Gen Freq", mGenFreq, 1, 10);
+    widget.var<uint>("Subpixel Num", mSubpixelNum, 1, 10);
+    widget.var<uint>("Depth Test Scale", mDepthTestScale, 1, UINT_MAX);
+
+    Gui::DropdownList modeList;
+    modeList.push_back(Gui::DropdownValue{0, "all"});
+    modeList.push_back(Gui::DropdownValue{1, "extrapolation only"});
+
+    widget.dropdown("Mode", modeList, mDisplayMode);
 }
 
 
@@ -265,6 +447,11 @@ void DeepGbuffers::InitVars()
     mGTGbuf.pLinearZ = nullptr;
     mGTGbuf.pDepth = nullptr;
 
+    mCurGbuf.pNormal = nullptr;
+    mCurGbuf.pAlbedo = nullptr;
+    mCurGbuf.pNextPosW = nullptr;
+    mCurGbuf.pLinearZ = nullptr;
+    mCurGbuf.pDepth = nullptr;
 
 
     mFrameCount = 0;
@@ -273,4 +460,32 @@ void DeepGbuffers::InitVars()
     mGbufferLevel = 5;
 
     mThreshold = 0.1f;
+}
+
+
+void DeepGbuffers::CreateTextures(const uint2 &curDim)
+{
+
+    // Create Textures
+    {
+        createNewTexture(mDeepGbuf.pNormal, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
+        createNewTexture(mDeepGbuf.pAlbedo, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
+        createNewTexture(mDeepGbuf.pNextPosW, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
+        createNewTexture(mDeepGbuf.pLinearZ, curDim, ResourceFormat::R32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
+        createNewTexture(mDeepGbuf.pDepth, curDim, ResourceFormat::D32Float, Resource::BindFlags::DepthStencil, mGbufferLevel);
+
+        createNewTexture(mGTGbuf.pNormal, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, 1);
+        createNewTexture(mGTGbuf.pAlbedo, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, 1);
+        createNewTexture(mGTGbuf.pNextPosW, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, 1);
+        createNewTexture(mGTGbuf.pLinearZ, curDim, ResourceFormat::R32Float, Resource::BindFlags::AllColorViews, 1);
+        createNewTexture(mGTGbuf.pDepth, curDim, ResourceFormat::D32Float, Resource::BindFlags::DepthStencil, 1);
+
+        createNewTexture(mCurGbuf.pNormal, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, 1);
+        createNewTexture(mCurGbuf.pAlbedo, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, 1);
+        // createNewTexture(mCurGbuf.pNextPosW, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, 1);
+        // createNewTexture(mCurGbuf.pLinearZ, curDim, ResourceFormat::R32Float, Resource::BindFlags::AllColorViews, 1);
+        createNewTexture(mCurGbuf.pDepth, curDim, ResourceFormat::R32Uint, Resource::BindFlags::AllColorViews, 1);
+
+
+    }
 }
