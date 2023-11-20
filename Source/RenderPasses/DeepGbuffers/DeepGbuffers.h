@@ -71,11 +71,9 @@ private:
         Texture::SharedPtr pAlbedo;
         Texture::SharedPtr pNextPosW;
         Texture::SharedPtr pLinearZ;
+        Texture::SharedPtr pDepth;
     } mDeepGbuf, mGTGbuf;
 
-    Texture::SharedPtr mpDepthStencil;
-    Texture::SharedPtr mpCurLinearZ;
-    Texture::SharedPtr mpPrevLinearZ;
 
     // Rasterization pass
     struct {

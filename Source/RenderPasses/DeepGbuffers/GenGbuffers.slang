@@ -5,7 +5,7 @@ import GBufferHelpers;
 #define INTERPOLATION_MODE linear
 #endif
 
-Texture2DArray<float> gPrevLinearZBuffer;
+Texture2DArray<float> gPrevLinearZ;
 
 cbuffer PerFrameCB {
     float gThreshold;
@@ -111,11 +111,12 @@ PSOut psMain(MyVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycent
     float4x4 viewProjMat = gScene.camera.getViewProj();
 
     // Not a valid second layer gbuffer
-    float linearZ = mul(viewProjMat, float4(vsOut.posW, 1.f)).w;
+    // float linearZ = mul(viewProjMat, float4(vsOut.posW, 1.f)).w;
+    float linearZ = vsOut.posH.z * vsOut.posH.w;
 
-    float maxPrevLinearZ = -65536;
+    float maxPrevLinearZ = -256;
     for (int i = 0; i < gCurLevel; i++) {
-        maxPrevLinearZ = max(maxPrevLinearZ, gPrevLinearZBuffer[uint3(ipos, i)]);
+        maxPrevLinearZ = max(maxPrevLinearZ, gPrevLinearZ[uint3(ipos, i)]);
     }
 
 

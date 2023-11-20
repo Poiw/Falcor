@@ -169,11 +169,11 @@ void DeepGbuffers::GenGbuffers(RenderContext* pRenderContext, const RenderData& 
         mRasterPass.pVars["PerFrameCB"]["gCurLevel"] = level;
 
 
-        mRasterPass.pFbo->attachColorTarget(mDeepGbuf.pAlbedo, 0);
-        mRasterPass.pFbo->attachColorTarget(mDeepGbuf.pNormal, 1);
-        mRasterPass.pFbo->attachColorTarget(mDeepGbuf.pNextPosW, 2);
-        mRasterPass.pFbo->attachColorTarget(mDeepGbuf.pLinearZ, 3);
-        mRasterPass.pFbo->attachDepthStencilTarget(mpDepthStencil);
+        mRasterPass.pFbo->attachColorTarget(mDeepGbuf.pAlbedo, 0, 0, level, 1);
+        mRasterPass.pFbo->attachColorTarget(mDeepGbuf.pNormal, 1, 0, level, 1);
+        mRasterPass.pFbo->attachColorTarget(mDeepGbuf.pNextPosW, 2, 0, level, 1);
+        mRasterPass.pFbo->attachColorTarget(mDeepGbuf.pLinearZ, 3, 0, level, 1);
+        mRasterPass.pFbo->attachDepthStencilTarget(mDeepGbuf.pDepth, 0, level, 1);
         pRenderContext->clearFbo(mRasterPass.pFbo.get(), float4(0, 0, 0, 1), 1.0f,
                                 0, FboAttachmentType::All);
         mRasterPass.pGraphicsState->setFbo(mRasterPass.pFbo);
@@ -208,12 +208,11 @@ void DeepGbuffers::execute(RenderContext* pRenderContext, const RenderData& rend
 
     // Create Textures
     {
-        createNewTexture(mpDepthStencil, curDim, ResourceFormat::D32Float, Resource::BindFlags::DepthStencil, 1);
-
         createNewTexture(mDeepGbuf.pNormal, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
         createNewTexture(mDeepGbuf.pAlbedo, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
         createNewTexture(mDeepGbuf.pNextPosW, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
         createNewTexture(mDeepGbuf.pLinearZ, curDim, ResourceFormat::R32Float, Resource::BindFlags::AllColorViews, mGbufferLevel);
+        createNewTexture(mDeepGbuf.pDepth, curDim, ResourceFormat::D32Float, Resource::BindFlags::DepthStencil, mGbufferLevel);
     }
 
 
@@ -258,14 +257,15 @@ void DeepGbuffers::InitVars()
     mDeepGbuf.pAlbedo = nullptr;
     mDeepGbuf.pNextPosW = nullptr;
     mDeepGbuf.pLinearZ = nullptr;
+    mDeepGbuf.pDepth = nullptr;
 
     mGTGbuf.pNormal = nullptr;
     mGTGbuf.pAlbedo = nullptr;
     mGTGbuf.pNextPosW = nullptr;
     mGTGbuf.pLinearZ = nullptr;
+    mGTGbuf.pDepth = nullptr;
 
 
-    mpDepthStencil = nullptr;
 
     mFrameCount = 0;
     mGenFreq = 2;
