@@ -5,18 +5,11 @@ import GBufferHelpers;
 #define INTERPOLATION_MODE linear
 #endif
 
-Texture2D<float2> gFirstLinearZBuffer;
-Texture2D<float4> gFirstNormWSBuffer;
-RasterizerOrderedTexture2D<float4> gLinearZThresholdBuffer; // 0: threshold, 1: max
-
+Texture2DArray<float> gPrevLinearZBuffer;
 
 cbuffer PerFrameCB {
-    float gEps;
-    float gNormalThreshold;
-    bool maxConstraint;
-    bool normalConstraint;
-    uint2 curDim;
-    float renderScale;
+    float gThreshold;
+    uint gCurLevel;
 };
 
 struct MyVSOut
@@ -27,6 +20,7 @@ struct MyVSOut
     INTERPOLATION_MODE float3 posW : POSW;         ///< Position in world space.
     INTERPOLATION_MODE float4 prevPosH : PREVPOSH; ///< Position in clip space for the previous frame.
     INTERPOLATION_MODE float4 posL : POSL;         ///< Position in original model space.
+    INTERPOLATION_MODE float3 nextPosW : NEXTPOSW;  ///< Next posW
 
     // Per-triangle data
     nointerpolation GeometryInstanceID instanceID : INSTANCE_ID; ///< Geometry instance ID.
@@ -56,7 +50,6 @@ MyVSOut vsMain(VSIn vIn) {
     float3 posW = mul(worldMat, float4(vIn.pos, 1.f)).xyz;
     vOut.posW = posW;
     vOut.posH = mul(gScene.camera.getViewProj(), float4(posW, 1.f));
-    vOut.posH.xy /= renderScale;
 
     vOut.instanceID = instanceID;
     vOut.materialID = gScene.getMaterialID(instanceID);
@@ -80,6 +73,9 @@ MyVSOut vsMain(VSIn vIn) {
     vOut.posL = float4(vIn.pos, 1.f);
     vOut.rawInstanceID = vIn.instanceID;
 
+    float3 nextPosW = 2 * posW - prevPosW;
+    vOut.nextPosW = nextPosW;
+
     return vOut;
 
 }
@@ -100,43 +96,32 @@ VSOut CopyToVSOut(MyVSOut vsOut) {
 #define is_valid(name) (is_valid_##name != 0)
 
 struct PSOut {
-    float4 gDebug : SV_TARGET0;
-    float2 gLinearZ : SV_TARGET1;
-    // float4 gMask : SV_TARGET1;
-    float4 gNormWS : SV_TARGET2;
-    float4 gDiffOpacity : SV_TARGET3;
-    float4 gPosWS : SV_TARGET4;
-    float  gDepth : SV_TARGET5;
-    uint   gInstanceID : SV_TARGET6;
-    float4 gPosL   : SV_TARGET7;
-    // float4 tangentWS : SV_TARGET2;
-    // float4 posWS : SV_TARGET3;
+    float4 gAlbedo : SV_TARGET0;
+    float4 gNormal : SV_TARGET1;
+    float4 gNextPosW : SV_TARGET2;
+    float gLinearZ : SV_TARGET3;
 };
 
 PSOut psMain(MyVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycentrics : SV_Barycentrics) : SV_TARGET {
 
-    int2 ipos = int2(vsOut.posH.xy) - (int2)curDim / 2;
-    ipos = int2(ipos * renderScale) + (int2)curDim / 2;
+    int2 ipos = int2(vsOut.posH.xy);
 
     VSOut rawVSOut = CopyToVSOut(vsOut);
 
+    float4x4 viewProjMat = gScene.camera.getViewProj();
 
     // Not a valid second layer gbuffer
-    float linearZ = vsOut.posH.z * vsOut.posH.w;
+    float linearZ = mul(viewProjMat, float4(vsOut.posW, 1.f)).w;
 
-    float threshold;
-    if (maxConstraint) {
-        gLinearZThresholdBuffer[ipos][1] = max(gLinearZThresholdBuffer[ipos][1], linearZ);
-        threshold = min(gFirstLinearZBuffer[ipos][0] - 0.00001 + gEps, gLinearZThresholdBuffer[ipos][1]);
-    }
-    else {
-        threshold = gFirstLinearZBuffer[ipos][0] - 0.00001 + gEps;
+    float maxPrevLinearZ = -65536;
+    for (int i = 0; i < gCurLevel; i++) {
+        maxPrevLinearZ = max(maxPrevLinearZ, gPrevLinearZBuffer[uint3(ipos, i)]);
     }
 
-    gLinearZThresholdBuffer[ipos][0] = (threshold + gFirstLinearZBuffer[ipos][0]) * 0.5;
 
-    if (ipos.x >= 0 && ipos.x <= curDim.x && ipos.y >= 0 && ipos.y <= curDim.y && linearZ < threshold) // pecision err
-        discard;
+    maxPrevLinearZ = maxPrevLinearZ + gThreshold;
+
+    if (linearZ <= maxPrevLinearZ) discard;
 
     PSOut psOut = {};
 
@@ -154,20 +139,11 @@ PSOut psMain(MyVSOut vsOut, uint triangleIndex : SV_PrimitiveID, float3 barycent
 
     const GBufferData gbuf = prepareGBufferData(sd, bsdf);
 
-    psOut.gDebug = float4(vsOut.posH.z * vsOut.posH.w, 0, 0, 0);
-    psOut.gNormWS = gbuf.normW;
-    psOut.gDiffOpacity = gbuf.diffuseOpacity;
-    // psOut.gMask = float4(1., 0., 0., 0.);
-    psOut.gPosWS = gbuf.posW;
-    psOut.gDepth = vsOut.posH.z;
-    psOut.gInstanceID = vsOut.rawInstanceID;
-    psOut.gPosL = vsOut.posL;
-    psOut.gLinearZ = float2(linearZ, max(abs(ddx(linearZ)), abs(ddy(linearZ))));
+    psOut.gAlbedo = gbuf.diffuseOpacity;
+    psOut.gNormal = gbuf.normW;
+    psOut.gNextPosW = float4(vsOut.nextPosW, 1);
+    psOut.gLinearZ = linearZ;
 
-    if (normalConstraint) {
-        if (dot(gbuf.normW.xyz, normalize(gbuf.posW.xyz - gScene.camera.getPosition())) > gNormalThreshold)
-            discard;
-    }
 
     return psOut;
 }

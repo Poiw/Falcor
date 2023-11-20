@@ -49,14 +49,18 @@ public:
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override {}
+    virtual void setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
 private:
-    DeepGbuffers() : RenderPass(kInfo) {}
+    DeepGbuffers();
 
     void createNewTexture(Texture::SharedPtr &pTex, const Falcor::uint2 &curDim, enum Falcor::ResourceFormat dataFormat, Falcor::Resource::BindFlags bindFlags, const uint arraySize);
+
+    void InitVars();
+
+    void GenGbuffers(RenderContext* pRenderContext, const RenderData& renderData);
 
     Scene::SharedPtr mpScene;
 
@@ -67,7 +71,25 @@ private:
         Texture::SharedPtr pAlbedo;
         Texture::SharedPtr pNextPosW;
         Texture::SharedPtr pLinearZ;
-    } DeepGbuf, GTGbuf;
+    } mDeepGbuf, mGTGbuf;
+
+    Texture::SharedPtr mpDepthStencil;
+    Texture::SharedPtr mpCurLinearZ;
+    Texture::SharedPtr mpPrevLinearZ;
+
+    // Rasterization pass
+    struct {
+        GraphicsState::SharedPtr pGraphicsState;
+        GraphicsVars::SharedPtr pVars;
+        Fbo::SharedPtr pFbo;
+    } mRasterPass;
+
+    float mThreshold;
+
+    uint mFrameCount = 0;
+    uint mGenFreq;
+
+    uint mGbufferLevel = 5;
 
 
 };
