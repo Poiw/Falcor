@@ -317,7 +317,7 @@ void DeepGbuffers::WarpGbuffers(RenderContext* pRenderContext, const RenderData&
 
         }
 
-        mpWarpDepthTestPass->execute(pRenderContext, uint3(curDim, 1));
+        mpWarpDepthTestPass->execute(pRenderContext, uint3(curDim, mGbufferLevel));
 
         {
             pRenderContext->uavBarrier(mCurGbuf.pDepth.get());
@@ -360,7 +360,7 @@ void DeepGbuffers::WarpGbuffers(RenderContext* pRenderContext, const RenderData&
             mpWarpPass["gAlbedoOut"].setUav(albedoUAV);
         }
 
-        mpWarpPass->execute(pRenderContext, uint3(curDim, 1));
+        mpWarpPass->execute(pRenderContext, uint3(curDim, mGbufferLevel));
 
         {
             pRenderContext->uavBarrier(mCurGbuf.pNormal.get());
