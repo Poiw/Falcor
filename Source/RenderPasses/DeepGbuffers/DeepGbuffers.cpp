@@ -302,6 +302,7 @@ void DeepGbuffers::WarpGbuffers(RenderContext* pRenderContext, const RenderData&
             mpWarpDepthTestPass["PerFrameCB"]["gLevelNum"] = mGbufferLevel;
             mpWarpDepthTestPass["PerFrameCB"]["gLinearZScale"] = mDepthTestScale;
             mpWarpDepthTestPass["PerFrameCB"]["gSubpixelNum"] = mSubpixelNum;
+            mpWarpDepthTestPass["PerFrameCB"]["gNearRatio"] = mNearRatio;
 
             auto posWSRV = mDeepGbuf.pNextPosW->getSRV();
             mpWarpDepthTestPass["gPosW"].setSrv(posWSRV);
@@ -338,6 +339,7 @@ void DeepGbuffers::WarpGbuffers(RenderContext* pRenderContext, const RenderData&
             mpWarpPass["PerFrameCB"]["gLevelNum"] = mGbufferLevel;
             mpWarpPass["PerFrameCB"]["gLinearZScale"] = mDepthTestScale;
             mpWarpPass["PerFrameCB"]["gSubpixelNum"] = mSubpixelNum;
+            mpWarpPass["PerFrameCB"]["gNearRatio"] = mNearRatio;
 
             auto posWSRV = mDeepGbuf.pNextPosW->getSRV();
             mpWarpPass["gPosW"].setSrv(posWSRV);
@@ -415,6 +417,7 @@ void DeepGbuffers::renderUI(Gui::Widgets& widget)
     widget.var<uint>("Gen Freq", mGenFreq, 1, 10);
     widget.var<uint>("Subpixel Num", mSubpixelNum, 1, 10);
     widget.var<float>("Depth Test Scale", mDepthTestScale, 1, 10000);
+    widget.var<float>("Near Ratio", mNearRatio, 0.1f, 4.0f);
 
     Gui::DropdownList modeList;
     modeList.push_back(Gui::DropdownValue{0, "all"});

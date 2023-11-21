@@ -4,6 +4,7 @@ cbuffer PerFrameCB {
     uint gLevelNum;
     float gLinearZScale;
     uint gSubpixelNum;
+    float gNearRatio;
 };
 
 Texture2DArray<float4> gPosW;
@@ -19,6 +20,27 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     uint2 pixelCoord = dispatchThreadId.xy;
     uint layer = dispatchThreadId.z;
     float skip = 1.0 / float(gSubpixelNum);
+
+    float3 var = 0;
+    int count = 0;
+
+    float3 centerPosW = gPosW[int3(pixelCoord, layer)].xyz;
+
+    for (int ux = max(0, pixelCoord.x - 1); ux <= min(gCurDim.x - 1, pixelCoord.x + 1); ++ux)
+        for (int uy = max(0, pixelCoord.y - 1); uy <= min(gCurDim.y - 1, pixelCoord.y + 1); ++uy) {
+
+            int2 tmpCoord = int2(ux, uy);
+
+            float3 normal = gNormal[int3(tmpCoord, layer)].xyz;
+
+            if (length(normal) > 0.5) {
+                var += pow(gPosW[int3(tmpCoord, layer)].xyz - centerPosW, 2);
+                count++;
+            }
+        }
+
+    var /= (count - 1);
+    var = sqrt(var);
 
     for (float ux = skip * 0.5; ux < 1.0; ux += skip)
         for (float uy = skip * 0.5; uy < 1.0; uy += skip) {
@@ -41,29 +63,45 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
             float3 rtNormal = gNormal[int3(rt, layer)].xyz;
 
             float weight = 0, w;
-            float3 posW = 0;
+            float3 posW = 0, cPosW;
 
             if (length(ltNormal) > 0.5) {
+
+                cPosW = gPosW[int3(lt, layer)].xyz;
+                cPosW = clamp(cPosW, centerPosW - var * gNearRatio, centerPosW + var * gNearRatio);
+
                 w = (1 - abs(curCoord.x - lt.x)) * (1 - abs(curCoord.y - lt.y));
-                posW += gPosW[int3(lt, layer)].xyz * w;
+                posW += cPosW * w;
                 weight += w;
             }
 
             if (length(rbNormal) > 0.5) {
+
+                cPosW = gPosW[int3(rb, layer)].xyz;
+                cPosW = clamp(cPosW, centerPosW - var * gNearRatio, centerPosW + var * gNearRatio);
+
                 w = (1 - abs(curCoord.x - rb.x)) * (1 - abs(curCoord.y - rb.y));
-                posW += gPosW[int3(rb, layer)].xyz * w;
+                posW += cPosW * w;
                 weight += w;
             }
 
             if (length(lbNormal) > 0.5) {
+
+                cPosW = gPosW[int3(lb, layer)].xyz;
+                cPosW = clamp(cPosW, centerPosW - var * gNearRatio, centerPosW + var * gNearRatio);
+
                 w = (1 - abs(curCoord.x - lb.x)) * (1 - abs(curCoord.y - lb.y));
-                posW += gPosW[int3(lb, layer)].xyz * w;
+                posW += cPosW * w;
                 weight += w;
             }
 
             if (length(rtNormal) > 0.5) {
+
+                cPosW = gPosW[int3(rt, layer)].xyz;
+                cPosW = clamp(cPosW, centerPosW - var * gNearRatio, centerPosW + var * gNearRatio);
+
                 w = (1 - abs(curCoord.x - rt.x)) * (1 - abs(curCoord.y - rt.y));
-                posW += gPosW[int3(rt, layer)].xyz * w;
+                posW += cPosW * w;
                 weight += w;
             }
 
