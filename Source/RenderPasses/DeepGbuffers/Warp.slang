@@ -27,9 +27,6 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     for (float ux = skip * 0.5; ux < 1.0; ux += skip)
         for (float uy = skip * 0.5; uy < 1.0; uy += skip) {
 
-            float3 normal = 0;
-            float3 albedo = 0;
-
             float2 curCoord = (pixelCoord + float2(ux, uy) - float2(0.5, 0.5));
 
             int2 lt = int2(floor(curCoord));
@@ -55,39 +52,29 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
             if (length(ltNormal) > 0.5) {
                 w = (1 - abs(curCoord.x - lt.x)) * (1 - abs(curCoord.y - lt.y));
                 posW += gPosW[int3(lt, layer)].xyz * w;
-                normal += ltNormal * w;
-                albedo += gAlbedo[int3(lt, layer)].xyz * w;
                 weight += w;
             }
 
             if (length(rbNormal) > 0.5) {
                 w = (1 - abs(curCoord.x - rb.x)) * (1 - abs(curCoord.y - rb.y));
                 posW += gPosW[int3(rb, layer)].xyz * w;
-                normal += rbNormal * w;
-                albedo += gAlbedo[int3(rb, layer)].xyz * w;
                 weight += w;
             }
 
             if (length(lbNormal) > 0.5) {
                 w = (1 - abs(curCoord.x - lb.x)) * (1 - abs(curCoord.y - lb.y));
                 posW += gPosW[int3(lb, layer)].xyz * w;
-                normal += lbNormal * w;
-                albedo += gAlbedo[int3(lb, layer)].xyz * w;
                 weight += w;
             }
 
             if (length(rtNormal) > 0.5) {
                 w = (1 - abs(curCoord.x - rt.x)) * (1 - abs(curCoord.y - rt.y));
                 posW += gPosW[int3(rt, layer)].xyz * w;
-                normal += rtNormal * w;
-                albedo += gAlbedo[int3(rt, layer)].xyz * w;
                 weight += w;
             }
 
             if (weight > 0) {
                 posW /= weight;
-                normal /= weight;
-                albedo /= weight;
             }
             else {
                 continue;
