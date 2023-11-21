@@ -142,8 +142,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
             if (gDepth[coord] == depth) {
                 gNormalOut[coord] = gNormal[int3(pixelCoord, layer)];
-                // gAlbedoOut[coord] = gAlbedo[int3(pixelCoord, layer)];
-                gAlbedoOut[coord] = (gLevelNum - 1 - layer) * float4(1, 0, 0, 1) / (gLevelNum-1) + (layer) * float4(0, 0, 1, 1) / (gLevelNum-1);
+                gAlbedoOut[coord] = gAlbedo[int3(pixelCoord, layer)];
+                // gAlbedoOut[coord] = (gLevelNum - 1 - layer) * float4(1, 0, 0, 1) / (gLevelNum-1) + (layer) * float4(0, 0, 1, 1) / (gLevelNum-1);
             }
 
 
