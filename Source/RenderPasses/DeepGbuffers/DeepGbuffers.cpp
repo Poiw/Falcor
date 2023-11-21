@@ -306,6 +306,9 @@ void DeepGbuffers::WarpGbuffers(RenderContext* pRenderContext, const RenderData&
             auto posWSRV = mDeepGbuf.pNextPosW->getSRV();
             mpWarpDepthTestPass["gPosW"].setSrv(posWSRV);
 
+            auto normalSRV = mDeepGbuf.pNormal->getSRV();
+            mpWarpDepthTestPass["gNormal"].setSrv(normalSRV);
+
         }
 
         // Output
@@ -408,10 +411,10 @@ void DeepGbuffers::renderUI(Gui::Widgets& widget)
 {
 
     widget.var<float>("Eps", mThreshold, -1.0f, 10.0f);
-    widget.var<uint>("Gbuffer Level", mGbufferLevel, 1, 5);
+    widget.var<uint>("Gbuffer Level", mGbufferLevel, 1, 16);
     widget.var<uint>("Gen Freq", mGenFreq, 1, 10);
     widget.var<uint>("Subpixel Num", mSubpixelNum, 1, 10);
-    widget.var<uint>("Depth Test Scale", mDepthTestScale, 1, UINT_MAX);
+    widget.var<float>("Depth Test Scale", mDepthTestScale, 1, 10000);
 
     Gui::DropdownList modeList;
     modeList.push_back(Gui::DropdownValue{0, "all"});

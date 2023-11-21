@@ -98,7 +98,7 @@ private:
 
     uint mGbufferLevel = 5;
 
-    uint mDepthTestScale = 65536;
+    float mDepthTestScale = 65536;
 
     uint mSubpixelNum = 4;
 
