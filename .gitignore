@@ -13,7 +13,6 @@
 
 # IDE folders.
 /.vs/
-/.vscode/
 
 # File types.
 *.user
