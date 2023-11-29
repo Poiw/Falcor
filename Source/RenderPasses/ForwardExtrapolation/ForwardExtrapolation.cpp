@@ -134,7 +134,7 @@ void ForwardExtrapolation::ClearVariables()
     gSplatStrideNum = 3;
 
     mSolidAngleThreshold = float(M_PI / 180.0f * 5.f);
-    mVisibilityKernelSize = 5;
+    mVisibilityKernelSize = 2;
     mUseVisibilityFilter = true;
 
 
