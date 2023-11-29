@@ -48,16 +48,22 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     backgroundCrd += float2(0.5, 0.5);
     curCrd += float2(0.5, 0.5);
 
-    uint2 backgroundCoord_tmp = uint2(backgroundCrd * gFrameDim);
-    uint2 curCoord = uint2(curCrd * gFrameDim);
 
-    for (int i = -1; i <= 1; ++i)
-        for (int j = -1; j <= 1; ++j) {
-            uint2 backgroundCoord = backgroundCoord_tmp + uint2(i, j);
-            if (backgroundCoord.x >= 0 && backgroundCoord.x < gFrameDim.x && backgroundCoord.y >= 0 && backgroundCoord.y < gFrameDim.y) {
-                InterlockedMax(gTempDepthTex[backgroundCoord], backgroundDepth);
-            }
-        }
+    // uint2 backgroundCoord_tmp = uint2(backgroundCrd * gFrameDim);
+    // for (int i = -1; i <= 1; ++i)
+    //     for (int j = -1; j <= 1; ++j) {
+    //         uint2 backgroundCoord = backgroundCoord_tmp + uint2(i, j);
+    //         if (backgroundCoord.x >= 0 && backgroundCoord.x < gFrameDim.x && backgroundCoord.y >= 0 && backgroundCoord.y < gFrameDim.y) {
+    //             InterlockedMax(gTempDepthTex[backgroundCoord], backgroundDepth);
+    //         }
+    //     }
+
+    uint2 backgroundCoord = uint2(backgroundCrd * gFrameDim);
+    if (backgroundCoord.x >= 0 && backgroundCoord.x < gFrameDim.x && backgroundCoord.y >= 0 && backgroundCoord.y < gFrameDim.y) {
+        InterlockedMax(gTempDepthTex[backgroundCoord], backgroundDepth);
+    }
+
+    uint2 curCoord = uint2(curCrd * gFrameDim);
     if (curCoord.x >= 0 && curCoord.x < gFrameDim.x && curCoord.y >= 0 && curCoord.y < gFrameDim.y) {
         InterlockedMax(gTempDepthTex[curCoord], curDepth);
     }

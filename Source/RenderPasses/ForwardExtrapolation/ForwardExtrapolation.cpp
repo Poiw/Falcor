@@ -694,6 +694,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
         // Input
         {
             mpForwardWarpPass["PerFrameCB"]["gFrameDim"] = curDim;
+            mpForwardWarpPass["PerFrameCB"]["mUseBGCollection"] = mUseBGCollection;
 
             auto renderTexSRV = mpRenderTex->getSRV();
             mpForwardWarpPass["gRenderTex"].setSrv(renderTexSRV);
@@ -701,11 +702,23 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             auto depthTexSRV = mpDepthTex->getSRV();
             mpForwardWarpPass["gDepthTex"].setSrv(depthTexSRV);
 
-            auto tempDepthTexSRV = mpTempDepthTex->getSRV();
-            mpForwardWarpPass["gTempDepthTex"].setSrv(tempDepthTexSRV);
+            // auto tempDepthTexSRV = mpTempDepthTex->getSRV();
+            // mpForwardWarpPass["gTempDepthTex"].setSrv(tempDepthTexSRV);
 
             auto forwardMotionTexSRV = mpForwardMotionTex->getSRV();
             mpForwardWarpPass["gForwardMotionTex"].setSrv(forwardMotionTexSRV);
+
+            auto backgroundWarpedTexSRV = mpBackgroundWarpedTex->getSRV();
+            mpForwardWarpPass["gBackgroundWarpedTex"].setSrv(backgroundWarpedTexSRV);
+
+            auto backgroundWarpedDepthTexSRV = mpBackgroundWarpedDepthTex->getSRV();
+            mpForwardWarpPass["gBackgroundWarpedDepthTex"].setSrv(backgroundWarpedDepthTexSRV);
+
+            // Need to update the temp depth from background collection
+
+            auto tempDepthTexUAV = mpTempDepthTex->getUAV();
+            mpForwardWarpPass["gTempDepthTex"].setUav(tempDepthTexUAV);
+
         }
 
         // Output
@@ -727,6 +740,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
         {
             pRenderContext->uavBarrier(mpTempWarpTex.get());
             pRenderContext->uavBarrier(mpTempMotionVectorTex.get());
+            pRenderContext->uavBarrier(mpTempDepthTex.get());
         }
 
         pRenderContext->blit(mpTempWarpTex->getSRV(), renderData.getTexture("PreTonemapped_out_woSplat")->getRTV());
