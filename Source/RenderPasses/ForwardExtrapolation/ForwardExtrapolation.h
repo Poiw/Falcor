@@ -109,6 +109,10 @@ private:
     float gSplatDistSigma;
     uint gSplatStrideNum;
 
+    // Occlusion Filter
+    int mVisibilityKernelSize;
+    float mSolidAngleThreshold;
+
     // Dump Data
     bool mDumpData;
     std::string mDumpDirPath;
@@ -132,6 +136,7 @@ private:
     // Compute Pass
     ComputePass::SharedPtr mpForwardWarpDepthTestPass;
     ComputePass::SharedPtr mpForwardWarpPass;
+    ComputePass::SharedPtr mpOcclusionFilterPass;
     ComputePass::SharedPtr mpSplatPass;
     ComputePass::SharedPtr mpRegularFramePreProcessPass;
     ComputePass::SharedPtr mpBackgroundCollectionDepthTestPass;

@@ -58,6 +58,8 @@ const std::string FE_backgroundWarpShaderFilePath =
     "RenderPasses/ForwardExtrapolation/backgroundWarp.slang";
 const std::string FE_backgroundWarpDepthTestShaderFilePath =
     "RenderPasses/ForwardExtrapolation/backgroundWarpDepthTest.slang";
+const std::string FE_occlusionFilterShaderFilePath =
+    "RenderPasses/ForwardExtrapolation/occlusionFilter.slang";
 }  // namespace
 
 
@@ -74,6 +76,11 @@ ForwardExtrapolation::ForwardExtrapolation() : RenderPass(kInfo)
 
     mpBackgroundWarpDepthTestPass = nullptr;
     mpBackgroundWarpPass = nullptr;
+
+    mpBackgroundWarpDepthTestPass = nullptr;
+    mpBackgroundWarpPass = nullptr;
+
+    mpOcclusionFilterPass = nullptr;
 
     mDepthScale = 256;
     mBackgroundDepthScale = 256;
@@ -118,8 +125,6 @@ void ForwardExtrapolation::ClearVariables()
     mpBackgroundColorTex = nullptr;
     mpBackgroundPosWTex = nullptr;
 
-    mpBackgroundWarpDepthTestPass = nullptr;
-    mpBackgroundWarpPass = nullptr;
 
     mMode = 0;
 
@@ -127,6 +132,9 @@ void ForwardExtrapolation::ClearVariables()
     mSplatSigma = 12.;
     gSplatDistSigma = 8.;
     gSplatStrideNum = 3;
+
+    mSolidAngleThreshold = float(M_PI / 4.0f);
+    mVisibilityKernelSize = 9;
 
     mDumpData = false;
     mDumpDirPath = "";
@@ -171,6 +179,17 @@ void ForwardExtrapolation::setComputeShaders()
         mpForwardWarpPass = ComputePass::create(desc, defines, false);
         // Bind the scene.
         mpForwardWarpPass->setVars(nullptr);  // Trigger vars creation
+    }
+
+    // Create occlusion filter shader
+    {
+        Program::Desc desc;
+        desc.addShaderLibrary(FE_occlusionFilterShaderFilePath).csEntry("csMain");
+        Program::DefineList defines;
+        defines.add(mpScene->getSceneDefines());
+        mpOcclusionFilterPass = ComputePass::create(desc, defines, false);
+        // Bind the scene.
+        mpOcclusionFilterPass->setVars(nullptr);  // Trigger vars creation
     }
 
     // Create Splat Shader
@@ -311,6 +330,11 @@ RenderPassReflection ForwardExtrapolation::reflect(const CompileData& compileDat
         .texture2D();
 
     reflector.addOutput("Background_Color", "Background Color")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Resource::BindFlags::AllColorViews)
+        .texture2D();
+
+    reflector.addOutput("debug", "debug")
         .format(ResourceFormat::RGBA32Float)
         .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D();
@@ -753,6 +777,45 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
 
 
 
+    // Occlusion Filter
+    {
+        // Input
+        {
+            mpOcclusionFilterPass["PerFrameCB"]["gFrameDim"] = curDim;
+            mpOcclusionFilterPass["PerFrameCB"]["gAngleThreshold"] = mSolidAngleThreshold;
+            mpOcclusionFilterPass["PerFrameCB"]["mDepthScale"] = mDepthScale;
+            mpOcclusionFilterPass["PerFrameCB"]["tan2FovY"] = mpScene->getCamera()->getFrameHeight() / mpScene->getCamera()->getFocalLength() * 0.5f;
+            mpOcclusionFilterPass["PerFrameCB"]["tan2FovX"] = mpScene->getCamera()->getFrameWidth() / mpScene->getCamera()->getFocalLength() * 0.5f;
+            mpOcclusionFilterPass["PerFrameCB"]["gVisibilityKernelSize"] = mVisibilityKernelSize;
+
+            auto tempDepthTexSRV = mpTempDepthTex->getSRV();
+            mpOcclusionFilterPass["gDepthTex"].setSrv(tempDepthTexSRV);
+
+        }
+
+
+        // Output
+        {
+            auto tempOutputDepthTexUAV = mpTempUintDepthTex->getUAV();
+            pRenderContext->clearUAV(tempOutputDepthTexUAV.get(), uint4(-1));
+            mpOcclusionFilterPass["gOutputDepthTex"].setUav(tempOutputDepthTexUAV);
+        }
+
+        // Execute
+        mpOcclusionFilterPass->execute(pRenderContext, curDim.x, curDim.y);
+
+        // Barrier
+        {
+            pRenderContext->uavBarrier(mpTempUintDepthTex.get());
+        }
+
+        pRenderContext->blit(mpTempUintDepthTex->getSRV(), mpTempDepthTex->getRTV());
+    }
+
+
+
+
+
     // ################################### Splat #########################################
     for (int step = 0; step < gSplatStrideNum; step++) {
         // Input
@@ -944,9 +1007,12 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
 
     widget.var<uint32_t>("Extrapolation Num", mExtrapolationNum, 1u, 1u);
 
-    widget.var<uint32_t>("Kernel Size", mKernelSize, 1u, 32u);
+    widget.var<int>("Visibility Kernel Size", mVisibilityKernelSize, 1, 32);
+    widget.var<float>("Solid Angle Threshold", mSolidAngleThreshold, 0.01f, 4.f);
+
+    // widget.var<uint32_t>("Kernel Size", mKernelSize, 1u, 32u);
     widget.var<float>("Splat Sigma", mSplatSigma, 0.1f, 20.f);
-    widget.var<float>("Splat Dist Sigma", gSplatDistSigma, 0.1f, 20.f);
+    // widget.var<float>("Splat Dist Sigma", gSplatDistSigma, 0.1f, 20.f);
     widget.var<uint>("Splat Stride Num", gSplatStrideNum, 1u, 10u);
 
     widget.var<uint>("Background Depth Scale", mBackgroundDepthScale, 1u, 1024u);
