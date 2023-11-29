@@ -106,6 +106,7 @@ void ForwardExtrapolation::ClearVariables()
 
     mpTempWarpTex = nullptr;
     mpTempDepthTex = nullptr;
+    mpTempUintDepthTex = nullptr;
     mpTempOutputTex = nullptr;;
     mpTempOutputDepthTex = nullptr;
     mpTempOutputMVTex = nullptr;
@@ -643,6 +644,8 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
     createNewTexture(mpTempOutputTex, curDim, ResourceFormat::RGBA32Float);
     createNewTexture(mpTempOutputDepthTex, curDim, ResourceFormat::R32Float);
     createNewTexture(mpTempOutputMVTex, curDim, ResourceFormat::RG32Float);
+    createNewTexture(mpTempUintDepthTex, curDim, ResourceFormat::R32Uint);
+
 
     // ########################## Forward Warping Depth Test ####################################
     {
@@ -751,16 +754,16 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
 
 
     // ################################### Splat #########################################
-    {
+    for (int step = 0; step < gSplatStrideNum; step++) {
         // Input
         {
             mpSplatPass["PerFrameCB"]["gFrameDim"] = curDim;
-            mpSplatPass["PerFrameCB"]["gKernelSize"] = mKernelSize;
+            // mpSplatPass["PerFrameCB"]["gKernelSize"] = mKernelSize;
             mpSplatPass["PerFrameCB"]["gSplatSigma"] = mSplatSigma;
-            mpSplatPass["PerFrameCB"]["gSplatDistSigma"] = gSplatDistSigma;
-            mpSplatPass["PerFrameCB"]["gStrideNum"] = gSplatStrideNum;
+            // mpSplatPass["PerFrameCB"]["gSplatDistSigma"] = gSplatDistSigma;
+            // mpSplatPass["PerFrameCB"]["gStrideNum"] = gSplatStrideNum;
             mpSplatPass["PerFrameCB"]["mDepthScale"] = mDepthScale;
-            mpSplatPass["PerFrameCB"]["mUseBGCollection"] = mUseBGCollection;
+            // mpSplatPass["PerFrameCB"]["mUseBGCollection"] = mUseBGCollection;
 
             auto tempWarpTexSRV = mpTempWarpTex->getSRV();
             mpSplatPass["gTempWarpTex"].setSrv(tempWarpTexSRV);
@@ -771,11 +774,11 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             auto tempMotionVectorTexSRV = mpTempMotionVectorTex->getSRV();
             mpSplatPass["gTempMotionVectorTex"].setSrv(tempMotionVectorTexSRV);
 
-            auto backgroundWarpedTexSRV = mpBackgroundWarpedTex->getSRV();
-            mpSplatPass["gBackgroundWarpedTex"].setSrv(backgroundWarpedTexSRV);
+            // auto backgroundWarpedTexSRV = mpBackgroundWarpedTex->getSRV();
+            // mpSplatPass["gBackgroundWarpedTex"].setSrv(backgroundWarpedTexSRV);
 
-            auto backgroundWarpedDepthTexSRV = mpBackgroundWarpedDepthTex->getSRV();
-            mpSplatPass["gBackgroundWarpedDepthTex"].setSrv(backgroundWarpedDepthTexSRV);
+            // auto backgroundWarpedDepthTexSRV = mpBackgroundWarpedDepthTex->getSRV();
+            // mpSplatPass["gBackgroundWarpedDepthTex"].setSrv(backgroundWarpedDepthTexSRV);
 
         }
 
@@ -788,6 +791,10 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             auto targetDepthTexUAV = mpTempOutputDepthTex->getUAV();
             pRenderContext->clearUAV(targetDepthTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
             mpSplatPass["targetDepthTex"].setUav(targetDepthTexUAV);
+
+            auto targetUintDepthTexUAV = mpTempUintDepthTex->getUAV();
+            pRenderContext->clearUAV(targetUintDepthTexUAV.get(), uint4(-1));
+            mpSplatPass["targetUintDepthTex"].setUav(targetUintDepthTexUAV);
 
             auto targetMotionVectorTexUAV = mpTempOutputMVTex->getUAV();
             pRenderContext->clearUAV(targetMotionVectorTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
@@ -802,7 +809,13 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
             pRenderContext->uavBarrier(mpTempOutputTex.get());
             pRenderContext->uavBarrier(mpTempOutputDepthTex.get());
             pRenderContext->uavBarrier(mpTempOutputMVTex.get());
+            pRenderContext->uavBarrier(mpTempUintDepthTex.get());
         }
+
+        pRenderContext->blit(mpTempOutputTex->getSRV(), mpTempWarpTex->getRTV());
+        pRenderContext->blit(mpTempUintDepthTex->getSRV(), mpTempDepthTex->getRTV());
+        pRenderContext->blit(mpTempOutputMVTex->getSRV(), mpTempMotionVectorTex->getRTV());
+
     }
     // ###################################################################################
 

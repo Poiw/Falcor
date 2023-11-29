@@ -81,6 +81,7 @@ private:
     Texture::SharedPtr mpTempWarpTex;
     Texture::SharedPtr mpTempDepthTex;
     Texture::SharedPtr mpTempMotionVectorTex;
+    Texture::SharedPtr mpTempUintDepthTex;
     Texture::SharedPtr mpTempOutputTex;
     Texture::SharedPtr mpTempOutputPosWTex;
     Texture::SharedPtr mpTempOutputMVTex;
