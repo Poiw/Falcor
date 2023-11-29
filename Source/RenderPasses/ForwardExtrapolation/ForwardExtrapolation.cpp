@@ -129,12 +129,14 @@ void ForwardExtrapolation::ClearVariables()
     mMode = 0;
 
     mKernelSize = 3;
-    mSplatSigma = 12.;
+    mSplatSigma = 1.;
     gSplatDistSigma = 8.;
     gSplatStrideNum = 3;
 
-    mSolidAngleThreshold = float(M_PI / 180.0f * 10.f);
-    mVisibilityKernelSize = 9;
+    mSolidAngleThreshold = float(M_PI / 180.0f * 5.f);
+    mVisibilityKernelSize = 5;
+    mUseVisibilityFilter = true;
+
 
     mDumpData = false;
     mDumpDirPath = "";
@@ -778,6 +780,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
 
 
     // Occlusion Filter
+    if (mUseVisibilityFilter)
     {
         // Input
         {
@@ -1009,6 +1012,7 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
 
     widget.var<int>("Visibility Kernel Size", mVisibilityKernelSize, 1, 32);
     widget.var<float>("Solid Angle Threshold", mSolidAngleThreshold, 0.01f, 4.f);
+    widget.checkbox("Use occlusion filter", mUseVisibilityFilter);
 
     // widget.var<uint32_t>("Kernel Size", mKernelSize, 1u, 32u);
     widget.var<float>("Splat Sigma", mSplatSigma, 0.1f, 20.f);

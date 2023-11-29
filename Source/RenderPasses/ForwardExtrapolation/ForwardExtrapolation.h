@@ -112,6 +112,7 @@ private:
     // Occlusion Filter
     int mVisibilityKernelSize;
     float mSolidAngleThreshold;
+    bool mUseVisibilityFilter;
 
     // Dump Data
     bool mDumpData;
