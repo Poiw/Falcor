@@ -19,6 +19,7 @@ RWTexture2D<float2> targetDepthTex;
 RWTexture2D<float2> targetMotionVectorTex;
 RWTexture2D<uint> targetUintDepthTex;
 
+// Formula from paper: Real-time Rendering of Massive Unstructured Raw Point Clouds using Screen-space Operators
 float calWeight(float dx, float dz) {
     return (1 - dx / 2) * (1 - min(1, dz / gSplatSigma));
 }
