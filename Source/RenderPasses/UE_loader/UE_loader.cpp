@@ -192,7 +192,7 @@ void UE_loader::loadCamera(const std::string& cameraFilePath, Falcor::float2 fra
 
     JitterX /= frameDim.x;
     JitterY /= frameDim.y;
-    Camera->setJitter(JitterX, -JitterY); // This is closest to correct jitter
+    Camera->setJitter(-JitterX, -JitterY); // This is closest to correct jitter
 
 
 }
