@@ -17,4 +17,5 @@
         "--pch-storage=memory",
         "--header-insertion=never",
     ],
+    "cmake.configureOnOpen": false,
 }
