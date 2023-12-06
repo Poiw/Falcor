@@ -483,6 +483,10 @@ void ForwardExtrapolation::collectBackground(RenderContext* pRenderContext, cons
             auto curPosWSRV = renderData.getTexture("PosW_in")->getSRV();
             mpBackgroundCollectionDepthTestPass["gCurPosWTex"].setSrv(curPosWSRV);
 
+
+            auto nextPosWSRV = mpNextPosWTex->getSRV(); // Used for test dynamic
+            mpBackgroundCollectionDepthTestPass["gNextPosWTex"].setSrv(nextPosWSRV);
+
         }
 
         // Output
@@ -520,6 +524,9 @@ void ForwardExtrapolation::collectBackground(RenderContext* pRenderContext, cons
 
             auto curPosWSRV = renderData.getTexture("PosW_in")->getSRV();
             mpBackgroundCollectionPass["gCurPosWTex"].setSrv(curPosWSRV);
+
+            auto nextPosWSRV = mpNextPosWTex->getSRV(); // Used for test dynamic
+            mpBackgroundCollectionPass["gNextPosWTex"].setSrv(nextPosWSRV);
 
             auto backgroundColorSRV = mpBackgroundColorTex->getSRV();
             mpBackgroundCollectionPass["gBackgroundColorTex"].setSrv(backgroundColorSRV);

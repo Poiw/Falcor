@@ -153,6 +153,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     float3 prevPosW;
     float3 prevPrevPosW;
+    float static = 1;
     if (abs((int)prevCoord.x - (int)prevCoord_static.x) > 1 || abs((int)prevCoord.y - (int)prevCoord_static.y) > 1) {
 
         // float minDepth = gPrevLinearZTex[prevCoord].x;
@@ -177,6 +178,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         // The fragment is dynamic
         prevPosW = gPrevPosWTex[prevCoord].xyz;
         prevPrevPosW = gPrevPrevPosWTex[prevCoord].xyz;
+        static = 0;
     }
     else {
         // We consider the fragement is static
@@ -201,7 +203,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // float3 nextPosW = curPosW.xyz * 2 - prevPosW;
     float3 nextPosW = (2 * (curPosW.xyz - prevPosW) - (prevPosW - prevPrevPosW)) + curPosW.xyz;
 
-    gNextPosWTex[flipX_Coord] = float4(nextPosW, 1);
+    gNextPosWTex[flipX_Coord] = float4(nextPosW, static);
 
     return;
 }

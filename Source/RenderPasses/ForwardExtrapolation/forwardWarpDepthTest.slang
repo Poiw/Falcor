@@ -19,7 +19,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     float2 curCrd = (pixelCoord + float2(0.5, 0.5)) / gFrameDim;
 
-    float4 nextPosW = gNextPosWTex[pixelCoord];
+    float4 nextPosW = float4(gNextPosWTex[pixelCoord].xyz, 1.);
     float4 nextPosH = mul(curViewProjMat, nextPosW);
     float2 nextCrd = nextPosH.xy / nextPosH.w;
     float nextZ = nextPosH.z / nextPosH.w;

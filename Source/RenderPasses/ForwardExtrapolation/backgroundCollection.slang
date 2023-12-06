@@ -10,6 +10,7 @@ Texture2D<float4> gCurPosWTex;
 Texture2D<float4> gBackgroundColorTex;
 Texture2D<float4> gCurColorTex;
 Texture2D<uint> gTestedDepthTex;
+Texture2D<float4> gNextPosWTex; // for dynamic test
 
 RWTexture2D<float4> gTempOutputTex;
 RWTexture2D<float4> gTempOutputPosWTex;
@@ -69,6 +70,11 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         gTestedDepthTex[backgroundCoord] == backgroundDepth) {
         gTempOutputTex[backgroundCoord] = gBackgroundColorTex[pixelCoord];
         gTempOutputPosWTex[backgroundCoord] = backgroundPosW;
+    }
+
+
+    if (gNextPosWTex[pixelCoord].w < 0.5) { // dynamic objects
+        return;
     }
 
     uint2 curCoord = uint2(curCrd * gFrameDim);

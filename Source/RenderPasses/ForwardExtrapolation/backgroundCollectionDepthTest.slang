@@ -7,6 +7,7 @@ cbuffer PerFrameCB {
 
 Texture2D<float4> gBackgroundPosWTex;
 Texture2D<float4> gCurPosWTex;
+Texture2D<float4> gNextPosWTex; // for dynamic test
 
 RWTexture2D<uint> gTempDepthTex;
 
@@ -61,6 +62,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     uint2 backgroundCoord = uint2(backgroundCrd * gFrameDim);
     if (backgroundCoord.x >= 0 && backgroundCoord.x < gFrameDim.x && backgroundCoord.y >= 0 && backgroundCoord.y < gFrameDim.y) {
         InterlockedMax(gTempDepthTex[backgroundCoord], backgroundDepth);
+    }
+
+    if (gNextPosWTex[pixelCoord].w < 0.5) { // dynamic objects
+        return;
     }
 
     uint2 curCoord = uint2(curCrd * gFrameDim);
