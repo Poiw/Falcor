@@ -17,12 +17,16 @@ Texture2D<float4> gCurColorTex;
 Texture2D<float4> gCurMotionVectorTex;
 Texture2D<float4> gCurLinearZTex;
 Texture2D<float4> gPrevPosWTex;
+Texture2D<float4> gPrevLinearZTex;
+Texture2D<float3> gPrevPrevPosWTex;
 
 RWTexture2D<float4> gNextPosWTex;
 RWTexture2D<float4> gPosWTex;
 RWTexture2D<float4> gColorTex;
 RWTexture2D<float2> gMotionVectorTex;
 RWTexture2D<float2> gLinearZTex;
+RWTexture2D<float4> gTempDepthTex;
+RWTexture2D<float4> gTempPrevPosWTex;
 
 [numthreads(8, 8, 1)]
 void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
@@ -54,6 +58,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     float linearZ = gCurLinearZTex[pixelCoord].x;
     linearZ *= zScale;
     gLinearZTex[flipX_Coord] = float2(linearZ, 1);
+    gTempDepthTex[flipX_Coord] = float4(linearZ, 0, 0, 0);
 
     // Position
 
@@ -106,18 +111,80 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     prevCrd = clamp(prevCrd, float2(0, 0), float2(1, 1));
 
-    uint2 prevCoord = uint2(prevCrd * gFrameDim);
+    uint2 prevCoord = uint2(prevCrd * gFrameDim), tmpPrevCoord;
+
+    // float minDepth = gPrevLinearZTex[prevCoord].x;
+    // tmpPrevCoord = prevCoord;
+    // float tmpDepth;
+
+    // for (int i = -1; i <= 1; i++) {
+    //     for (int j = -1; j <=1; j++) {
+    //         if (i != 0 && j != 0) {
+    //             continue;
+    //         }
+    //         tmpDepth = gPrevLinearZTex[prevCoord + uint2(i, j)].x;
+    //         if (tmpDepth < minDepth) {
+    //             minDepth = tmpDepth;
+    //             tmpPrevCoord = prevCoord + uint2(i, j);
+    //         }
+    //     }
+    // }
+
+    // // tmpDepth = gPrevLinearZTex[prevCoord + uint2(0, 1)].x;
+    // // if (tmpDepth < minDepth) {
+    // //     minDepth = tmpDepth;
+    // //     tmpPrevCoord = prevCoord + uint2(0, 1);
+    // // }
+
+    // // tmpDepth = gPrevLinearZTex[prevCoord + uint2(1, 0)].x;
+    // // if (tmpDepth < minDepth) {
+    // //     minDepth = tmpDepth;
+    // //     tmpPrevCoord = prevCoord + uint2(1, 0);
+    // // }
+
+    // // tmpDepth = gPrevLinearZTex[prevCoord + uint2(1, 1)].x;
+    // // if (tmpDepth < minDepth) {
+    // //     minDepth = tmpDepth;
+    // //     tmpPrevCoord = prevCoord + uint2(1, 1);
+    // // }
+
+    // prevCoord = tmpPrevCoord;
+
 
     float3 prevPosW;
-    if (abs(prevCoord.x - prevCoord_static.x) > 1 || abs(prevCoord.y - prevCoord_static.y) > 1) {
+    float3 prevPrevPosW;
+    if (abs((int)prevCoord.x - (int)prevCoord_static.x) > 1 || abs((int)prevCoord.y - (int)prevCoord_static.y) > 1) {
+
+        // float minDepth = gPrevLinearZTex[prevCoord].x;
+        // tmpPrevCoord = prevCoord;
+        // float tmpDepth;
+
+        // for (int i = -1; i <= 1; i++) {
+        //     for (int j = -1; j <= 1; j++) {
+        //         if (i != 0 && j != 0) {
+        //             continue;
+        //         }
+        //         tmpDepth = gPrevLinearZTex[prevCoord + uint2(i, j)].x;
+        //         if (tmpDepth < minDepth) {
+        //             minDepth = tmpDepth;
+        //             tmpPrevCoord = prevCoord + uint2(i, j);
+        //         }
+        //     }
+        // }
+
+        // prevCoord = tmpPrevCoord;
+
         // The fragment is dynamic
         prevPosW = gPrevPosWTex[prevCoord].xyz;
+        prevPrevPosW = gPrevPrevPosWTex[prevCoord].xyz;
     }
     else {
         // We consider the fragement is static
         prevPosW = curPosW.xyz;
+        prevPrevPosW = curPosW.xyz;
     }
 
+    // prevPosW = curPosW.xyz;
 
 
     // prevPosW = gPrevPosWTex[prevCoord].xyz;
@@ -129,9 +196,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // -----------------------------------------------------------------
 
 
+    gTempPrevPosWTex[flipX_Coord] = float4(prevPosW, 1);
 
-
-    float3 nextPosW = curPosW.xyz * 2 - prevPosW;
+    // float3 nextPosW = curPosW.xyz * 2 - prevPosW;
+    float3 nextPosW = (2 * (curPosW.xyz - prevPosW) - (prevPosW - prevPrevPosW)) + curPosW.xyz;
 
     gNextPosWTex[flipX_Coord] = float4(nextPosW, 1);
 

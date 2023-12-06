@@ -58,6 +58,8 @@ private:
 
     std::string getFilePath(const std::string& folderPath, const std::string& fileName, const std::string& fileExt, int frame);
 
+    void createNewTexture(Texture::SharedPtr &pTex, const Falcor::uint2 &curDim, enum Falcor::ResourceFormat dataFormat, Falcor::Resource::BindFlags bindFlags);
+
     void loadCamera(const std::string& cameraFilePath, Falcor::float2 frameDim);
     void clearVariable();
     void setComputeShader();
@@ -78,6 +80,11 @@ private:
     Texture::SharedPtr mpMotionVectorTex;
 
     Texture::SharedPtr mpPrevPosWTex;
+    Texture::SharedPtr mpPrevDepthTex;
+    Texture::SharedPtr mpPrevPrevPosWTex;
+
+    Texture::SharedPtr mpTempDepthTex; // For storing flipped depth
+    Texture::SharedPtr mpTempPrevPosWTex; // For storing Prev posW
 
     float4x4 mPrevViewProjMatNoJitter;
 

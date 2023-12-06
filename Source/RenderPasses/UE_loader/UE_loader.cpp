@@ -76,6 +76,10 @@ void UE_loader::clearVariable()
     mpPosWTex = nullptr;
     mpMotionVectorTex = nullptr;
     mpPrevPosWTex = nullptr;
+    mpPrevDepthTex = nullptr;
+
+    mpTempDepthTex = nullptr;
+    mpTempPrevPosWTex = nullptr;
 
     mRescaleScene = false;
 
@@ -221,6 +225,10 @@ RenderPassReflection UE_loader::reflect(const CompileData& compileData)
         .format(ResourceFormat::RG32Float)
         .bindFlags(Resource::BindFlags::AllColorViews)
         .texture2D();
+    reflector.addOutput("debug", "debug")
+        .format(ResourceFormat::RG32Float)
+        .bindFlags(Resource::BindFlags::AllColorViews)
+        .texture2D();
     return reflector;
 }
 
@@ -230,8 +238,14 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
 
     auto curDim = renderData.getDefaultTextureDims();
 
-    if (mpPrevPosWTex == nullptr)
+    createNewTexture(mpTempDepthTex, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews);
+    createNewTexture(mpTempPrevPosWTex, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews);
+    createNewTexture(mpPrevPrevPosWTex, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews);
+
+    if (mpPrevPosWTex == nullptr) {
         mpPrevPosWTex = mpPosWTex;
+        mpPrevDepthTex = mpDepthTex;
+    }
 
     // ----------------------- Process Data -----------------------
 
@@ -271,6 +285,12 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
 
         auto prevPosWSRV = mpPrevPosWTex->getSRV();
         mpProcessDataPass["gPrevPosWTex"].setSrv(prevPosWSRV);
+
+        auto prevLinearZSRV = mpPrevDepthTex->getSRV();
+        mpProcessDataPass["gPrevLinearZTex"].setSrv(prevLinearZSRV);
+
+        auto prevPrevPosWSRV = mpPrevPrevPosWTex->getSRV();
+        mpProcessDataPass["gPrevPrevPosWTex"].setSrv(prevPrevPosWSRV);
     }
 
     // Output
@@ -295,6 +315,14 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
         pRenderContext->clearUAV(linearZUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
         mpProcessDataPass["gLinearZTex"].setUav(linearZUAV);
 
+        auto tempDepthUAV = mpTempDepthTex->getUAV();
+        pRenderContext->clearUAV(tempDepthUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+        mpProcessDataPass["gTempDepthTex"].setUav(tempDepthUAV);
+
+        auto tempPrevPosWUAV = mpTempPrevPosWTex->getUAV();
+        pRenderContext->clearUAV(tempPrevPosWUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+        mpProcessDataPass["gTempPrevPosWTex"].setUav(tempPrevPosWUAV);
+
     }
 
     // Execute
@@ -307,6 +335,8 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
         pRenderContext->uavBarrier(renderData.getTexture("MotionVector").get());
         pRenderContext->uavBarrier(renderData.getTexture("LinearZ").get());
         pRenderContext->uavBarrier(renderData.getTexture("PosW").get());
+        pRenderContext->uavBarrier(mpTempDepthTex.get());
+        pRenderContext->uavBarrier(mpTempPrevPosWTex.get());
     }
 
 
@@ -314,6 +344,10 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
 
 
     pRenderContext->blit(renderData.getTexture("PosW")->getSRV(), mpPosWTex->getRTV());
+    pRenderContext->blit(mpTempDepthTex->getSRV(), mpDepthTex->getRTV());
+    pRenderContext->blit(mpTempPrevPosWTex->getSRV(), mpPrevPrevPosWTex->getRTV()); // Copy prev posw in prev frame
+
+    pRenderContext->blit(mpPrevPrevPosWTex->getSRV(), renderData.getTexture("debug")->getRTV());
 
 
     // Blit data
@@ -336,7 +370,7 @@ void UE_loader::execute(RenderContext* pRenderContext, const RenderData& renderD
         std::string cameraPath = getFilePath(mFolderPath, "CameraInfo", "txt", mCurFrame);
 
         mpColorTex = Texture::createFromFile(colorPath, false, true);
-        mpDepthTex = Texture::createFromFile(depthPath, false, true);
+        mpDepthTex = Texture::createFromFile(depthPath, false, true, Resource::BindFlags::AllColorViews);
         mpPosWTex = Texture::createFromFile(posWPath, false, true, Resource::BindFlags::AllColorViews);
         mpMotionVectorTex = Texture::createFromFile(motionVectorPath, false, true);
 
@@ -353,6 +387,8 @@ void UE_loader::execute(RenderContext* pRenderContext, const RenderData& renderD
 
         // Store previous data
         mpPrevPosWTex = mpPosWTex;
+        mpPrevDepthTex = mpDepthTex;
+
 
         // Update frame
         mCurFrame++;
@@ -427,4 +463,22 @@ void UE_loader::renderUI(Gui::Widgets& widget)
     widget.text("Scene Max: " + std::to_string(mSceneMax));
     widget.text("Rescale Scene: " + std::to_string(mRescaleScene));
     widget.text("LinearZ Scale: " + std::to_string(mInputLinearZScale));
+}
+
+
+
+void UE_loader::createNewTexture(Texture::SharedPtr &pTex,
+                                        const Falcor::uint2 &curDim,
+                                        enum Falcor::ResourceFormat dataFormat = ResourceFormat::RGBA32Float,
+                                        Falcor::Resource::BindFlags bindFlags = Resource::BindFlags::AllColorViews)
+{
+
+    if (!pTex || pTex->getWidth() != curDim.x || pTex->getHeight() != curDim.y) {
+
+        pTex = Texture::create2D(curDim.x, curDim.y, dataFormat,
+                                    1U, 1, nullptr,
+                                    bindFlags);
+
+    }
+
 }
