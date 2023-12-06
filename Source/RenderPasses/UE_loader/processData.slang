@@ -8,6 +8,7 @@ cbuffer PerFrameCB {
     float tan2FovX;
     float inputLinearZScale;
     bool rescaleScene;
+    float2 gJitter;
     float sceneMin;
     float sceneMax;
 };
@@ -18,7 +19,7 @@ Texture2D<float4> gCurMotionVectorTex;
 Texture2D<float4> gCurLinearZTex;
 Texture2D<float4> gPrevPosWTex;
 Texture2D<float4> gPrevLinearZTex;
-Texture2D<float3> gPrevPrevPosWTex;
+Texture2D<float4> gPrevPrevPosWTex;
 
 RWTexture2D<float4> gNextPosWTex;
 RWTexture2D<float4> gPosWTex;
@@ -63,8 +64,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // Position
 
     float2 ndc_xy;
-    ndc_xy.x = curCrd.x;
-    ndc_xy.y = curCrd.y;
+    ndc_xy.x = curCrd.x + gJitter.x;
+    ndc_xy.y = curCrd.y - gJitter.y;
 
     ndc_xy -= float2(0.5, 0.5);
 
@@ -184,7 +185,10 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         // We consider the fragement is static
         prevPosW = curPosW.xyz;
         prevPrevPosW = curPosW.xyz;
+        static = min(1, gPrevPrevPosWTex[prevCoord].w + 0.2);
     }
+
+    // gNextPosWTex[flipX_Coord] = float4(abs((int)prevCoord.x - (int)prevCoord_static.x) / 4, prevCoord.x, prevCoord_static.x, 1);
 
     // prevPosW = curPosW.xyz;
 
@@ -198,7 +202,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // -----------------------------------------------------------------
 
 
-    gTempPrevPosWTex[flipX_Coord] = float4(prevPosW, 1);
+    gTempPrevPosWTex[flipX_Coord] = float4(prevPosW, static);
 
     // float3 nextPosW = curPosW.xyz * 2 - prevPosW;
     float3 nextPosW = (2 * (curPosW.xyz - prevPosW) - (prevPosW - prevPrevPosW)) + curPosW.xyz;

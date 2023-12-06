@@ -91,7 +91,10 @@ private:
     Texture::SharedPtr mpBackgroundPosWTex;
 
     Texture::SharedPtr mpBackgroundWarpedTex;
+    Texture::SharedPtr mpBackgroundWarpedTempTex;
     Texture::SharedPtr mpBackgroundWarpedDepthTex;
+    Texture::SharedPtr mpBackgroundWarpedDepthTempTex;
+
 
     Texture::SharedPtr mpPrevMotionVectorTex;
 
@@ -144,6 +147,7 @@ private:
     ComputePass::SharedPtr mpBackgroundCollectionPass;
     ComputePass::SharedPtr mpBackgroundWarpDepthTestPass;
     ComputePass::SharedPtr mpBackgroundWarpPass;
+    ComputePass::SharedPtr mpBackgroundSplatPass;
 
 
     // Options

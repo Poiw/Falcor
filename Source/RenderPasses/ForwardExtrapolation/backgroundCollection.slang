@@ -73,7 +73,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     }
 
 
-    if (gNextPosWTex[pixelCoord].w < 0.5) { // dynamic objects
+    if (gNextPosWTex[pixelCoord].w < 0.9) { // dynamic objects
         return;
     }
 

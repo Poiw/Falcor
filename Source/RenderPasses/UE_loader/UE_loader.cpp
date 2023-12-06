@@ -266,6 +266,7 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
         mpProcessDataPass["PerFrameCB"]["curViewMatInv"] = rmcv::inverse(mpScene->getCamera()->getViewMatrix());
         mpProcessDataPass["PerFrameCB"]["tan2FovY"] = mpScene->getCamera()->getFrameHeight() / mpScene->getCamera()->getFocalLength() * 0.5f;
         mpProcessDataPass["PerFrameCB"]["tan2FovX"] = mpScene->getCamera()->getFrameWidth() / mpScene->getCamera()->getFocalLength() * 0.5f;
+        mpProcessDataPass["PerFrameCB"]["gJitter"] = float2(mpScene->getCamera()->getJitterX(), mpScene->getCamera()->getJitterY());
         mpProcessDataPass["PerFrameCB"]["rescaleScene"] = mRescaleScene;
         mpProcessDataPass["PerFrameCB"]["sceneMin"] = mSceneMin;
         mpProcessDataPass["PerFrameCB"]["sceneMax"] = mSceneMax;
