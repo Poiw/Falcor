@@ -148,6 +148,7 @@ private:
     ComputePass::SharedPtr mpBackgroundWarpDepthTestPass;
     ComputePass::SharedPtr mpBackgroundWarpPass;
     ComputePass::SharedPtr mpBackgroundSplatPass;
+    ComputePass::SharedPtr mpBackgroundBlendPass;
 
 
     // Options
