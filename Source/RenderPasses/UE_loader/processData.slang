@@ -64,7 +64,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // Position
 
     float2 ndc_xy;
-    ndc_xy.x = curCrd.x + gJitter.x;
+    ndc_xy.x = curCrd.x - gJitter.x;
     ndc_xy.y = curCrd.y - gJitter.y;
 
     ndc_xy -= float2(0.5, 0.5);
@@ -204,8 +204,8 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
 
     gTempPrevPosWTex[flipX_Coord] = float4(prevPosW, static);
 
-    // float3 nextPosW = curPosW.xyz * 2 - prevPosW;
-    float3 nextPosW = (2 * (curPosW.xyz - prevPosW) - (prevPosW - prevPrevPosW)) + curPosW.xyz;
+    float3 nextPosW = curPosW.xyz * 2 - prevPosW;
+    // float3 nextPosW = (2 * (curPosW.xyz - prevPosW) - (prevPosW - prevPrevPosW)) + curPosW.xyz;
 
     gNextPosWTex[flipX_Coord] = float4(nextPosW, static);
 
