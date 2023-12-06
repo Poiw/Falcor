@@ -185,7 +185,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
         // We consider the fragement is static
         prevPosW = curPosW.xyz;
         prevPrevPosW = curPosW.xyz;
-        static = min(1, gPrevPrevPosWTex[prevCoord].w + 0.2);
+        static = min(1, gPrevPrevPosWTex[prevCoord].w + 0.1);
     }
 
     // gNextPosWTex[flipX_Coord] = float4(abs((int)prevCoord.x - (int)prevCoord_static.x) / 4, prevCoord.x, prevCoord_static.x, 1);
