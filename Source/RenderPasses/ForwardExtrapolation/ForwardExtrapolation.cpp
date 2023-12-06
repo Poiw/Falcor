@@ -164,6 +164,8 @@ void ForwardExtrapolation::ClearVariables()
     mDumpFlags.wo_splat = false;
     mDumpFlags.gt = true;
     mDumpFlags.color = true;
+    mDumpFlags.before_BGcollection = false;
+    mDumpFlags.background = false;
 
 }
 
@@ -301,6 +303,8 @@ void ForwardExtrapolation::DumpDataFunc(const RenderData &renderData, uint frame
     if (mDumpFlags.mv)       renderData.getTexture("MotionVector_out")->captureToFile(0, 0, dirPath + "/MotionVector." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
     if (mDumpFlags.depth)    renderData.getTexture("LinearZ_out")->captureToFile(0, 0, dirPath + "/LinearZ." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
     if (mDumpFlags.wo_splat) renderData.getTexture("PreTonemapped_out_woSplat")->captureToFile(0, 0, dirPath + "/Render_woSplat." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    if (mDumpFlags.before_BGcollection) renderData.getTexture("wo_BGCollection")->captureToFile(0, 0, dirPath + "/Render_before_BGcollection." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
+    if (mDumpFlags.background) renderData.getTexture("Background_Color")->captureToFile(0, 0, dirPath + "/Background." + std::to_string(frameIdx) + ".exr", Bitmap::FileFormat::ExrFile);
 }
 
 void ForwardExtrapolation::setScene(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
@@ -415,7 +419,7 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
 
     createNewTexture(mpRenderTex, curDim);
     createNewTexture(mpNextPosWTex, curDim);
-    createNewTexture(mpTempOutputDepthTex, curDim, ResourceFormat::R32Float);
+    createNewTexture(mpTempOutputDepthTex, curDim, ResourceFormat::RG32Float);
     createNewTexture(mpTempOutputMVTex, curDim, ResourceFormat::RG32Float);
 
     pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), mpRenderTex->getRTV());
@@ -759,7 +763,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
     createNewTexture(mpTempDepthTex, curDim, ResourceFormat::R32Uint);
     createNewTexture(mpTempMotionVectorTex, curDim, ResourceFormat::RG32Float);
     createNewTexture(mpTempOutputTex, curDim, ResourceFormat::RGBA32Float);
-    createNewTexture(mpTempOutputDepthTex, curDim, ResourceFormat::R32Float);
+    createNewTexture(mpTempOutputDepthTex, curDim, ResourceFormat::RG32Float);
     createNewTexture(mpTempOutputMVTex, curDim, ResourceFormat::RG32Float);
     createNewTexture(mpTempUintDepthTex, curDim, ResourceFormat::R32Uint);
 
@@ -977,7 +981,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
     // ###################################################################################
 
     if (mDisplayMode == 0 || mDisplayMode == 2) {
-        pRenderContext->blit(mpTempWarpTex->getSRV(), renderData.getTexture("wo_BGCollection")->getRTV());
+        pRenderContext->blit(mpTempOutputTex->getSRV(), renderData.getTexture("wo_BGCollection")->getRTV());
     }
 
     // ################################### Splat Background #########################################
@@ -1095,9 +1099,9 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
     // Copy to output
     if (mDisplayMode == 0 || mDisplayMode == 2) {
         pRenderContext->blit(mpBackgroundWarpedTex->getSRV(), renderData.getTexture("Background_Color")->getRTV());
-        pRenderContext->blit(mpTempWarpTex->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
-        pRenderContext->blit(mpTempDepthTex->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
-        pRenderContext->blit(mpTempMotionVectorTex->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
+        pRenderContext->blit(mpTempOutputTex->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
+        pRenderContext->blit(mpTempOutputDepthTex->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
+        pRenderContext->blit(mpTempOutputMVTex->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
     }
 
 
@@ -1237,6 +1241,8 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
     widget.checkbox("depth", mDumpFlags.depth, true);
     widget.checkbox("mv", mDumpFlags.mv, true);
     widget.checkbox("woSplat", mDumpFlags.wo_splat, true);
+    widget.checkbox("woBGCollection", mDumpFlags.before_BGcollection, true);
+    widget.checkbox("bg", mDumpFlags.background, true);
 
     widget.textbox("Dump Dir Path", mDumpDirPath);
 

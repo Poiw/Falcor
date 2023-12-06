@@ -162,6 +162,8 @@ private:
         bool mv;
         bool depth;
         bool wo_splat;
+        bool before_BGcollection;
+        bool background;
     } mDumpFlags;
 
 };
