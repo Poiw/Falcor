@@ -11,9 +11,10 @@ cbuffer PerFrameCB {
     float2 gJitter;
     float sceneMin;
     float sceneMax;
+    float2 mvScale;
 };
 
-Texture2D<float4> gCurPosWTex;
+// Texture2D<float4> gCurPosWTex;
 Texture2D<float4> gCurColorTex;
 Texture2D<float4> gCurMotionVectorTex;
 Texture2D<float4> gCurLinearZTex;
@@ -45,7 +46,7 @@ void csMain(uint3 dispatchThreadId: SV_DispatchThreadID) {
     // Motion Vector
     float2 mv = gCurMotionVectorTex[pixelCoord].xy;
 
-    mv = mv / gFrameDim;
+    mv = mv / gFrameDim * mvScale;
 
     gMotionVectorTex[flipX_Coord] = mv;
 

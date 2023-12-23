@@ -239,6 +239,12 @@ namespace Falcor
         */
         void setViewMatrix(const rmcv::mat4& view);
 
+        void setPrevRec(float4 rec) { mPrevRec = rec; }
+        void setCurRec(float4 rec) { mCurRec = rec; }
+
+        float4 getPrevRec() { return mPrevRec; }
+        float4 getCurRec() { return mCurRec; }
+
         /** Enable or disable usage of persistent projection matrix
             \param[in] persistent whether to set it persistent
         */
@@ -320,6 +326,8 @@ namespace Falcor
         } mJitterPattern;
 
         void setJitterInternal(float jitterX, float jitterY);
+
+        float4 mPrevRec = float4(0, 0, 1, 1), mCurRec = float4(0, 0, 1, 1);
 
         friend class SceneBuilder;
         friend class SceneCache;

@@ -58,6 +58,8 @@ UE_loader::UE_loader() : RenderPass(kInfo)
     mEndFrame = 0;
     mCurFrame = 0;
 
+    mTargetFov = 90.0f;
+
     mpProcessDataPass = nullptr;
 
 }
@@ -198,6 +200,8 @@ void UE_loader::loadCamera(const std::string& cameraFilePath, Falcor::float2 fra
     JitterY /= frameDim.y;
     Camera->setJitter(-JitterX, -JitterY); // This is closest to correct jitter
 
+    mInputFov = FoVX;
+
 
 }
 
@@ -271,9 +275,10 @@ void UE_loader::processData(RenderContext* pRenderContext, const RenderData& ren
         mpProcessDataPass["PerFrameCB"]["sceneMin"] = mSceneMin;
         mpProcessDataPass["PerFrameCB"]["sceneMax"] = mSceneMax;
         mpProcessDataPass["PerFrameCB"]["inputLinearZScale"] = mInputLinearZScale;
+        mpProcessDataPass["PerFrameCB"]["mvScale"] = mvScale;
 
-        auto curPosWSRV = mpPosWTex->getSRV();
-        mpProcessDataPass["gCurPosWTex"].setSrv(curPosWSRV);
+        // auto curPosWSRV = mpPosWTex->getSRV();
+        // mpProcessDataPass["gCurPosWTex"].setSrv(curPosWSRV);
 
         auto curColorSRV = mpColorTex->getSRV();
         mpProcessDataPass["gCurColorTex"].setSrv(curColorSRV);
@@ -363,6 +368,16 @@ void UE_loader::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     if (mLoadData)
     {
+
+        auto curDim = renderData.getDefaultTextureDims();
+
+        // Create default textures
+        createNewTexture(mpColorTex, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews);
+        createNewTexture(mpDepthTex, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews);
+        createNewTexture(mpPosWTex, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews);
+        createNewTexture(mpMotionVectorTex, curDim, ResourceFormat::RGBA32Float, Resource::BindFlags::AllColorViews);
+
+
         // Load data
         std::string colorPath = getFilePath(mFolderPath, "PreTonemapHDRColor", "exr", mCurFrame);
         std::string depthPath = getFilePath(mFolderPath, "SceneDepth", "exr", mCurFrame);
@@ -370,10 +385,22 @@ void UE_loader::execute(RenderContext* pRenderContext, const RenderData& renderD
         std::string motionVectorPath = getFilePath(mFolderPath, "MotionVector", "exr", mCurFrame);
         std::string cameraPath = getFilePath(mFolderPath, "CameraInfo", "txt", mCurFrame);
 
-        mpColorTex = Texture::createFromFile(colorPath, false, true);
-        mpDepthTex = Texture::createFromFile(depthPath, false, true, Resource::BindFlags::AllColorViews);
-        mpPosWTex = Texture::createFromFile(posWPath, false, true, Resource::BindFlags::AllColorViews);
-        mpMotionVectorTex = Texture::createFromFile(motionVectorPath, false, true);
+        // mpColorTex = Texture::createFromFile(colorPath, false, true);
+        // mpDepthTex = Texture::createFromFile(depthPath, false, true, Resource::BindFlags::AllColorViews);
+        // mpPosWTex = Texture::createFromFile(posWPath, false, true, Resource::BindFlags::AllColorViews);
+        // mpMotionVectorTex = Texture::createFromFile(motionVectorPath, false, true);
+
+        mpColorLoadTex = Texture::createFromFile(colorPath, false, true, Resource::BindFlags::AllColorViews);
+        mpDepthLoadTex = Texture::createFromFile(depthPath, false, true, Resource::BindFlags::AllColorViews);
+        // // mpPosWLoadTex = Texture::createFromFile(posWPath, false, true, Resource::BindFlags::AllColorViews);
+        mpMotionVectorLoadTex = Texture::createFromFile(motionVectorPath, false, true, Resource::BindFlags::AllColorViews);
+
+        mvScale = float2( (float)curDim.x / mpColorLoadTex->getWidth(), (float)curDim.y / mpColorLoadTex->getHeight());
+
+        pRenderContext->blit(mpColorLoadTex->getSRV(), mpColorTex->getRTV());
+        pRenderContext->blit(mpDepthLoadTex->getSRV(), mpDepthTex->getRTV());
+        // // pRenderContext->blit(mpPosWLoadTex->getSRV(), mpPosWTex->getRTV());
+        pRenderContext->blit(mpMotionVectorLoadTex->getSRV(), mpMotionVectorTex->getRTV());
 
         loadCamera(cameraPath, renderData.getDefaultTextureDims());
 
@@ -401,6 +428,23 @@ void UE_loader::execute(RenderContext* pRenderContext, const RenderData& renderD
         }
 
         mPrevViewProjMatNoJitter = mpScene->getCamera()->getViewProjMatrixNoJitter();
+
+        auto frameWidth = mpScene->getCamera()->getFrameWidth();
+
+        float focalLength = frameWidth / (2.0f * std::tan(0.5f * mTargetFov / 180.f * M_PI));
+
+        mpScene->getCamera()->setFocalLength(focalLength);
+
+        mpScene->getCamera()->setPrevRec(mpScene->getCamera()->getCurRec());
+
+        float ratio = std::tan(mTargetFov / 180.0f * M_PI / 2.0f) / tan(mInputFov / 180.0f * M_PI / 2.0f);
+
+        float4 curRec(ratio * (-0.5) + 0.5, ratio * (-0.5) + 0.5, ratio * 0.5 + 0.5, ratio * 0.5 + 0.5);
+
+        mpScene->getCamera()->setCurRec(curRec);
+
+
+        mPrevInputFov = mInputFov;
 
     }
 
@@ -456,6 +500,8 @@ void UE_loader::renderUI(Gui::Widgets& widget)
     widget.checkbox("Rescale Scene", mRescaleScene);
 
     widget.textbox("Folder Path", mFolderPath);
+
+    widget.var<float>("Default FOV", mTargetFov, 1.0f, 180.0f, 1.0f);
 
     widget.text("Start Frame: " + std::to_string(mStartFrame));
     widget.text("End Frame: " + std::to_string(mEndFrame));

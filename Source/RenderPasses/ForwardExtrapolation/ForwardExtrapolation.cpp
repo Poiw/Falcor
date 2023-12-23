@@ -141,6 +141,7 @@ void ForwardExtrapolation::ClearVariables()
     mSplatSigma = 1.;
     gSplatDistSigma = 8.;
     gSplatStrideNum = 3;
+    gBGSplatStrideNum = 3;
 
     mSolidAngleThreshold = float(M_PI / 180.0f * 5.f);
     mVisibilityKernelSize = 2;
@@ -413,7 +414,7 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
 
 
     if (mDisplayMode == 0 || mDisplayMode == 1) {
-        pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
+        // pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
         pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), renderData.getTexture("PreTonemapped_out_woSplat")->getRTV());
     }
 
@@ -421,6 +422,7 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
     createNewTexture(mpNextPosWTex, curDim);
     createNewTexture(mpTempOutputDepthTex, curDim, ResourceFormat::RG32Float);
     createNewTexture(mpTempOutputMVTex, curDim, ResourceFormat::RG32Float);
+    createNewTexture(mpTempOutputTex, curDim, ResourceFormat::RGBA32Float);
 
     pRenderContext->blit(renderData.getTexture("PreTonemapped_in")->getSRV(), mpRenderTex->getRTV());
     pRenderContext->blit(renderData.getTexture("NextPosW_in")->getSRV(), mpNextPosWTex->getRTV());
@@ -435,6 +437,12 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
             // Input
             {
                 mpRegularFramePreProcessPass["PerFrameCB"]["gFrameDim"] = curDim;
+                mpRegularFramePreProcessPass["PerFrameCB"]["gCurRec"] = mpScene->getCamera()->getCurRec();
+                mpRegularFramePreProcessPass["PerFrameCB"]["gPrevRec"] = mpScene->getCamera()->getPrevRec();
+
+
+                auto mpCurColorSRV = renderData.getTexture("PreTonemapped_in")->getSRV();
+                mpRegularFramePreProcessPass["gCurColorTex"].setSrv(mpCurColorSRV);
 
                 auto mpCurMotionVectorSRV = renderData.getTexture("MotionVector_in")->getSRV();
                 mpRegularFramePreProcessPass["gCurMotionVectorTex"].setSrv(mpCurMotionVectorSRV);
@@ -459,6 +467,10 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
                 auto LinearZOutUav = mpTempOutputDepthTex->getUAV();
                 pRenderContext->clearUAV(LinearZOutUav.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
                 mpRegularFramePreProcessPass["gLinearZOut"].setUav(LinearZOutUav);
+
+                auto tempOutputTexUAV = mpTempOutputTex->getUAV();
+                pRenderContext->clearUAV(tempOutputTexUAV.get(), float4(0.0f, 0.0f, 0.0f, 0.0f));
+                mpRegularFramePreProcessPass["gColorOut"].setUav(tempOutputTexUAV);
             }
 
             // Execute
@@ -468,10 +480,12 @@ void ForwardExtrapolation::renderedFrameProcess(RenderContext* pRenderContext, c
             {
                 pRenderContext->uavBarrier(mpTempOutputMVTex.get());
                 pRenderContext->uavBarrier(mpTempOutputDepthTex.get());
+                pRenderContext->uavBarrier(mpTempOutputTex.get());
             }
 
 
             if (mDisplayMode == 0 || mDisplayMode == 1) {
+                pRenderContext->blit(mpTempOutputTex->getSRV(), renderData.getTexture("PreTonemapped_out")->getRTV());
                 pRenderContext->blit(mpTempOutputMVTex->getSRV(), renderData.getTexture("MotionVector_out")->getRTV());
                 pRenderContext->blit(mpTempOutputDepthTex->getSRV(), renderData.getTexture("LinearZ_out")->getRTV());
             }
@@ -985,7 +999,7 @@ void ForwardExtrapolation::extrapolatedFrameProcess(RenderContext* pRenderContex
     }
 
     // ################################### Splat Background #########################################
-    for (int step = 0; step < gSplatStrideNum; step++) {
+    for (int step = 0; step < gBGSplatStrideNum; step++) {
         // Input
         {
             mpBackgroundSplatPass["PerFrameCB"]["gFrameDim"] = curDim;
@@ -1230,6 +1244,7 @@ void ForwardExtrapolation::renderUI(Gui::Widgets& widget)
     widget.var<float>("Splat Sigma", mSplatSigma, 0.1f, 20.f);
     // widget.var<float>("Splat Dist Sigma", gSplatDistSigma, 0.1f, 20.f);
     widget.var<uint>("Splat Stride Num", gSplatStrideNum, 1u, 10u);
+    widget.var<uint>("BG Splat Stride Num", gBGSplatStrideNum, 1u, 10u);
 
     widget.var<uint>("Background Depth Scale", mBackgroundDepthScale, 1u, 1024u);
 

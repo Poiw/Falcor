@@ -74,6 +74,11 @@ private:
     Scene::SharedPtr mpScene;
 
 
+    Texture::SharedPtr mpColorLoadTex;
+    Texture::SharedPtr mpDepthLoadTex;
+    Texture::SharedPtr mpPosWLoadTex;
+    Texture::SharedPtr mpMotionVectorLoadTex;
+
     Texture::SharedPtr mpColorTex;
     Texture::SharedPtr mpDepthTex;
     Texture::SharedPtr mpPosWTex;
@@ -96,6 +101,12 @@ private:
     float mSceneMin, mSceneMax;
     bool mRescaleScene;
     float mInputLinearZScale;
+
+    float mTargetFov;
+    float mInputFov;
+    float2 mvScale = float2(1, 1);
+
+    float mPrevInputFov;
 
     ComputePass::SharedPtr mpProcessDataPass;
 

@@ -111,6 +111,7 @@ private:
     float mSplatSigma;
     float gSplatDistSigma;
     uint gSplatStrideNum;
+    uint gBGSplatStrideNum;
 
     // Occlusion Filter
     int mVisibilityKernelSize;
